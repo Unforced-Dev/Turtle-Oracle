@@ -1,0 +1,160 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1, viewport-fit=cover">
+<title>The Terrible Turtle Oracle — Ask</title>
+<style>
+  :root{--ink:#14110c;--ink2:#1d1810;--gold:#c8a24a;--gold2:#e0c477;--gold-dim:#8a6f34;
+    --parch:#e9dcc0;--parch-dim:#b6a684;--edge:#3a3020;}
+  *{box-sizing:border-box} html,body{margin:0;min-height:100%}
+  body{background:radial-gradient(120% 90% at 50% -10%, #241d12 0%, var(--ink) 60%, #0d0b07 100%);
+    color:var(--parch);font-family:"Iowan Old Style","Palatino Linotype",Palatino,Georgia,serif;
+    line-height:1.55;padding:24px;-webkit-font-smoothing:antialiased}
+  .wrap{max-width:960px;margin:0 auto}
+  header{text-align:center;padding:14px 0 6px}
+  h1{font-size:1.9rem;letter-spacing:.05em;margin:.2em 0;color:var(--gold);font-weight:600}
+  .sub{color:var(--parch-dim);font-style:italic;letter-spacing:.08em;font-size:.95rem}
+  .backlink{margin-top:8px} .backlink a{color:var(--gold-dim);font-size:.8rem;letter-spacing:.1em;text-decoration:none}
+  .note{color:var(--gold-dim);font-size:.74rem;letter-spacing:.04em;margin-top:6px}
+  .ask{margin:24px auto;max-width:680px;background:linear-gradient(180deg,var(--ink2),#100d08);
+    border:1px solid var(--edge);border-radius:14px;padding:18px;box-shadow:0 18px 50px rgba(0,0,0,.5)}
+  textarea{width:100%;min-height:84px;resize:vertical;background:#0e0b06;color:var(--parch);
+    border:1px solid var(--edge);border-radius:9px;padding:12px 14px;font:inherit;font-size:1.05rem}
+  textarea::placeholder{color:#7d6f52;font-style:italic}
+  .row{display:flex;gap:10px;margin-top:12px;align-items:center;flex-wrap:wrap}
+  button{font:inherit;cursor:pointer;border-radius:9px;border:1px solid var(--gold-dim);
+    background:linear-gradient(180deg,#caa64f,#9c7c33);color:#1a1408;font-weight:600;padding:11px 20px;font-size:1.02rem}
+  button.ghost{background:transparent;color:var(--parch-dim);border-color:var(--edge)}
+  .hint{color:var(--parch-dim);font-size:.82rem;font-style:italic;margin-left:auto}
+  .thinking{text-align:center;color:var(--gold-dim);font-style:italic;letter-spacing:.1em;padding:26px;display:none}
+  .thinking.on{display:block;animation:pulse 2.4s ease-in-out infinite}
+  @keyframes pulse{0%,100%{opacity:.45}50%{opacity:1}}
+  .cards{display:grid;grid-template-columns:repeat(3,1fr);gap:16px;margin:8px 0 24px}
+  @media(max-width:720px){.cards{grid-template-columns:1fr}}
+  .card{background:linear-gradient(180deg,#191309,#0f0b06);border:1px solid var(--edge);border-radius:12px;
+    overflow:hidden;opacity:0;transform:translateY(14px);transition:opacity .7s,transform .7s;box-shadow:0 10px 30px rgba(0,0,0,.5)}
+  .card.show{opacity:1;transform:none}
+  .card .slot{font-size:.68rem;letter-spacing:.18em;text-transform:uppercase;color:var(--gold-dim);padding:12px 14px 0}
+  .card img{width:100%;aspect-ratio:1024/1536;object-fit:cover;display:block;margin-top:8px;border-top:1px solid var(--edge);background:#0b0805}
+  .card .name{color:var(--gold);font-size:1.12rem;padding:12px 14px 2px}
+  .card .body{color:var(--parch);padding:0 14px 6px;font-size:.94rem}
+  .card .real{color:var(--parch-dim);font-size:.78rem;font-style:italic;padding:2px 14px 6px}
+  .card .loc{color:var(--gold-dim);font-size:.78rem;padding:0 14px 14px}
+  .scroll{max-width:680px;margin:0 auto;opacity:0;transition:opacity 1s ease .3s} .scroll.show{opacity:1}
+  .scroll h2{color:var(--gold);letter-spacing:.14em;text-transform:uppercase;font-size:.9rem;border-bottom:1px solid var(--edge);padding-bottom:6px;margin-top:26px}
+  .reading{font-size:1.1rem} .adventure{font-size:1.06rem;color:#f0e6cf}
+  .map{font-family:ui-monospace,Menlo,Consolas,monospace;color:var(--gold);background:#0e0b06;
+    border:1px solid var(--edge);border-radius:8px;padding:12px;font-size:.82rem;line-height:1.35;overflow-x:auto;white-space:pre;margin-top:8px}
+  .dirs{list-style:none;padding:0;margin:12px 0} .dirs li{padding:7px 0;border-bottom:1px solid var(--edge);font-size:.92rem} .dirs li b{color:var(--gold)}
+  footer{text-align:center;color:var(--gold-dim);font-size:.72rem;letter-spacing:.14em;text-transform:uppercase;margin:36px 0 10px}
+  @media print{
+    nav,.ask,.thinking,.backlink,.note,#print,footer,.card img{display:none!important}
+    body{background:#fff;color:#111} h1,.scroll h2,.card .name,.card .slot,.dirs li b{color:#111}
+    .card{border-color:#ccc;box-shadow:none;opacity:1;transform:none;break-inside:avoid}
+    .map{color:#111;background:#f4efe4;border-color:#ccc} .scroll{opacity:1}
+  }
+</style>
+</head>
+<body>
+<div class="wrap">
+  <header>
+    <h1>🐢 The Terrible Turtle Oracle</h1>
+    <div class="sub">Move Slow &amp; Bite Things</div>
+    <div class="backlink"><a href="index.html">← about the deck</a></div>
+    <div class="note">Reads from the deck, right in your browser. (The fluid AI reading &amp; receipt run on the camp's local oracle.)</div>
+  </header>
+
+  <div class="ask">
+    <textarea id="q" placeholder="What's on your mind, traveler? Tell the Turtle what you're carrying, or what you're deciding…"></textarea>
+    <div class="row">
+      <button id="ask">Ask the Turtle</button>
+      <button id="mic" class="ghost" title="Speak your question">🎙 Speak</button>
+      <span class="hint" id="hint"></span>
+    </div>
+  </div>
+
+  <div class="thinking" id="thinking">the turtle is considering, slowly…</div>
+  <div class="cards" id="cards"></div>
+  <div class="scroll" id="scroll">
+    <h2>The Reading</h2><div class="reading" id="reading"></div>
+    <h2>Your Adventure Tonight</h2><div class="adventure" id="adventure"></div>
+    <h2>Where To Go</h2><pre class="map" id="map"></pre><ul class="dirs" id="dirs"></ul>
+    <div class="row"><button id="print">🖨 Print / save my quest</button></div>
+  </div>
+
+  <footer>there's a spot in the shell for you</footer>
+</div>
+
+<script>
+const $=id=>document.getElementById(id);
+const SLOTS=["roots","trunk","branches"];
+const STOP=new Set("the a an and or but of to in on for with i im my me you your it its is am are was be do dont should would could can cant what how why when if about at as this that these those we our us they them he she his her".split(" "));
+let BYREALM={}, COMPASS="";
+
+fetch('./cards.web.json').then(r=>r.json()).then(d=>{
+  COMPASS=d.compass||"";
+  d.cards.forEach(c=>{ (BYREALM[c.realm]=BYREALM[c.realm]||[]).push(c); });
+}).catch(()=>{ $('hint').textContent="couldn't load the deck"; });
+
+function tokens(s){ return new Set((s||"").toLowerCase().match(/[a-z']+/g)?.filter(t=>t.length>2 && !STOP.has(t))||[]); }
+function inter(a,b){ let n=0; a.forEach(x=>{ if(b.has(x)) n++; }); return n; }
+function score(qt,c){ const kw=tokens((c.keywords||[]).join(" ")); const body=tokens((c.reading||"")+" "+(c.shadow||"")); return 4*inter(qt,kw)+inter(qt,body); }
+
+function select(question){
+  const qt=tokens(question), picks={};
+  SLOTS.forEach(realm=>{
+    const ranked=[...(BYREALM[realm]||[])].map(c=>({c,s:score(qt,c)+Math.random()})).sort((a,b)=>b.s-a.s);
+    picks[realm]=ranked[0].c;
+  });
+  return picks;
+}
+const lc=s=>{ s=(s||"").trim(); return s?s[0].toLowerCase()+s.slice(1):s; };
+function move(label,c){ const w=c.location&&c.location.directions; return `${label} ${c.real_2026} — ${lc(c.turtle_dare)}${w?` → ${w}`:""}`; }
+
+function weave(picks){
+  const r=picks.roots,t=picks.trunk,b=picks.branches;
+  const reading=`You came asking, and the Tree answered in three parts, so hear them as one. First, what to face. ${r.reading} Now, where you stand. ${t.reading} And what to grow toward. ${b.reading} Move slow through all three — face “${r.name},” plant your feet in “${t.name},” then bite down on “${b.name}.”`;
+  const adventure=`Tonight, an adventure in three moves. ${move("Begin at",r)} ${move("Then, where you stand:",t)} ${move("Finish by reaching,",b)}`;
+  return {reading,adventure};
+}
+
+function ask(){
+  const q=$('q').value.trim(); if(!q){ $('q').focus(); return; }
+  if(!Object.keys(BYREALM).length){ $('hint').textContent="deck still loading…"; return; }
+  $('scroll').classList.remove('show'); $('cards').innerHTML=''; $('thinking').classList.add('on');
+  const picks=select(q);
+  setTimeout(()=>{ render(picks, weave(picks)); $('thinking').classList.remove('on'); }, 650);
+}
+
+function render(picks, out){
+  $('cards').innerHTML='';
+  SLOTS.forEach((slot,i)=>{
+    const c=picks[slot];
+    const loc=c.location&&c.location.directions?`<div class="loc">📍 ${c.location.directions}</div>`:'';
+    const el=document.createElement('div'); el.className='card';
+    el.innerHTML=`<div class="slot">${c.slot||slot}</div><img loading="lazy" src="${c.image}" alt="${c.name}">
+      <div class="name">${c.name}</div><div class="body">${c.reading}</div>
+      <div class="real">↳ ${c.real_2026}</div>${loc}`;
+    $('cards').appendChild(el);
+    setTimeout(()=>el.classList.add('show'), 200+i*520);
+  });
+  $('reading').textContent=out.reading; $('adventure').textContent=out.adventure;
+  $('map').textContent=COMPASS;
+  $('dirs').innerHTML=SLOTS.map(s=>{ const c=picks[s]; const w=(c.location&&c.location.directions)||"Ask Playa Info.";
+    return `<li><b>${c.name}</b> — ${w}</li>`; }).join('');
+  setTimeout(()=>$('scroll').classList.add('show'), 200+SLOTS.length*520);
+}
+
+$('ask').addEventListener('click', ask);
+$('print').addEventListener('click', ()=>window.print());
+$('q').addEventListener('keydown', e=>{ if((e.metaKey||e.ctrlKey)&&e.key==='Enter') ask(); });
+const SR=window.SpeechRecognition||window.webkitSpeechRecognition;
+if(SR){ const rec=new SR(); rec.lang="en-US"; rec.interimResults=false;
+  $('mic').addEventListener('click',()=>{ $('hint').textContent="listening…"; try{rec.start()}catch(e){} });
+  rec.onresult=e=>{ $('q').value=e.results[0][0].transcript; $('hint').textContent=""; ask(); };
+  rec.onerror=()=>{ $('hint').textContent="couldn't hear you — type instead"; };
+} else { $('mic').style.display="none"; $('hint').textContent="type your question"; }
+</script>
+</body>
+</html>

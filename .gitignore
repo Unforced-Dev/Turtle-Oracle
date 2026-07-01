@@ -1,0 +1,9 @@
+# Full-resolution & print-bleed art — kept local (too big for git; add via Git LFS later)
+cards/art/
+print/fronts/
+# Ephemera
+server.log
+app/receipts/
+__pycache__/
+*.pyc
+.DS_Store

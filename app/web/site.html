@@ -1,0 +1,218 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1, viewport-fit=cover">
+<title>The Terrible Turtle Oracle</title>
+<style>
+  :root{
+    --ink:#14110c; --ink2:#1b1610; --gold:#c8a24a; --gold2:#e0c477; --gold-dim:#8a6f34;
+    --parch:#e9dcc0; --parch-dim:#b6a684; --edge:#3a3020;
+    --roots:#8f8fd6; --trunk:#d69a5a; --branches:#8fc0dd; --shell:#e0c477;
+  }
+  *{box-sizing:border-box} html{scroll-behavior:smooth}
+  body{margin:0;background:var(--ink);color:var(--parch);
+    font-family:"Iowan Old Style","Palatino Linotype",Palatino,Georgia,serif;line-height:1.6;-webkit-font-smoothing:antialiased}
+  a{color:var(--gold2);text-decoration:none} .wrap{max-width:1100px;margin:0 auto;padding:0 22px}
+  h2{font-size:1.9rem;color:var(--gold);letter-spacing:.02em;margin:0 0 .3em}
+  h2 .sub{display:block;font-size:.78rem;letter-spacing:.22em;text-transform:uppercase;color:var(--gold-dim);margin-bottom:.4em}
+  p{font-size:1.08rem;color:#ded1b4}
+  section{padding:78px 0;border-top:1px solid #241d12}
+  /* nav */
+  nav{position:sticky;top:0;z-index:50;background:rgba(20,17,12,.92);backdrop-filter:blur(8px);
+    border-bottom:1px solid var(--edge)}
+  nav .wrap{display:flex;align-items:center;gap:22px;padding:12px 22px}
+  nav .brand{color:var(--gold);font-weight:600;letter-spacing:.04em;margin-right:auto}
+  nav a.link{color:var(--parch-dim);font-size:.92rem;letter-spacing:.03em}
+  nav a.link:hover{color:var(--gold2)}
+  .btn{display:inline-block;border:1px solid var(--gold-dim);border-radius:9px;
+    background:linear-gradient(180deg,#caa64f,#9c7c33);color:#1a1408;font-weight:600;
+    padding:9px 18px;letter-spacing:.03em}
+  .btn.ghost{background:transparent;color:var(--gold2)}
+  @media(max-width:720px){nav a.link{display:none}}
+  /* hero */
+  .hero{text-align:center;padding:70px 0 40px;
+    background:radial-gradient(120% 80% at 50% 0%, #241d12 0%, var(--ink) 60%);}
+  .hero img{width:270px;max-width:64vw;border-radius:12px;border:1px solid var(--edge);
+    box-shadow:0 20px 60px rgba(0,0,0,.55);margin-bottom:26px}
+  .hero h1{font-size:2.9rem;margin:.1em 0;color:var(--gold);letter-spacing:.03em;font-weight:600}
+  .hero .tag{font-style:italic;color:var(--parch-dim);letter-spacing:.14em;font-size:1.05rem}
+  .hero .lede{max-width:640px;margin:22px auto 30px;font-size:1.18rem;color:#ecdfc2}
+  .hero .cta{display:flex;gap:14px;justify-content:center;flex-wrap:wrap}
+  /* realms */
+  .realms{display:grid;grid-template-columns:repeat(4,1fr);gap:16px;margin-top:26px}
+  @media(max-width:760px){.realms{grid-template-columns:1fr 1fr}}
+  .realm{border:1px solid var(--edge);border-radius:12px;padding:18px;background:var(--ink2)}
+  .realm h3{margin:.1em 0;font-size:1.15rem} .realm .r{font-size:.72rem;letter-spacing:.16em;text-transform:uppercase}
+  .realm p{font-size:.95rem;color:var(--parch-dim);margin:.5em 0 0}
+  /* steps */
+  .steps{display:grid;grid-template-columns:repeat(3,1fr);gap:16px;margin-top:8px}
+  @media(max-width:760px){.steps{grid-template-columns:1fr}}
+  .step{border-left:2px solid var(--gold-dim);padding:4px 0 4px 16px}
+  .step b{color:var(--gold2)}
+  /* deck gallery */
+  .realmhead{margin:34px 0 12px;font-size:1.15rem;letter-spacing:.16em;text-transform:uppercase;
+    border-bottom:1px solid var(--edge);padding-bottom:8px}
+  .grid{display:grid;grid-template-columns:repeat(6,1fr);gap:12px}
+  @media(max-width:900px){.grid{grid-template-columns:repeat(4,1fr)}}
+  @media(max-width:560px){.grid{grid-template-columns:repeat(3,1fr)}}
+  .tile{cursor:pointer;border-radius:8px;overflow:hidden;border:1px solid var(--edge);
+    background:#0e0b06;transition:transform .18s ease,box-shadow .18s ease}
+  .tile:hover{transform:translateY(-4px);box-shadow:0 12px 26px rgba(0,0,0,.5)}
+  .tile img{width:100%;aspect-ratio:1024/1536;object-fit:cover;display:block}
+  .tile .cap{font-size:.72rem;color:var(--parch-dim);padding:5px 6px;text-align:center;
+    white-space:nowrap;overflow:hidden;text-overflow:ellipsis}
+  /* downloads */
+  .cards-row{display:grid;grid-template-columns:repeat(3,1fr);gap:16px;margin-top:8px}
+  @media(max-width:760px){.cards-row{grid-template-columns:1fr}}
+  .dl{border:1px solid var(--edge);border-radius:12px;padding:18px;background:var(--ink2)}
+  .dl h4{margin:.1em 0;color:var(--gold2)} .dl p{font-size:.92rem;color:var(--parch-dim)}
+  footer{text-align:center;color:var(--gold-dim);font-size:.8rem;letter-spacing:.14em;
+    text-transform:uppercase;padding:50px 0 40px;border-top:1px solid #241d12}
+  /* modal */
+  .modal{position:fixed;inset:0;z-index:100;background:rgba(8,6,4,.92);display:none;
+    align-items:center;justify-content:center;padding:20px}
+  .modal.on{display:flex}
+  .modal .box{max-width:900px;display:grid;grid-template-columns:320px 1fr;gap:26px;
+    background:var(--ink2);border:1px solid var(--edge);border-radius:14px;padding:24px;
+    max-height:92vh;overflow:auto}
+  @media(max-width:720px){.modal .box{grid-template-columns:1fr}}
+  .modal img{width:100%;border-radius:8px;border:1px solid var(--edge)}
+  .modal .mname{font-size:1.7rem;color:var(--gold);margin:0}
+  .modal .mrealm{font-size:.74rem;letter-spacing:.18em;text-transform:uppercase;color:var(--gold-dim);margin:.3em 0 1em}
+  .modal .lbl{font-size:.72rem;letter-spacing:.16em;text-transform:uppercase;color:var(--gold-dim);margin:16px 0 4px}
+  .modal .shadow{color:var(--parch-dim);font-style:italic}
+  .modal .x{position:fixed;top:18px;right:22px;font-size:2rem;color:var(--parch-dim);cursor:pointer}
+  .modal .nav{display:flex;justify-content:space-between;margin-top:18px}
+  .modal .nav button{background:transparent;border:1px solid var(--edge);color:var(--gold2);
+    border-radius:8px;padding:7px 14px;cursor:pointer;font:inherit}
+</style>
+</head>
+<body>
+
+<nav><div class="wrap">
+  <span class="brand">🐢 The Terrible Turtle Oracle</span>
+  <a class="link" href="#vision">Vision</a>
+  <a class="link" href="#tree">The Tree</a>
+  <a class="link" href="#deck">The Deck</a>
+  <a class="link" href="#app">The App</a>
+  <a class="btn" href="/oracle">Enter the Oracle →</a>
+</div></nav>
+
+<header class="hero">
+  <div class="wrap">
+    <img src="/med/back.jpg" alt="Card back — the World Turtle carrying the World Tree">
+    <h1>The Terrible Turtle Oracle</h1>
+    <div class="tag">Move Slow &amp; Bite Things</div>
+    <p class="lede">An AI oracle for Terrible Turtle camp — a 48-card deck where the <b>World Turtle</b> carries the <b>World Tree</b>, the theme of Burning Man 2026. Pull three cards; receive one reading and one real adventure into the burn.</p>
+    <div class="cta">
+      <a class="btn" href="/oracle">Enter the Oracle →</a>
+      <a class="btn ghost" href="#deck">See all 48 cards</a>
+    </div>
+  </div>
+</header>
+
+<section id="vision"><div class="wrap">
+  <h2><span class="sub">The Synchronicity</span>The turtle was carrying it all along</h2>
+  <p>Burning Man 2026's theme is <b>Axis Mundi</b> — the World Tree that runs through nearly every mythology, roots in the underworld and branches in the heavens. And in many of those same myths, the World Tree grows from the back of the <b>World Turtle</b>. Turtles all the way down.</p>
+  <p>So Terrible Turtle's mascot isn't <em>near</em> the theme — it's the <b>foundation the whole theme stands on</b>. Even the city agrees: this year the streets are named for world-trees and sacred centers — Ararat, Bodhi, Ceiba, Great Oak, Iroko. Black Rock City is itself an Axis Mundi in 2026. This deck is that tree, on that turtle.</p>
+</div></section>
+
+<section id="tree"><div class="wrap">
+  <h2><span class="sub">How It Works</span>Four realms of the World Tree</h2>
+  <p>The 48 cards live in four realms — the layers of the cosmic tree. A reading draws one from each middle layer and reads them as a single arc.</p>
+  <div class="realms">
+    <div class="realm" style="border-top:3px solid var(--shell)"><div class="r" style="color:var(--shell)">Shell</div><h3>The axis speaks</h3><p>The Turtle beneath — the load-bearing archetypes. When one appears, the whole reading turns around it.</p></div>
+    <div class="realm" style="border-top:3px solid var(--roots)"><div class="r" style="color:var(--roots)">Roots</div><h3>What to face</h3><p>The underworld — shadow, grief, the buried, what you're ready to release.</p></div>
+    <div class="realm" style="border-top:3px solid var(--trunk)"><div class="r" style="color:var(--trunk)">Trunk</div><h3>Where you stand</h3><p>The middle world — the body, presence, endurance, how you hold the present.</p></div>
+    <div class="realm" style="border-top:3px solid var(--branches)"><div class="r" style="color:var(--branches)">Branches</div><h3>What to reach for</h3><p>The heavens — connection, ecstasy, aspiration, what you're growing toward.</p></div>
+  </div>
+  <div class="steps">
+    <div class="step"><b>1 · Pull the Tree.</b> One Root, one Trunk, one Branch — face this, stand like this, reach for that.</div>
+    <div class="step"><b>2 · Read the arc.</b> The three weave into a single truth about your question, not three fortunes.</div>
+    <div class="step"><b>3 · Take the dare.</b> Every card carries a <b>Turtle Dare</b> — one real adventure to carry out on the playa.</div>
+  </div>
+</div></section>
+
+<section id="deck"><div class="wrap">
+  <h2><span class="sub">The Deck</span>All 48 cards</h2>
+  <p>Hand-carved woodcut &amp; gold. Tap any card for its reading, its shadow, and its Turtle Dare.</p>
+  <div id="gallery"></div>
+</div></section>
+
+<section id="app"><div class="wrap">
+  <h2><span class="sub">The Living Oracle</span>Ask, and the tree answers</h2>
+  <p>The digital oracle runs on a laptop in the shell — fully offline, no internet needed on playa. Speak or type your question; it draws your three cards, weaves one reading and one adventure tuned to <b>this year's real camps, art, and rituals</b>, tells you <b>where to go</b> on the city's clock-grid, and prints your quest on a little <b>receipt</b> to carry into the night.</p>
+  <p style="margin-top:8px"><a class="btn" href="/oracle">Enter the Oracle →</a></p>
+  <h2 style="margin-top:56px"><span class="sub">Two Decks, One Myth</span>Take it home &amp; take it further</h2>
+  <div class="cards-row">
+    <div class="dl"><h4>🃏 The Print Deck</h4><p>A timeless physical deck — recurring Burning Man &amp; Terrible Turtle — printed for the whole camp to carry, pull, and share.</p></div>
+    <div class="dl"><h4>📱 The App</h4><p>The same 48 archetypes, made live for 2026: real placements &amp; adventures, refreshed from the Burning Man data feed in August.</p></div>
+    <div class="dl"><h4>🧾 The Receipt</h4><p>Your reading + quest + a city compass, printed on a thermal receipt — a keepsake adventure guide.</p></div>
+  </div>
+  <h2 style="margin-top:56px"><span class="sub">See Everything</span>Downloads</h2>
+  <div class="cards-row">
+    <div class="dl"><h4><a href="/download/booklet.pdf">Companion Booklet (PDF)</a></h4><p>All 48 cards with their Reading, shadow, and Turtle Dare — the meanings, off-card.</p></div>
+    <div class="dl"><h4><a href="/download/proof.pdf">Deck Proof (PDF)</a></h4><p>Every card front + the shared back, page by page — the print proof.</p></div>
+    <div class="dl"><h4><a href="/download/contact-sheet.png">Contact Sheet (PNG)</a></h4><p>The whole deck at a glance, one image.</p></div>
+  </div>
+</div></section>
+
+<footer>there's a spot in the shell for you · <a href="https://terribleturtle.camp/">terribleturtle.camp</a></footer>
+
+<div class="modal" id="modal">
+  <span class="x" id="mx">×</span>
+  <div class="box">
+    <div><img id="mimg" src="" alt=""></div>
+    <div>
+      <h3 class="mname" id="mname"></h3>
+      <div class="mrealm" id="mrealm"></div>
+      <div id="mreading"></div>
+      <div class="lbl">Shadow</div><div class="shadow" id="mshadow"></div>
+      <div class="lbl">Turtle Dare</div><div id="mdare"></div>
+      <div class="lbl" id="mwherelbl" style="display:none">Find it on playa</div><div id="mwhere"></div>
+      <div class="nav"><button id="mprev">← Prev</button><button id="mnext">Next →</button></div>
+    </div>
+  </div>
+</div>
+
+<script>
+const $=id=>document.getElementById(id);
+const REALM={shell:["Shell","var(--shell)"],roots:["Roots","var(--roots)"],trunk:["Trunk","var(--trunk)"],branches:["Branches","var(--branches)"]};
+let CARDS=[], cur=0;
+
+fetch('/api/cards').then(r=>r.json()).then(cards=>{
+  CARDS=cards;
+  const g=$('gallery'); g.innerHTML=''; let group=null,grid=null;
+  cards.forEach((c,i)=>{
+    if(c.realm!==group){ group=c.realm;
+      const h=document.createElement('div'); h.className='realmhead'; h.style.color=REALM[c.realm][1];
+      h.textContent=REALM[c.realm][0]; g.appendChild(h);
+      grid=document.createElement('div'); grid.className='grid'; g.appendChild(grid);
+    }
+    const t=document.createElement('div'); t.className='tile';
+    t.innerHTML=`<img loading="lazy" src="${c.thumb||c.image||''}" alt="${c.name}"><div class="cap">${c.name}</div>`;
+    t.onclick=()=>open(i); grid.appendChild(t);
+  });
+});
+
+function open(i){ cur=i; const c=CARDS[i];
+  $('mimg').src=c.image||''; $('mname').textContent=c.name;
+  $('mrealm').textContent=`${REALM[c.realm][0]} · ${c.real_2026}`;
+  $('mrealm').style.color=REALM[c.realm][1];
+  $('mreading').textContent=c.reading; $('mshadow').textContent=c.shadow||'';
+  $('mdare').textContent=c.turtle_dare;
+  const w=c.location&&c.location.directions;
+  $('mwherelbl').style.display=w?'block':'none'; $('mwhere').textContent=w||'';
+  $('modal').classList.add('on');
+}
+function close(){ $('modal').classList.remove('on'); }
+$('mx').onclick=close;
+$('modal').onclick=e=>{ if(e.target===$('modal')) close(); };
+$('mprev').onclick=()=>open((cur-1+CARDS.length)%CARDS.length);
+$('mnext').onclick=()=>open((cur+1)%CARDS.length);
+document.addEventListener('keydown',e=>{ if(!$('modal').classList.contains('on'))return;
+  if(e.key==='Escape')close(); if(e.key==='ArrowLeft')$('mprev').click(); if(e.key==='ArrowRight')$('mnext').click(); });
+</script>
+</body>
+</html>

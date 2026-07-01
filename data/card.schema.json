@@ -1,0 +1,64 @@
+{
+  "$schema": "http://json-schema.org/draft-07/schema#",
+  "title": "Terrible Turtle Oracle Card",
+  "description": "One card in the 48-card Terrible Turtle Oracle (Black Rock City 2026). See docs/DECK_DESIGN.md.",
+  "type": "object",
+  "required": ["id", "number", "name", "realm", "keywords", "reading", "turtle_dare"],
+  "properties": {
+    "id": {
+      "type": "string",
+      "description": "Stable slug id, e.g. 'shell-01', 'roots-07'",
+      "pattern": "^(shell|roots|trunk|branches)-[0-9]{2}$"
+    },
+    "number": { "type": "integer", "minimum": 1, "maximum": 12, "description": "1-12 within the realm" },
+    "name": { "type": "string", "description": "Card name, e.g. 'The World Turtle', 'The Whiteout'" },
+    "realm": {
+      "type": "string",
+      "enum": ["shell", "roots", "trunk", "branches"],
+      "description": "shell=archetype/axis, roots=face/release, trunk=stand/present, branches=reach/aspire"
+    },
+    "keywords": {
+      "type": "array",
+      "items": { "type": "string" },
+      "minItems": 2,
+      "maxItems": 5,
+      "description": "2-5 one-word themes for matching in a reading"
+    },
+    "reading": {
+      "type": "string",
+      "description": "The life-wisdom printed on the card. 2-4 sentences, honest and non-saccharine."
+    },
+    "shadow": {
+      "type": "string",
+      "description": "Optional counter-reading / what this card warns against when it dominates."
+    },
+    "turtle_dare": {
+      "type": "string",
+      "description": "One concrete adventure into the burn, tied to this card."
+    },
+    "real_2026": {
+      "type": "object",
+      "description": "The real BRC 2026 element this card is anchored to.",
+      "required": ["type", "name", "confidence"],
+      "properties": {
+        "type": {
+          "type": "string",
+          "enum": ["art", "camp", "artcar", "soundcamp", "ritual", "temple", "man", "workshop", "place", "camp-terrible-turtle", "principle"]
+        },
+        "name": { "type": "string", "description": "Real name of the piece/camp/ritual" },
+        "note": { "type": "string", "description": "What it is / where it is on playa" },
+        "confidence": {
+          "type": "string",
+          "enum": ["high", "med", "low"],
+          "description": "high=recurring institution or confirmed funded; med/low=likely but unconfirmed for 2026"
+        }
+      }
+    },
+    "live_hook": {
+      "type": "string",
+      "description": "Tag the app uses to bind live/current event data, e.g. 'sunrise_soundcamp', 'temple', 'workshop:movement', 'deep_playa_art'"
+    },
+    "image_prompt": { "type": "string", "description": "Prompt for generating this card's art" },
+    "image_file": { "type": "string", "description": "Relative path to the generated art, e.g. 'cards/art/shell-01.png'" }
+  }
+}

@@ -1,0 +1,37 @@
+{
+  "city": {
+    "name": "Black Rock City",
+    "year": 2026,
+    "theme": "Axis Mundi",
+    "center_gps": [40.783242, -119.207871],
+    "dates": "Aug 30 – Sep 7, 2026"
+  },
+  "address_system": "Every location = a clock time (direction) + a concentric street (distance from the Man). Clock avenues span the 2:00–10:00 arc; the 12:00 axis is left open as the sightline from Center Camp through the Man to the Temple and deep playa. Streets from the center outward: Esplanade (innermost), then A–K. E.g. '7:30 & Esplanade' or '3:00 & Delphi'.",
+  "street_rings_2026": [
+    "Esplanade", "Ararat (A)", "Bodhi (B)", "Ceiba (C)", "Delphi (D)", "Eternal (E)",
+    "Fulcrum (F)", "Great Oak (G)", "Heiau (H)", "Iroko (I)", "Jiba (J)", "Kundalini (K)"
+  ],
+  "street_theme_note": "The 2026 concentric streets are named for world-centers — sacred trees and holy mountains (Ararat, Bodhi tree, Ceiba, Delphi, Great Oak, Iroko…). The city is itself an Axis Mundi this year, which is the deck's whole spine.",
+  "landmarks": {
+    "the_man": { "clock": "center", "street": null, "directions": "Center of the open playa — walk toward the Man on the 12:00 axis.", "confidence": "high" },
+    "temple": { "clock": "12:00", "street": "deep playa", "directions": "Straight out past the Man on the 12:00 axis, at the far edge of the open playa.", "confidence": "high" },
+    "center_camp": { "clock": "6:00", "street": "Esplanade", "directions": "At the mouth of the city, 6:00 & Esplanade — opposite the open playa.", "confidence": "high" },
+    "esplanade": { "clock": null, "street": "Esplanade", "directions": "The innermost ring road, facing the open playa — prime frontage.", "confidence": "high" },
+    "deep_playa": { "clock": "12:00", "street": "past the Man", "directions": "The open dark expanse beyond the Man toward 12:00, running out to the fence.", "confidence": "high" },
+    "trash_fence": { "clock": null, "street": "perimeter", "directions": "The pentagon fence at the very edge of the city (~7.5 mi around). Walk outward on any avenue until you hit it.", "confidence": "high" },
+    "airport": { "clock": "5:00", "street": "outer edge", "directions": "Out past the residential streets on the 5:00 side.", "confidence": "high" },
+    "greeters": { "clock": "5:30", "street": "Gate Road", "directions": "The city entrance — where you're welcomed home and handed the map.", "confidence": "med" }
+  },
+  "zones": {
+    "sunrise_soundcamp": { "directions": "Out in deep playa toward 12:00 — Robot Heart and the sunrise art cars park in the open past the Esplanade. Follow the crowd and the bass before dawn.", "confidence": "med" },
+    "daytime_soundcamp": { "directions": "The loud outer corners near 2:00 and 10:00, on the outer letter streets — where amplified sound is zoned.", "confidence": "med" },
+    "big_art": { "directions": "On the open playa between the Esplanade and the Man, and scattered out in deep playa beyond the Man.", "confidence": "med" },
+    "citywide": { "directions": "This one isn't a place — it happens all over the city. Bring it wherever you are.", "confidence": "high" },
+    "roaming": { "directions": "A mutant vehicle — it roams. No fixed address; catch it as it passes, usually deep playa at night.", "confidence": "med" }
+  },
+  "sources": [
+    "https://journal.burningman.org/2026/04/black-rock-city/building-brc/streets-of-brc-2026/",
+    "https://burningman.org/black-rock-city/black-rock-city-2026/2026-black-rock-city-plan/",
+    "https://innovate.burningman.org/dataset/2026-golden-spike-and-general-city-map-data/"
+  ]
+}

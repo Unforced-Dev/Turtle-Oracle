@@ -1,0 +1,62 @@
+{
+  "meta": {
+    "year": 2026,
+    "purpose": "APP-ONLY overlay. The print deck stays timeless; at read-time the app maps each card's live_hook to real BRC 2026 instances + a location, turning the Turtle Dare into a located quest. Card meanings never change.",
+    "location_status": {
+      "fixed": "known permanent location this year",
+      "zone": "a typical placement zone; exact address TBD",
+      "citywide": "happens all over the city — not a fixed place",
+      "roaming": "a mutant vehicle; no fixed address",
+      "pending_api": "exact GPS drops via the Burning Man API — camps Aug 9 (dev) / Aug 23 (public); art Aug 9 (dev) / Aug 30 gates (public)"
+    },
+    "refresh_plan": "Register at api.burningman.org and playaevents.burningman.org before Aug 9, 2026. After Aug 9: pull camp+art GPS (respect the dev embargo), geocode clock addresses with the iBurn geocoder (github.com/iBurnApp/iBurn-Data, MIT), and mirror iBurn data/2026 (late Aug) for offline GeoJSON + .mbtiles map tiles. Then flip each 'pending_api' hook below to 'fixed' with a real address.",
+    "api_sources": [
+      "https://api.burningman.org",
+      "https://playaevents.burningman.org/api/0.2/2026/event/",
+      "https://github.com/iBurnApp/iBurn-Data",
+      "https://bm-innovate.s3.amazonaws.com/archive/2026/",
+      "https://innovate.burningman.org/apis-page/"
+    ]
+  },
+  "hooks": {
+    "camp:terrible-turtle": { "instances": ["Terrible Turtle Camp"], "geo_ref": null, "status": "pending_api", "directions": "Home. Your own shell — you know where camp is. (Placement drops via the BM API in August.)" },
+    "the-man": { "instances": ["The Man — 'Cryptomeria'"], "geo_ref": "the_man", "status": "fixed", "directions": "Center of the open playa — walk toward the Man on the 12:00 axis." },
+    "temple": { "instances": ["Temple of the Moon"], "geo_ref": "temple", "status": "fixed", "directions": "Straight out past the Man on the 12:00 axis, deep playa side." },
+    "art:resonant-spire": { "instances": ["Axis Mundi: Resonant Spire"], "geo_ref": "big_art", "status": "pending_api", "directions": "A 33-ft spire on the open playa (exact spot lands with the art map at gates — ask Playa Info or scan the horizon at night for the tower of light)." },
+    "art:yggdrasil": { "instances": ["Yggdrasil"], "geo_ref": "big_art", "status": "pending_api", "directions": "A bamboo World Tree on the open playa (exact spot on the art map at gates)." },
+    "place:trash-fence": { "instances": ["The Trash Fence"], "geo_ref": "trash_fence", "status": "fixed", "directions": "Walk outward on any avenue until you reach the pentagon fence at the city's edge." },
+    "camp:barbie-death": { "instances": ["Barbie Death Village"], "geo_ref": "daytime_soundcamp", "status": "pending_api", "directions": "A loud, absurd camp — likely the outer streets. Address via the WWW guide in August." },
+    "art:caduceus": { "instances": ["For They Know Not What They Do"], "geo_ref": "big_art", "status": "pending_api", "directions": "A 21-ft steel caduceus on the open playa (art map at gates)." },
+    "camp:gigsville": { "instances": ["Gigsville"], "geo_ref": null, "status": "pending_api", "directions": "One of the old camps — find it via the WWW guide or just ask; everyone knows Gigsville." },
+    "art:mebuyan-pulse": { "instances": ["Mebuyan Pulse"], "geo_ref": "big_art", "status": "pending_api", "directions": "A climbable cluster of spheres on the open playa (art map at gates)." },
+    "art:heart-remains": { "instances": ["Heart Remains"], "geo_ref": "big_art", "status": "pending_api", "directions": "A glowing ribcage on the open playa (art map at gates)." },
+    "art:titanic": { "instances": ["TITANIC"], "geo_ref": "deep_playa", "status": "pending_api", "directions": "A 200-ft sinking ship — big dramatic art like this usually sits out in deep playa. Exact spot on the art map at gates." },
+    "art:behind-closed-eyes": { "instances": ["Behind Closed Eyes"], "geo_ref": "big_art", "status": "pending_api", "directions": "A reclining topographic figure on the open playa (art map at gates)." },
+    "ritual:dust-angel": { "instances": ["The Dust Angel"], "geo_ref": "citywide", "status": "citywide", "directions": "Anywhere the playa is open under you — lie down and let it mark you." },
+    "camp:carcass-wash": { "instances": ["The Human Carcass Wash (PolyParadise)"], "geo_ref": null, "status": "pending_api", "directions": "Hosted by PolyParadise — check the WWW guide for the wash times and camp address (verify the host each year)." },
+    "camp:zendo": { "instances": ["The Zendo Project"], "geo_ref": null, "status": "pending_api", "directions": "Placed near the city's care/medical services — find it via the WWW guide or ask a Ranger. It's always there when it's needed." },
+    "deep-playa": { "instances": ["The Deep Playa"], "geo_ref": "deep_playa", "status": "fixed", "directions": "The open dark beyond the Man toward 12:00. Walk until the city's noise falls away." },
+    "artcar:mayan-warrior": { "instances": ["Mayan Warrior (Galaxyer)"], "geo_ref": "roaming", "status": "roaming", "directions": "It roams — catch it deep playa at night. Follow the lasers and the crowd." },
+    "workshop:wellness": { "instances": ["Sound baths, breathwork & yoga (many camps)"], "geo_ref": "citywide", "status": "citywide", "directions": "Dozens run daily citywide — check the WWW guide for a time and place near you." },
+    "sunrise_soundcamp": { "instances": ["Robot Heart", "Opulent Temple", "sunrise art cars"], "geo_ref": "sunrise_soundcamp", "status": "zone", "directions": "Out in deep playa toward 12:00 before dawn — follow the bass and the crowd toward the open dark." },
+    "art:pulse": { "instances": ["PULSE"], "geo_ref": "big_art", "status": "pending_api", "directions": "A cracked heart pulsing light, on the open playa (art map at gates)." },
+    "ritual:howl": { "instances": ["The Sunrise/Sunset Howl"], "geo_ref": "citywide", "status": "citywide", "directions": "Anywhere with a clear view of the horizon at sunrise or sunset. The whole city howls with you." },
+    "place:center-camp": { "instances": ["Center Camp"], "geo_ref": "center_camp", "status": "fixed", "directions": "6:00 & Esplanade — the heart of the city. When lost, walk toward the center." },
+    "place:playa-info": { "instances": ["Playa Info", "Black Rock Rangers"], "geo_ref": "center_camp", "status": "fixed", "directions": "Playa Info is in Center Camp (6:00 & Esplanade); Rangers are citywide — flag any khaki-clad Ranger." },
+    "principle:lnt": { "instances": ["Leave No Trace / MOOP"], "geo_ref": "citywide", "status": "citywide", "directions": "Wherever you stand — pick up the matter out of place around you." },
+    "art:queen": { "instances": ["QUEEN: Quantum Universal Epic Era Now!"], "geo_ref": "big_art", "status": "pending_api", "directions": "A reclining monumental woman on the open playa (art map at gates)." },
+    "weather:whiteout": { "instances": ["The dust storm"], "geo_ref": "citywide", "status": "citywide", "directions": "Wherever it catches you. Sit down where you are." },
+    "camp:consent": { "instances": ["The Down Low Club (Orgy Dome)", "consent culture citywide"], "geo_ref": null, "status": "pending_api", "directions": "The Dome's address is in the WWW guide; consent practice you can do anywhere." },
+    "principle:self-reliance": { "instances": ["Radical Self-Reliance"], "geo_ref": "citywide", "status": "citywide", "directions": "Wherever you are — carry your own water first." },
+    "camp:tea-house": { "instances": ["Tea houses (many)"], "geo_ref": "citywide", "status": "citywide", "directions": "Dozens recur citywide — find a cushioned tea oasis via the WWW guide or by wandering." },
+    "art:above-and-below": { "instances": ["Above and Below"], "geo_ref": "big_art", "status": "pending_api", "directions": "A treehouse-and-beanstalk on the open playa (art map at gates)." },
+    "art:seven-sisters": { "instances": ["Seven Sisters"], "geo_ref": "big_art", "status": "pending_api", "directions": "Illuminated Pleiades stars on the open playa (art map at gates)." },
+    "principle:gifting": { "instances": ["The Gift / Gifting"], "geo_ref": "citywide", "status": "citywide", "directions": "Anywhere, to anyone — the whole city runs on it." },
+    "ritual:playa-name": { "instances": ["Your Playa Name"], "geo_ref": "citywide", "status": "citywide", "directions": "Wherever you meet people who see you." },
+    "ritual:greeters": { "instances": ["Welcome Home / Greeters"], "geo_ref": "greeters", "status": "fixed", "directions": "At the Gate — or become the greeting yourself, anywhere in the city." },
+    "camp:soulmate-outlet": { "instances": ["Costco Soulmate Trading Outlet"], "geo_ref": null, "status": "pending_api", "directions": "A deadpan 'warehouse' camp — address in the WWW guide in August." },
+    "camp:ashram-galactica": { "instances": ["Ashram Galactica"], "geo_ref": null, "status": "pending_api", "directions": "The grand desert hotel — address in the WWW guide in August." },
+    "daytime_soundcamp": { "instances": ["Distrikt", "Pink Mammoth"], "geo_ref": "daytime_soundcamp", "status": "zone", "directions": "The loud outer corners near 2:00 and 10:00 — follow the daytime bass." },
+    "art:headwaters": { "instances": ["Headwaters"], "geo_ref": "big_art", "status": "pending_api", "directions": "A bamboo labyrinth on the open playa (art map at gates)." }
+  }
+}

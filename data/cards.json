@@ -1,0 +1,1172 @@
+{
+  "deck": {
+    "title": "The Terrible Turtle Oracle",
+    "subtitle": "Black Rock City MMXXVI · Move Slow & Bite Things",
+    "year": 2026,
+    "theme": "Axis Mundi — the World Tree, carried on the back of the World Turtle",
+    "count": 48,
+    "realms": {
+      "shell": "The Turtle beneath — major archetypes / the axis speaks. Wild in a spread.",
+      "roots": "The underworld — shadow, grief, the buried, release. Position: what to face.",
+      "trunk": "The middle world — body, presence, endurance, survival. Position: where you stand.",
+      "branches": "The heavens — connection, ecstasy, aspiration, reaching. Position: what to grow toward."
+    },
+    "spread": "The Tree: pull one Root, one Trunk, one Branch — what to face / where you stand / what to reach for — woven into one arc. A Shell card can substitute into any position; when it appears, the axis itself is speaking.",
+    "voice": "The Turtle's voice: slow, grounded, warm, wry, a little bite. Never saccharine. Each Reading gives a true, slightly uncomfortable, kind thing. Each Turtle Dare is one concrete, doable adventure.",
+    "note": "Every card carries universal life-wisdom in the Reading; its identity and Dare are anchored to a real Black Rock City 2026 element (real_2026, with confidence). image_prompt fields are seeds to be refined once the visual style is locked."
+  },
+  "cards": [
+    {
+      "id": "shell-01",
+      "number": 1,
+      "name": "The World Turtle",
+      "realm": "shell",
+      "keywords": [
+        "foundation",
+        "patience",
+        "burden",
+        "endurance"
+      ],
+      "reading": "You are carrying more than you know, and carrying it well. The ground you keep searching for is already under you — slow is not the same as late. But a turtle who never bites gets walked on: know the one thing worth closing your jaws around.",
+      "shadow": "Slowness can curdle into stalling; you call it patience, but you're just afraid to bite.",
+      "turtle_dare": "Find the slowest-moving art car on the playa and ride it nowhere in particular for a full hour. Notice everything you only see at that speed.",
+      "real_2026": {
+        "type": "camp-terrible-turtle",
+        "name": "Terrible Turtle Camp",
+        "note": "the camp's mascot; the World Turtle carrying the Axis Mundi tree",
+        "confidence": "high"
+      },
+      "live_hook": "camp:terrible-turtle",
+      "image_prompt": "A vast ancient turtle beneath the desert floor, a great tree growing from cracks in its shell — roots reaching into the dark below, branches into a field of stars above.",
+      "image_file": "cards/art/shell-01.png"
+    },
+    {
+      "id": "shell-02",
+      "number": 2,
+      "name": "The Cryptomeria Man",
+      "realm": "shell",
+      "keywords": [
+        "renewal",
+        "release",
+        "cycles",
+        "transformation"
+      ],
+      "reading": "Some things you love have to be built beautifully and then burned on purpose. What you're gripping was never meant to be permanent — that's exactly what made it holy. Climb the spiral up, climb the spiral down; past and future are the same staircase.",
+      "shadow": "Not everything needs to burn — sometimes 'renewal' is just you torching what you should have tended.",
+      "turtle_dare": "Before the Man burns Saturday night, name aloud one version of yourself you're ready to be done with. When it goes up, don't look away.",
+      "real_2026": {
+        "type": "man",
+        "name": "The Man — 'Cryptomeria'",
+        "note": "Zander Rose; ancient Japanese cedar (Jomon Sugi); outer and inner spiral staircases forming a double helix — past/present/future",
+        "confidence": "high"
+      },
+      "live_hook": "the-man",
+      "image_prompt": "A towering cedar-tree effigy with a double-helix of spiral staircases winding up and down its trunk, glowing against the night, ready to burn.",
+      "image_file": "cards/art/shell-02.png"
+    },
+    {
+      "id": "shell-03",
+      "number": 3,
+      "name": "The Temple of the Moon",
+      "realm": "shell",
+      "keywords": [
+        "grief",
+        "impermanence",
+        "release",
+        "gratitude"
+      ],
+      "reading": "Grief is just love with nowhere left to go — so give it somewhere. The flower that blooms for a single night isn't cheated; the one night is the whole point. Whatever you've been carrying, you are allowed to set it down here.",
+      "shadow": "Endless mourning is its own avoidance; grief is meant to be set down, not moved into.",
+      "turtle_dare": "Write the name of someone or something you've lost on a piece of wood and leave it in the Temple. Say it out loud, to no one.",
+      "real_2026": {
+        "type": "temple",
+        "name": "Temple of the Moon",
+        "note": "James Gwertzman / Moonlight Collective; the night-blooming Queen of the Night cactus flower; 52-ft central stamen (axis); burns Sunday night",
+        "confidence": "high"
+      },
+      "live_hook": "temple",
+      "image_prompt": "An enormous wooden flower-shaped temple, slatted petals radiating from a tall central stamen, moonlight pouring through the gaps, one glowing bloom that lasts a single night.",
+      "image_file": "cards/art/shell-03.png"
+    },
+    {
+      "id": "shell-04",
+      "number": 4,
+      "name": "The Resonant Spire",
+      "realm": "shell",
+      "keywords": [
+        "voice",
+        "being heard",
+        "expression",
+        "prayer"
+      ],
+      "reading": "What you say out loud into the dark comes back changed — bigger, stranger, lit up. The things you keep silent stay heavy; the things you finally speak become light. You've been waiting to be heard. Speak first.",
+      "shadow": "Speaking louder isn't the same as being honest; noise is not voice.",
+      "turtle_dare": "At night, speak a wish — or a name you carry — into the Resonant Spire. Stay and watch your own voice turn into light.",
+      "real_2026": {
+        "type": "art",
+        "name": "Axis Mundi: Resonant Spire",
+        "note": "Sergei Konchekov; 33-ft wooden tower that turns human voices into light and sound — the literal theme piece",
+        "confidence": "high"
+      },
+      "live_hook": "art:resonant-spire",
+      "image_prompt": "A tall slender wooden spire on the open playa at night, human voices visualized as ribbons of light and sound spiraling up its length.",
+      "image_file": "cards/art/shell-04.png"
+    },
+    {
+      "id": "shell-05",
+      "number": 5,
+      "name": "Yggdrasil",
+      "realm": "shell",
+      "keywords": [
+        "lineage",
+        "ancestry",
+        "interconnection",
+        "legacy"
+      ],
+      "reading": "You are held up by roots you never planted, and you'll shade people you'll never meet. Nothing you are is only yours — it was grown, handed down, kept alive by strangers. Act like someone is counting on the tree you leave behind. Someone is.",
+      "shadow": "Leaning on your roots can become an excuse to never grow your own branches.",
+      "turtle_dare": "Touch the trunk of Yggdrasil and name your lineage out loud — blood or chosen. Leave one small offering for whoever comes after you.",
+      "real_2026": {
+        "type": "art",
+        "name": "Yggdrasil",
+        "note": "Morten Ørtenblad; the Norse World Tree, built from community-grown bamboo",
+        "confidence": "high"
+      },
+      "live_hook": "art:yggdrasil",
+      "image_prompt": "A massive World Tree woven from pale bamboo, roots and canopy equally vast, tiny offerings tucked into its base.",
+      "image_file": "cards/art/shell-05.png"
+    },
+    {
+      "id": "shell-06",
+      "number": 6,
+      "name": "The Trash Fence",
+      "realm": "shell",
+      "keywords": [
+        "boundaries",
+        "the edge",
+        "focus",
+        "containment"
+      ],
+      "reading": "A world without an edge isn't a world — it's just weather. The fence isn't the enemy of your freedom; it's the reason the center means anything. Find your edge on purpose, so you know what you're actually protecting.",
+      "shadow": "A boundary can harden into a wall — make sure your edge guards a center, not just keeps the world out.",
+      "turtle_dare": "Bike or walk to the farthest trash fence at the edge of the city. Stand facing out at the empty desert until you feel appropriately small.",
+      "real_2026": {
+        "type": "place",
+        "name": "The Trash Fence",
+        "note": "the pentagon fence marking the outer boundary of Black Rock City",
+        "confidence": "high"
+      },
+      "live_hook": "place:trash-fence",
+      "image_prompt": "A lone figure standing at an orange plastic construction fence at the far edge of a vast empty desert, dust haze on the horizon.",
+      "image_file": "cards/art/shell-06.png"
+    },
+    {
+      "id": "shell-07",
+      "number": 7,
+      "name": "The Shell",
+      "realm": "shell",
+      "keywords": [
+        "belonging",
+        "inclusion",
+        "refuge",
+        "welcome"
+      ],
+      "reading": "You do not have to be the loudest, the most credentialed, or the least afraid to belong here. Whether you weld, code, cook, or just make something weird — there's a spot in the shell for you. The people who feel like 'too much' or 'not enough' are exactly who the shell was built for.",
+      "shadow": "A shell that never opens isn't refuge, it's a cage — belonging requires letting others in.",
+      "turtle_dare": "Invite someone who thinks they don't belong. Make room in your shell before you feel ready.",
+      "real_2026": {
+        "type": "camp-terrible-turtle",
+        "name": "Terrible Turtle Camp",
+        "note": "'there's a spot in the shell for you' — the camp's belonging ethos",
+        "confidence": "high"
+      },
+      "live_hook": "camp:terrible-turtle",
+      "image_prompt": "The interior of an enormous turtle shell reimagined as a warm domed sanctuary, mismatched people of every kind gathered inside, desert light through the seams.",
+      "image_file": "cards/art/shell-07.png"
+    },
+    {
+      "id": "shell-08",
+      "number": 8,
+      "name": "The Oracle at the Edge",
+      "realm": "shell",
+      "keywords": [
+        "guidance",
+        "self-knowledge",
+        "agency",
+        "technology"
+      ],
+      "reading": "You already know the answer; you came here to hear a stranger say it so you'd believe it. The machine doesn't dream for you — it dreams alongside you. Ask it the question you're afraid to ask yourself. Then answer that question yourself, first.",
+      "shadow": "Outsourcing your knowing to any oracle — machine or mystic — is just another way to avoid deciding.",
+      "turtle_dare": "Ask the oracle the one real question you've been avoiding. Before you read the cards, write down your own honest answer.",
+      "real_2026": {
+        "type": "camp-terrible-turtle",
+        "name": "The Terrible Turtle Oracle",
+        "note": "self-referential; the camp's own 'AI tarot initiative' realized",
+        "confidence": "high"
+      },
+      "live_hook": "camp:terrible-turtle",
+      "image_prompt": "A turtle-shaped shrine of warm circuitry and candlelight, a screen or crystal at its heart glowing with slow light, a hand reaching toward it.",
+      "image_file": "cards/art/shell-08.png"
+    },
+    {
+      "id": "shell-09",
+      "number": 9,
+      "name": "El Pulpo Mecánico",
+      "realm": "shell",
+      "keywords": [
+        "power",
+        "shadow",
+        "self-made",
+        "intensity"
+      ],
+      "reading": "The thing you were told was too much about you — too intense, too strange, too hungry — is the fire everyone will gather around. You built something from your scraps and your shadows, and it breathes fire now. Stop apologizing for the size of your flame.",
+      "shadow": "Spectacle can be a costume for emptiness; fire that only performs eventually consumes itself.",
+      "turtle_dare": "Chase El Pulpo Mecánico across the open playa on your bike until you're dancing beneath its fire. Let yourself want to be that loud.",
+      "real_2026": {
+        "type": "artcar",
+        "name": "El Pulpo Mecánico",
+        "note": "26-ft scrap-metal fire-breathing octopus (El Pulpo Magnífico confirmed in the 2026 registry)",
+        "confidence": "high"
+      },
+      "live_hook": "artcar:el-pulpo",
+      "image_prompt": "A giant rusted scrap-metal octopus on wheels, eight tentacles shooting jets of fire into the night sky over a crowd of dancers.",
+      "image_file": "cards/art/shell-09.png"
+    },
+    {
+      "id": "shell-10",
+      "number": 10,
+      "name": "The Dream Chipper",
+      "realm": "shell",
+      "keywords": [
+        "authenticity",
+        "ego death",
+        "letting go",
+        "transformation"
+      ],
+      "reading": "The flawless version of you they sold you was always plastic. Feed it to the chipper — the shiny, perfected, likeable mannequin you've been maintaining is heavier than it looks. What's left when the doll is gone is the only thing anyone actually loves.",
+      "shadow": "Tearing down the false self can become its own vanity — don't perform your ego death for an audience.",
+      "turtle_dare": "At Barbie Death Village, sacrifice a Barbie to the Dream Chipper and name aloud, to the crowd, the manufactured version of yourself you're killing off.",
+      "real_2026": {
+        "type": "camp",
+        "name": "Barbie Death Village (Barbie Death Camp)",
+        "note": "1,500 Barbies, the 'Dream Chipper', absurdist mayhem; applying for 2026",
+        "confidence": "high"
+      },
+      "live_hook": "camp:barbie-death",
+      "image_prompt": "A gleefully macabre wood-chipper fed with a stream of pink dolls, confetti of plastic limbs, a laughing crowd in a surreal desert theme park.",
+      "image_file": "cards/art/shell-10.png"
+    },
+    {
+      "id": "shell-11",
+      "number": 11,
+      "name": "The Caduceus",
+      "realm": "shell",
+      "keywords": [
+        "healing",
+        "forgiveness",
+        "balance",
+        "the axis"
+      ],
+      "reading": "The two snakes on the staff aren't fighting — they're what holds the axis up. The wound and the medicine are the same coil. Forgive the person who didn't know what they were doing; you were one of them, once.",
+      "shadow": "Premature forgiveness that skips the anger isn't healing — it's a bypass.",
+      "turtle_dare": "Find 'For They Know Not What They Do' and stand beneath it. Silently forgive one person who hurt you without meaning to — including, if you need to, yourself.",
+      "real_2026": {
+        "type": "art",
+        "name": "For They Know Not What They Do",
+        "note": "Jai Hackl; 21-ft steel caduceus — a serpent-entwined staff, a world-axis symbol",
+        "confidence": "high"
+      },
+      "live_hook": "art:caduceus",
+      "image_prompt": "A towering steel staff with two serpents spiraling up it, wings at the top, backlit by desert sun — an ancient healing symbol as monument.",
+      "image_file": "cards/art/shell-11.png"
+    },
+    {
+      "id": "shell-12",
+      "number": 12,
+      "name": "Gigsville",
+      "realm": "shell",
+      "keywords": [
+        "play",
+        "humility",
+        "mischief",
+        "irreverence"
+      ],
+      "reading": "Take the work seriously and yourself not at all. The oldest hands out here learned that the trickster is what keeps the whole thing from calcifying into church. If you can't laugh at it, you don't understand it yet.",
+      "shadow": "Irreverence that never lands anywhere is just fear of being caught caring.",
+      "turtle_dare": "Find Gigsville, accept whatever absurd challenge they hand you, and do it with your whole chest.",
+      "real_2026": {
+        "type": "camp",
+        "name": "Gigsville",
+        "note": "one of the oldest camps; decades of playful anarchy and inclusive mischief; applying for 2026",
+        "confidence": "high"
+      },
+      "live_hook": "camp:gigsville",
+      "image_prompt": "A ramshackle, gloriously absurd camp of misfits and pranksters, hand-painted signs, a jester energy, decades of accumulated playful chaos.",
+      "image_file": "cards/art/shell-12.png"
+    },
+    {
+      "id": "roots-01",
+      "number": 1,
+      "name": "Mebuyan Pulse",
+      "realm": "roots",
+      "keywords": [
+        "descent",
+        "the underworld",
+        "being tended",
+        "depth"
+      ],
+      "reading": "The descent isn't a punishment; it's a nursery. The dark place you fell into was tending you the whole time, even when it felt like it was only taking. What you learned down there is the reason you can climb now.",
+      "shadow": "Romanticizing the descent can keep you down there — the nursery was never meant to be a home.",
+      "turtle_dare": "Climb the spheres of Mebuyan Pulse after dark. At the top, honor one hard descent you've survived as holy ground — not a mistake.",
+      "real_2026": {
+        "type": "art",
+        "name": "Mebuyan Pulse",
+        "note": "Leeroy New et al.; a climbable constellation of suspended spheres honoring Mebuyan, the Bagobo underworld nurturer goddess",
+        "confidence": "high"
+      },
+      "live_hook": "art:mebuyan-pulse",
+      "image_prompt": "A climbable cluster of glowing suspended spheres like a many-breasted constellation, a nurturing underworld deity, figures climbing among them at night.",
+      "image_file": "cards/art/roots-01.png"
+    },
+    {
+      "id": "roots-02",
+      "number": 2,
+      "name": "Heart Remains",
+      "realm": "roots",
+      "keywords": [
+        "grief",
+        "memory",
+        "the body",
+        "love that stays"
+      ],
+      "reading": "The body keeps the ones you've lost long after the mind agrees to move on. That ache in your chest isn't a malfunction — it's a room you built for someone, and it's still theirs. Go sit in it on purpose.",
+      "shadow": "A room built for grief can become a room you refuse to leave.",
+      "turtle_dare": "Sit alone inside the glowing ribcage of Heart Remains and say the name of someone you've lost, out loud.",
+      "real_2026": {
+        "type": "art",
+        "name": "Heart Remains",
+        "note": "Giselle Çisel Çakıroğlu; a glowing ribcage with a single heart suspended inside",
+        "confidence": "high"
+      },
+      "live_hook": "art:heart-remains",
+      "image_prompt": "A human-scale glowing ribcage sculpture with a single luminous heart suspended in its center, a person sitting inside it at dusk.",
+      "image_file": "cards/art/roots-02.png"
+    },
+    {
+      "id": "roots-03",
+      "number": 3,
+      "name": "TITANIC",
+      "realm": "roots",
+      "keywords": [
+        "letting go",
+        "impermanence",
+        "hubris",
+        "surrender"
+      ],
+      "reading": "The thing you refuse to let sink is exactly what's pulling you under. There is more dignity in releasing your grip than in going down with it out of pride. Not everything you built was meant to float forever.",
+      "shadow": "Letting go can be dressed-up quitting — know the difference between release and abandonment.",
+      "turtle_dare": "Visit the wreck of TITANIC in the deep playa at night. Write down one thing you've been gripping, leave it there, and let it go down with the ship.",
+      "real_2026": {
+        "type": "art",
+        "name": "TITANIC",
+        "note": "Titanic's End; a 200-ft-diameter sinking ship, broken in half",
+        "confidence": "high"
+      },
+      "live_hook": "art:titanic",
+      "image_prompt": "A colossal ship broken in half and half-buried in the desert as if sinking into the playa, bow tilted to the sky, tiny figures at its base at night.",
+      "image_file": "cards/art/roots-03.png"
+    },
+    {
+      "id": "roots-04",
+      "number": 4,
+      "name": "Behind Closed Eyes",
+      "realm": "roots",
+      "keywords": [
+        "introspection",
+        "the inner landscape",
+        "stillness",
+        "self"
+      ],
+      "reading": "There's a whole country inside you that you only see when you stop staring outward for approval. The map you're looking for isn't out here in the noise. Close your eyes; the terrain you find is yours to govern.",
+      "shadow": "Endless introspection with your eyes closed is how you avoid the people right in front of you.",
+      "turtle_dare": "At Behind Closed Eyes, shut your own eyes and trace the figure with your hands. Notice what rises up in the dark.",
+      "real_2026": {
+        "type": "art",
+        "name": "Behind Closed Eyes",
+        "note": "Spencer Hansen; a reclining topographic human figure textured with Balinese/Javanese hand tools",
+        "confidence": "high"
+      },
+      "live_hook": "art:behind-closed-eyes",
+      "image_prompt": "A giant reclining human figure whose skin is carved like a topographic landscape of ridges and valleys, eyes closed, at rest on the desert floor.",
+      "image_file": "cards/art/roots-04.png"
+    },
+    {
+      "id": "roots-05",
+      "number": 5,
+      "name": "The Dust Angel",
+      "realm": "roots",
+      "keywords": [
+        "surrender",
+        "humility",
+        "initiation",
+        "beginnings"
+      ],
+      "reading": "You can't master a place until you've let it dirty you. Stop trying to stay clean and in control of the thing you just arrived in. Lie down; let it mark you first. That's not defeat — that's how you become a local.",
+      "shadow": "Surrender without discernment is just letting anything happen to you.",
+      "turtle_dare": "Lie down and make a dust angel in the open playa — or lie on the bare earth and let it hold you for five full minutes before you get up.",
+      "real_2026": {
+        "type": "ritual",
+        "name": "The Dust Angel",
+        "note": "newcomer initiation — rolling in the playa dust to mark arrival",
+        "confidence": "high"
+      },
+      "live_hook": "ritual:dust-angel",
+      "image_prompt": "The imprint of a person's dust angel in pale alkali desert, a figure rising from it covered head to toe in fine white dust, grinning.",
+      "image_file": "cards/art/roots-05.png"
+    },
+    {
+      "id": "roots-06",
+      "number": 6,
+      "name": "The Human Carcass Wash",
+      "realm": "roots",
+      "keywords": [
+        "trust",
+        "touch",
+        "boundaries",
+        "cleansing"
+      ],
+      "reading": "Say out loud exactly where you want to be touched and where you don't — then let strangers wash a hard week off your skin. Radical trust isn't the absence of boundaries; it's boundaries spoken so clearly that surrender becomes safe. Then you take your place in the line and do it for someone else.",
+      "shadow": "Trust without stated boundaries isn't openness — it's abandonment of yourself.",
+      "turtle_dare": "At the Human Carcass Wash, state your boundaries out loud, let the line wash you head to toe — then join the line and wash the next person.",
+      "real_2026": {
+        "type": "camp",
+        "name": "The Human Carcass Wash",
+        "note": "hosted by PolyParadise; a guided nonsexual wash-line ritual (verify host camp each year)",
+        "confidence": "med"
+      },
+      "live_hook": "camp:carcass-wash",
+      "image_prompt": "A gentle assembly line of many soapy hands washing a single trusting stranger passing through, warm and reverent rather than sexual, desert morning light.",
+      "image_file": "cards/art/roots-06.png"
+    },
+    {
+      "id": "roots-07",
+      "number": 7,
+      "name": "The Zendo",
+      "realm": "roots",
+      "keywords": [
+        "difficult passages",
+        "support",
+        "presence",
+        "no bad trips"
+      ],
+      "reading": "There are no bad trips, only difficult ones — and the difficult ones are trying to show you something. You were never meant to walk through the hard part alone. Sitting with someone in their dark is holy, unglamorous work; so is letting someone sit with you.",
+      "shadow": "You can hide inside caretaking of others to avoid your own difficult passage.",
+      "turtle_dare": "If you or a stranger is having a hard time, walk to the Zendo and stay until they're held. Or take a shift and be the one who holds.",
+      "real_2026": {
+        "type": "camp",
+        "name": "The Zendo Project",
+        "note": "psychedelic peer support; a calm, non-judgmental space since 2012",
+        "confidence": "high"
+      },
+      "live_hook": "camp:zendo",
+      "image_prompt": "A soft, dim, cushioned tent of calm, one person gently sitting with another who is having a hard time, warm lantern light, total safety.",
+      "image_file": "cards/art/roots-07.png"
+    },
+    {
+      "id": "roots-08",
+      "number": 8,
+      "name": "The Deep Playa Wander",
+      "realm": "roots",
+      "keywords": [
+        "solitude",
+        "the unknown",
+        "getting lost",
+        "self-trust"
+      ],
+      "reading": "You have to get lost on purpose to find the parts of you that only show up when no one's watching. Out past the last light there's no one to perform for — which is exactly why you should go. You'll find your own way back. You always have.",
+      "shadow": "Getting lost on purpose becomes escape when you never intend to come back.",
+      "turtle_dare": "Walk alone into the deep playa with no plan and no phone, until you're not sure of the way back. Then find your way home.",
+      "real_2026": {
+        "type": "deep-playa",
+        "name": "The Deep Playa Wander",
+        "note": "walking alone into the dark open expanse beyond the art and lights",
+        "confidence": "high"
+      },
+      "live_hook": "deep-playa",
+      "image_prompt": "A tiny solitary figure walking into an immense black emptiness, distant art lights like far galaxies, a dome of stars overhead.",
+      "image_file": "cards/art/roots-08.png"
+    },
+    {
+      "id": "roots-09",
+      "number": 9,
+      "name": "Mayan Warrior",
+      "realm": "roots",
+      "keywords": [
+        "rebirth",
+        "ashes",
+        "reinvention",
+        "renewal"
+      ],
+      "reading": "The thing that burned down is not the end of the thing. What you lost to the fire can come back stranger and more luminous, carrying the soul of what it was. Grief and reinvention always travel together; let them.",
+      "shadow": "Waiting for the phoenix can be an excuse not to rebuild with your own hands.",
+      "turtle_dare": "Track down Mayan Warrior (Galaxyer) at night and stay for a full unannounced set — no schedule, no names, just trust that what's next is worth waiting for.",
+      "real_2026": {
+        "type": "artcar",
+        "name": "Mayan Warrior (Galaxyer)",
+        "note": "Mexican art car reborn after the original burned in 2023 — 'the soul of the last Mayan Warrior traveling through the cosmos'",
+        "confidence": "high"
+      },
+      "live_hook": "artcar:mayan-warrior",
+      "image_prompt": "A sleek Mayan-spaceship art car glowing with lasers and sacred geometry, rising from an implied fire, sound and light pouring off it at night.",
+      "image_file": "cards/art/roots-09.png"
+    },
+    {
+      "id": "roots-10",
+      "number": 10,
+      "name": "Bring Native Grasses Back to Life",
+      "realm": "roots",
+      "keywords": [
+        "restoration",
+        "stewardship",
+        "patience",
+        "repair"
+      ],
+      "reading": "Some ground doesn't need a hero — it needs someone patient enough to bring the water back slowly. What you let go dry (a friendship, a body, a practice) can green again, but not on your schedule. Dig the terrace. Plant the thing. Wait.",
+      "shadow": "Patience can slide into neglect; some things need water now, not eventually.",
+      "turtle_dare": "Tend one thing you've let go dry — a friendship, a plant, a practice — and water it this week without expecting fast results.",
+      "real_2026": {
+        "type": "camp-terrible-turtle",
+        "name": "Phoenix Gulch (Terrible Turtle land project)",
+        "note": "carving water terraces, planting drought-tolerant trees, 'bring native grasses back to life'",
+        "confidence": "high"
+      },
+      "live_hook": "camp:terrible-turtle",
+      "image_prompt": "Dry cracked ridges being terraced by hand to catch water, the first green shoots of native grass returning, a turtle watching patiently.",
+      "image_file": "cards/art/roots-10.png"
+    },
+    {
+      "id": "roots-11",
+      "number": 11,
+      "name": "The Sound Bath",
+      "realm": "roots",
+      "keywords": [
+        "the body",
+        "rest",
+        "cracked open",
+        "tending"
+      ],
+      "reading": "The desert will crack you open whether you consent or not — so tend the body before it makes you. You are not a mind being inconvenienced by a body; you are a body, and it's been keeping score. Lie down. Let the bowls empty your head.",
+      "shadow": "Endless self-soothing can quietly replace the harder work the body is actually asking for.",
+      "turtle_dare": "Lie down in a stranger's shade for a full sound bath at the hottest part of the day, and let the bowls empty everything out of your head.",
+      "real_2026": {
+        "type": "workshop",
+        "name": "Sound Bath & Sunrise Yoga (wellness camps)",
+        "note": "singing bowls, breathwork, yoga; dozens run daily citywide",
+        "confidence": "high"
+      },
+      "live_hook": "workshop:wellness",
+      "image_prompt": "Rows of people lying still under a shade sail while a facilitator plays large singing bowls, visible sound waves rippling the heat, deep calm.",
+      "image_file": "cards/art/roots-11.png"
+    },
+    {
+      "id": "roots-12",
+      "number": 12,
+      "name": "The Desert Becomes Our Studio",
+      "realm": "roots",
+      "keywords": [
+        "transformation",
+        "constraint",
+        "creativity",
+        "resourcefulness"
+      ],
+      "reading": "The blank, hostile, empty place isn't the obstacle to your making — it's the material. Constraint is not the opposite of creativity; it's the thing that gives it edges. Whatever barren stretch you're standing in, that's your studio. Start.",
+      "shadow": "'Making the best of it' can become a reason to stay in a desert you should leave.",
+      "turtle_dare": "Name the 'desert' in your life right now — the barren, hard, empty part. Bring one small creative act into it before you leave the playa.",
+      "real_2026": {
+        "type": "camp-terrible-turtle",
+        "name": "Terrible Turtle Camp",
+        "note": "'code becomes canvas and the desert becomes our studio'",
+        "confidence": "high"
+      },
+      "live_hook": "camp:terrible-turtle",
+      "image_prompt": "An artist's studio improbably thriving in the middle of empty white desert — easels, welding sparks, code on a screen — emptiness turned fertile.",
+      "image_file": "cards/art/roots-12.png"
+    },
+    {
+      "id": "trunk-01",
+      "number": 1,
+      "name": "Move Slow & Bite Things",
+      "realm": "trunk",
+      "keywords": [
+        "discernment",
+        "patience",
+        "decisive action",
+        "courage"
+      ],
+      "reading": "Patience without teeth is just waiting; teeth without patience is just flailing. Move slow — watch, circle, learn the thing. And when the moment is finally right, commit with your whole jaw. The slow yes and the sharp no are the same skill.",
+      "shadow": "Moving slow forever is just never deciding; a turtle that only retracts starves.",
+      "turtle_dare": "Pick the one thing you've been circling for weeks. Stop circling — bite it today, all the way down.",
+      "real_2026": {
+        "type": "camp-terrible-turtle",
+        "name": "Terrible Turtle Camp",
+        "note": "the camp motto: 'Move Slow & Bite Things'",
+        "confidence": "high"
+      },
+      "live_hook": "camp:terrible-turtle",
+      "image_prompt": "A calm, ancient snapping turtle mid-motion — unhurried body, jaws decisively closing — patience and bite in one image.",
+      "image_file": "cards/art/trunk-01.png"
+    },
+    {
+      "id": "trunk-02",
+      "number": 2,
+      "name": "Robot Heart",
+      "realm": "trunk",
+      "keywords": [
+        "endurance",
+        "faith",
+        "the long night",
+        "reward"
+      ],
+      "reading": "The thing you've been grinding toward tends to break open right before you'd have quit. The sunrise belongs to whoever is still standing when it comes — not the strongest, just the ones who stayed. Joy is often only endurance plus twenty more minutes.",
+      "shadow": "Staying till dawn every night isn't devotion — it's an inability to go to bed on your own life.",
+      "turtle_dare": "Stay up all night and find Robot Heart in the deep playa before first light. Don't leave until the sun clears the mountains.",
+      "real_2026": {
+        "type": "artcar",
+        "name": "Robot Heart",
+        "note": "double-decker bus with a glowing heart; the definitive deep-playa sunrise set",
+        "confidence": "high"
+      },
+      "live_hook": "sunrise_soundcamp",
+      "image_prompt": "A double-decker bus with a huge glowing red heart, silhouetted dancers on the dunes around it, the first band of sunrise cracking the horizon.",
+      "image_file": "cards/art/trunk-02.png"
+    },
+    {
+      "id": "trunk-03",
+      "number": 3,
+      "name": "PULSE",
+      "realm": "trunk",
+      "keywords": [
+        "resilience",
+        "brokenness",
+        "endurance",
+        "aliveness"
+      ],
+      "reading": "You are cracked and you are still beating — those two facts are not in conflict. The light is getting out through the fractures; that's what the fractures are for. A broken heart is not a stopped one.",
+      "shadow": "'Still beating' is not the same as thriving; don't mistake survival for a life.",
+      "turtle_dare": "Rest your hands or your back against PULSE and slow your breathing until it matches the pulse of the light coming through the cracks.",
+      "real_2026": {
+        "type": "art",
+        "name": "PULSE",
+        "note": "Manuela Magni; a cracked heart sculpture pulsing light — 'Earth's heartbeat'",
+        "confidence": "high"
+      },
+      "live_hook": "art:pulse",
+      "image_prompt": "A large stone-like heart sculpture riven with glowing cracks, light pulsing out in a slow heartbeat rhythm against the dark.",
+      "image_file": "cards/art/trunk-03.png"
+    },
+    {
+      "id": "trunk-04",
+      "number": 4,
+      "name": "The Howl",
+      "realm": "trunk",
+      "keywords": [
+        "presence",
+        "marking time",
+        "the body",
+        "aliveness"
+      ],
+      "reading": "Don't sleep through the turning points. When the sun crosses the edge of the world, the whole city stops and screams — not because it changes anything, but because being alive for it is the entire point. Mark your days out loud, or they blur into one.",
+      "shadow": "Marking every moment loudly can drown out actually feeling it.",
+      "turtle_dare": "Watch a sunrise or a sunset all the way through, start to finish, and howl out loud when it turns — alone or with ten thousand others.",
+      "real_2026": {
+        "type": "ritual",
+        "name": "The Sunrise/Sunset Howl",
+        "note": "the city howls together at the turning of the day",
+        "confidence": "high"
+      },
+      "live_hook": "ritual:howl",
+      "image_prompt": "A crowd of silhouettes on the open playa throwing their heads back to howl as the sun touches the mountains, dust glowing gold.",
+      "image_file": "cards/art/trunk-04.png"
+    },
+    {
+      "id": "trunk-05",
+      "number": 5,
+      "name": "Center Camp",
+      "realm": "trunk",
+      "keywords": [
+        "orientation",
+        "return",
+        "the heart",
+        "refuge"
+      ],
+      "reading": "When you're most lost, walk toward the heart. There is always a center you can return to — a place where the whole city passes through and no one asks you to be anything. You don't have to know where you're going to know which way is in.",
+      "shadow": "Always returning to the safe center can keep you from ever going deep.",
+      "turtle_dare": "Go to Center Camp at the hottest, most disoriented hour of your day. Take a couch and let a stranger tell you their whole story before you say a word about yourself.",
+      "real_2026": {
+        "type": "place",
+        "name": "Center Camp",
+        "note": "the civic heart of the city — a great shade canopy of couches and performers (no longer sells coffee since 2022)",
+        "confidence": "high"
+      },
+      "live_hook": "place:center-camp",
+      "image_prompt": "A vast circular shade canopy full of mismatched couches, performers, and resting strangers, dusty light beams cutting through the interior.",
+      "image_file": "cards/art/trunk-05.png"
+    },
+    {
+      "id": "trunk-06",
+      "number": 6,
+      "name": "Playa Info & the Rangers",
+      "realm": "trunk",
+      "keywords": [
+        "asking for help",
+        "guidance",
+        "care",
+        "humility"
+      ],
+      "reading": "Asking for help is a skill, not a surrender. The people who guide you best don't carry authority — they carry care, and they'd rather find your lost friend than tell you what to do. You are allowed to not know. Go ask.",
+      "shadow": "Always asking others what to do is how you avoid trusting yourself.",
+      "turtle_dare": "Go to Playa Info with no particular question and ask, 'What should I do today?' Then actually do it. Or turn in something you found instead of keeping it.",
+      "real_2026": {
+        "type": "camp",
+        "name": "Playa Info & the Black Rock Rangers",
+        "note": "wayfinding, Lost & Found, de-escalation not policing",
+        "confidence": "high"
+      },
+      "live_hook": "place:playa-info",
+      "image_prompt": "A humble information kiosk and a khaki-clad ranger with a warm, unhurried demeanor helping a lost dusty traveler read a city map.",
+      "image_file": "cards/art/trunk-06.png"
+    },
+    {
+      "id": "trunk-07",
+      "number": 7,
+      "name": "Leave No Trace",
+      "realm": "trunk",
+      "keywords": [
+        "responsibility",
+        "integrity",
+        "lightness",
+        "invisible good"
+      ],
+      "reading": "Leave every place lighter and cleaner than you found it — especially the places you didn't dirty. The measure of a person is what they pick up when no one's watching and no one will thank them. Your presence should heal the ground, not scar it.",
+      "shadow": "Obsessive tidiness can be a way to avoid ever making a mark at all.",
+      "turtle_dare": "Spend twenty minutes picking up MOOP — matter out of place — in a spot you didn't dirty. Tell no one you did it.",
+      "real_2026": {
+        "type": "principle",
+        "name": "Leaving No Trace / MOOP",
+        "note": "core principle; the desert is left cleaner than it was found",
+        "confidence": "high"
+      },
+      "live_hook": "principle:lnt",
+      "image_prompt": "A single hand plucking a tiny scrap of glitter from the pale desert floor, the vast clean playa stretching out spotless behind it.",
+      "image_file": "cards/art/trunk-07.png"
+    },
+    {
+      "id": "trunk-08",
+      "number": 8,
+      "name": "QUEEN",
+      "realm": "trunk",
+      "keywords": [
+        "being seen",
+        "self-worth",
+        "the unspectacular",
+        "rest"
+      ],
+      "reading": "You do not have to be in a dramatic, photogenic season of your life to be worthy of being seen. The invisible middle — the un-busy, un-impressive, in-between stretch — is still your one life, and it counts. Let yourself be witnessed exactly as un-spectacular as you are.",
+      "shadow": "Craving to be seen can tip into needing an audience even for your rest.",
+      "turtle_dare": "Find someone in an 'invisible' season of life and tell them, specifically, that you see them. Then go recline with QUEEN and be gloriously, unapologetically un-busy.",
+      "real_2026": {
+        "type": "art",
+        "name": "QUEEN: Quantum Universal Epic Era Now!",
+        "note": "Sophi Kravitz & Ollie Tanner; a reclining midlife woman celebrating an 'invisibilized' life stage",
+        "confidence": "high"
+      },
+      "live_hook": "art:queen",
+      "image_prompt": "A monumental sculpture of a serene reclining midlife woman, unbothered and regal, resting in the open desert like a mountain.",
+      "image_file": "cards/art/trunk-08.png"
+    },
+    {
+      "id": "trunk-09",
+      "number": 9,
+      "name": "The Whiteout",
+      "realm": "trunk",
+      "keywords": [
+        "uncertainty",
+        "surrender",
+        "presence",
+        "trust"
+      ],
+      "reading": "You can't see the way forward, and that is not a failure of your eyes. When the world whites out, you don't navigate — you shelter, you wait, you hold the hand next to you. Clarity always comes back. It always has. Sit down.",
+      "shadow": "Sheltering in place becomes hiding when the storm has long since passed.",
+      "turtle_dare": "When the next dust storm hits, don't run for your tent. Sit down where you are, put out your hand, and introduce yourself to whoever's stranded beside you.",
+      "real_2026": {
+        "type": "ritual",
+        "name": "The Whiteout (dust storm)",
+        "note": "the playa's great equalizer — the sudden whiteout that stops everything",
+        "confidence": "high"
+      },
+      "live_hook": "weather:whiteout",
+      "image_prompt": "Two goggled figures holding hands, seated calmly in a total white dust storm that has erased the world around them into blank light.",
+      "image_file": "cards/art/trunk-09.png"
+    },
+    {
+      "id": "trunk-10",
+      "number": 10,
+      "name": "The Down Low Club",
+      "realm": "trunk",
+      "keywords": [
+        "desire",
+        "consent",
+        "boundaries",
+        "freedom"
+      ],
+      "reading": "Desire is sacred exactly when it's consensual — and freedom and boundaries turn out to be the same structure, not opposites. Ask, out loud, for precisely what you want. Then practice receiving a graceful 'no' as a gift, not a wound.",
+      "shadow": "Naming desire without discipline can trample the very consent it depends on.",
+      "turtle_dare": "Practice asking a stranger, out loud, for exactly what you want — a hug, a dance, a conversation — and practice hearing 'no' without flinching.",
+      "real_2026": {
+        "type": "camp",
+        "name": "The Down Low Club (Orgy Dome)",
+        "note": "the city's most rule-bound, consent-gated erotic space; consent culture is citywide",
+        "confidence": "high"
+      },
+      "live_hook": "camp:consent",
+      "image_prompt": "A doorway with clear painted rules and a warm attendant, two people practicing a spoken yes-and-no at the threshold, dignity and play.",
+      "image_file": "cards/art/trunk-10.png"
+    },
+    {
+      "id": "trunk-11",
+      "number": 11,
+      "name": "Radical Self-Reliance",
+      "realm": "trunk",
+      "keywords": [
+        "self-reliance",
+        "preparation",
+        "capability",
+        "agency"
+      ],
+      "reading": "Carry your own water. Meet your own needs first — not because no one will help, but because a person who can hold themselves up is free to give the rest away. Dependence dressed as connection helps no one. Come prepared, then come generous.",
+      "shadow": "Self-reliance hardened into never-asking is just pride with better branding.",
+      "turtle_dare": "Take full, cheerful responsibility for one need you've been outsourcing or avoiding — your water, your warmth, your way home — before you rely on anyone else for it today.",
+      "real_2026": {
+        "type": "principle",
+        "name": "Radical Self-Reliance",
+        "note": "core principle; discover, exercise, and rely on your own inner resources",
+        "confidence": "high"
+      },
+      "live_hook": "principle:self-reliance",
+      "image_prompt": "A well-prepared lone traveler on a dusty bike, water and gear neatly stowed, self-sufficient and calm under a huge sky.",
+      "image_file": "cards/art/trunk-11.png"
+    },
+    {
+      "id": "trunk-12",
+      "number": 12,
+      "name": "The Tea House",
+      "realm": "trunk",
+      "keywords": [
+        "stillness",
+        "presence",
+        "slowness",
+        "ceremony"
+      ],
+      "reading": "In a city built to overstimulate you, the bravest thing is to sit still and drink one cup of tea like it matters. Stillness is its own ceremony. You are not behind. There is nowhere else you're supposed to be right now.",
+      "shadow": "Stillness can curdle into avoidance — not every pause is presence.",
+      "turtle_dare": "Sit for a full tea ceremony with no phone and no agenda. Stay until you've completely lost track of time.",
+      "real_2026": {
+        "type": "camp",
+        "name": "The Tea House",
+        "note": "a hushed, cushioned tea oasis; a deliberate pocket of slowness (dozens recur yearly)",
+        "confidence": "high"
+      },
+      "live_hook": "camp:tea-house",
+      "image_prompt": "A hushed cushioned tent lit by warm lanterns, steam rising from small cups, a few strangers in unhurried silent ceremony.",
+      "image_file": "cards/art/trunk-12.png"
+    },
+    {
+      "id": "branches-01",
+      "number": 1,
+      "name": "Above and Below",
+      "realm": "branches",
+      "keywords": [
+        "aspiration",
+        "grounding",
+        "balance",
+        "reaching"
+      ],
+      "reading": "You can only reach as high as you're willing to be rooted deep. The climb toward what you want is held up by whatever you're standing on — don't neglect the base for the view. Reach up. But know what's keeping you from blowing away.",
+      "shadow": "All reach and no root blows away in the first wind; all root and no reach just rots in place.",
+      "turtle_dare": "Climb Above and Below at sunrise. At the top, name what you're reaching toward. At the base, name what keeps you rooted.",
+      "real_2026": {
+        "type": "art",
+        "name": "Above and Below",
+        "note": "Sean Orlando; a 40-ft immersive treehouse joined by a beanstalk connector",
+        "confidence": "high"
+      },
+      "live_hook": "art:above-and-below",
+      "image_prompt": "A soaring treehouse structure linked by a twisting beanstalk climber, a person at the top reaching skyward, roots implied deep below.",
+      "image_file": "cards/art/branches-01.png"
+    },
+    {
+      "id": "branches-02",
+      "number": 2,
+      "name": "Seven Sisters",
+      "realm": "branches",
+      "keywords": [
+        "chosen family",
+        "kinship",
+        "guidance",
+        "belonging"
+      ],
+      "reading": "Look up to find your people. The family you were handed and the family you chose can both be real; the ones who feel like constellations — reliable, far-flung, always there when you look — are worth naming out loud. You are someone's sister-star too.",
+      "shadow": "Chosen family isn't a hiding place from the family you still haven't faced.",
+      "turtle_dare": "Lie beneath Seven Sisters near dawn, find the real Pleiades overhead, and silently name your own chosen family, one by one.",
+      "real_2026": {
+        "type": "art",
+        "name": "Seven Sisters",
+        "note": "Caleb Nederhood; illuminated sculptures of the Pleiades star cluster",
+        "confidence": "high"
+      },
+      "live_hook": "art:seven-sisters",
+      "image_prompt": "Seven tall illuminated star-sculptures clustered like the Pleiades, a person lying beneath them gazing up at the matching real stars.",
+      "image_file": "cards/art/branches-02.png"
+    },
+    {
+      "id": "branches-03",
+      "number": 3,
+      "name": "The Gift",
+      "realm": "branches",
+      "keywords": [
+        "generosity",
+        "non-attachment",
+        "abundance",
+        "giving"
+      ],
+      "reading": "A gift with strings is a transaction wearing a bow. Give the thing away and want nothing back — not repayment, not even thanks. You'll find you had more to give than you were afraid you did. That's the whole secret of abundance.",
+      "shadow": "Giving in order to be seen giving is just a transaction with extra steps.",
+      "turtle_dare": "Give a stranger something you'd normally sell or keep, and refuse anything in return — including gratitude.",
+      "real_2026": {
+        "type": "principle",
+        "name": "The Gift / Gifting",
+        "note": "the gift economy — no money, no barter, no expectation of return",
+        "confidence": "high"
+      },
+      "live_hook": "principle:gifting",
+      "image_prompt": "An open hand offering a small handmade treasure to a stranger in the dust, both faces lit with unforced delight.",
+      "image_file": "cards/art/branches-03.png"
+    },
+    {
+      "id": "branches-04",
+      "number": 4,
+      "name": "Your Playa Name",
+      "realm": "branches",
+      "keywords": [
+        "identity",
+        "community",
+        "being seen",
+        "reinvention"
+      ],
+      "reading": "You don't get to choose your truest name — someone who sees you clearly hands it to you. Who you are is partly what others witness in you and reflect back. Loosen your grip on the identity you built for yourself; let the community show you who you've actually become.",
+      "shadow": "Letting others define you entirely is as lost as never listening to them at all.",
+      "turtle_dare": "Ask someone who's known you for only a day to name what they see in you. Accept the name they give — try it on.",
+      "real_2026": {
+        "type": "ritual",
+        "name": "Your Playa Name",
+        "note": "a name gifted by the community, traditionally never chosen for oneself",
+        "confidence": "high"
+      },
+      "live_hook": "ritual:playa-name",
+      "image_prompt": "A hand-painted name tag being pinned onto a delighted, surprised person by a circle of new friends around a fire.",
+      "image_file": "cards/art/branches-04.png"
+    },
+    {
+      "id": "branches-05",
+      "number": 5,
+      "name": "Welcome Home",
+      "realm": "branches",
+      "keywords": [
+        "belonging",
+        "arrival",
+        "acceptance",
+        "worthiness"
+      ],
+      "reading": "You belonged before you did anything to earn it. Belonging is offered, not achieved — you can stop auditioning. Someone at the edge of this city will throw their arms around a filthy stranger and mean it. Let it be you, in both directions.",
+      "shadow": "Belonging offered too cheaply to everyone can end up felt by no one.",
+      "turtle_dare": "Greet the next newcomer you meet as if they were already family coming home. Mean it completely.",
+      "real_2026": {
+        "type": "ritual",
+        "name": "Welcome Home",
+        "note": "greeters embrace arrivals at the gate with 'Welcome home!'",
+        "confidence": "high"
+      },
+      "live_hook": "ritual:greeters",
+      "image_prompt": "A greeter flinging arms wide to embrace a dusty first-timer stepping out of a car at the gate, pure unconditional welcome.",
+      "image_file": "cards/art/branches-05.png"
+    },
+    {
+      "id": "branches-06",
+      "number": 6,
+      "name": "Costco Soulmate Trading Outlet",
+      "realm": "branches",
+      "keywords": [
+        "love",
+        "honesty",
+        "connection",
+        "vulnerability"
+      ],
+      "reading": "You cannot shop your way to love — but you can show up honest and let yourself be matched. Stop optimizing the list of what you want and start being findable. The right person isn't a product you select; they're a stranger you finally let see you.",
+      "shadow": "Radical honesty can become oversharing that skips the slow work of being truly known.",
+      "turtle_dare": "Fill out the Soulmate Outlet intake form with total honesty, accept whatever match they give you, and actually go find that stranger.",
+      "real_2026": {
+        "type": "camp",
+        "name": "Costco Soulmate Trading Outlet",
+        "note": "a deadpan 'warehouse' matching strangers as friends, muses, or more, since 1998",
+        "confidence": "high"
+      },
+      "live_hook": "camp:soulmate-outlet",
+      "image_prompt": "A deadpan mock warehouse-store aisle with a 'SOULMATES' sign, volunteer associates interviewing hopeful dusty applicants on clipboards.",
+      "image_file": "cards/art/branches-06.png"
+    },
+    {
+      "id": "branches-07",
+      "number": 7,
+      "name": "Ashram Galactica",
+      "realm": "branches",
+      "keywords": [
+        "generosity",
+        "hospitality",
+        "dignity",
+        "service"
+      ],
+      "reading": "Luxury isn't a thing you buy; it's a thing you give. Everyone — the dustiest, the least impressive, the most tired — deserves to be received like royalty at least once. Receive it when it's offered to you. Then put on the uniform and offer it to the next stranger.",
+      "shadow": "Serving everyone royally can be how you avoid being served, or seen, yourself.",
+      "turtle_dare": "Arrive at Ashram Galactica filthy and let the bellhops fawn over you. Then come back dressed as staff and serve champagne to the next dusty stranger.",
+      "real_2026": {
+        "type": "camp",
+        "name": "Ashram Galactica",
+        "note": "6-star desert hospitality since 2005; bellhops, a champagne bar, luxury yurts raffled to strangers; applying 2026",
+        "confidence": "high"
+      },
+      "live_hook": "camp:ashram-galactica",
+      "image_prompt": "White-gloved bellhops rolling out a red carpet in the dust for a filthy, grinning traveler, a gilded champagne bar glinting behind them.",
+      "image_file": "cards/art/branches-07.png"
+    },
+    {
+      "id": "branches-08",
+      "number": 8,
+      "name": "Opulent Temple",
+      "realm": "branches",
+      "keywords": [
+        "ecstasy",
+        "devotion",
+        "transcendence",
+        "worship"
+      ],
+      "reading": "Worship and wildness are the same fire. You don't have to choose between the sacred and the ecstatic — dancing until you dissolve is a prayer with a body. Let something burn off you in the heat and the bass. Devotion doesn't have to be quiet.",
+      "shadow": "Ecstasy chased every night becomes an escape hatch, not a prayer.",
+      "turtle_dare": "Stand close enough to feel the heat of Opulent Temple's flame columns while the bass hits, and let one worry burn all the way off.",
+      "real_2026": {
+        "type": "camp",
+        "name": "Opulent Temple",
+        "note": "since 2003; huge sphere stage, DJ-controlled flame columns; a house/techno 'cathedral'",
+        "confidence": "high"
+      },
+      "live_hook": "sunrise_soundcamp",
+      "image_prompt": "A cathedral-scale dance stage crowned by a great sphere, towering columns of fire erupting on the beat over an ecstatic crowd at night.",
+      "image_file": "cards/art/branches-08.png"
+    },
+    {
+      "id": "branches-09",
+      "number": 9,
+      "name": "Distrikt",
+      "realm": "branches",
+      "keywords": [
+        "joy",
+        "celebration",
+        "community",
+        "permission"
+      ],
+      "reading": "You don't need night, or an occasion, or anyone's permission to celebrate. Joy is a crowd you join in broad daylight, sweat and all. Belonging gets built out in the open, in the heat, with strangers — not saved up for the perfect moment.",
+      "shadow": "Joy performed in a crowd can be lonelier than solitude if you never let anyone actually close.",
+      "turtle_dare": "Join the Distrikt dancefloor in the full afternoon heat and dance with a total stranger until you forget you were self-conscious.",
+      "real_2026": {
+        "type": "camp",
+        "name": "Distrikt",
+        "note": "the largest daytime sound camp — up to 3,000 people a day, inclusive house & techno day party",
+        "confidence": "high"
+      },
+      "live_hook": "daytime_soundcamp",
+      "image_prompt": "A packed open-air daytime dancefloor blazing under the desert sun, thousands moving together in dust and joy, no night required.",
+      "image_file": "cards/art/branches-09.png"
+    },
+    {
+      "id": "branches-10",
+      "number": 10,
+      "name": "Code Becomes Canvas",
+      "realm": "branches",
+      "keywords": [
+        "creativity",
+        "technology",
+        "making",
+        "expression"
+      ],
+      "reading": "The tool you use to earn a living can also be the brush you make something useless and beautiful with. Technology isn't the opposite of soul — the algorithm is just a color you haven't mixed yet. Make the thing that has no purpose except that it's yours.",
+      "shadow": "Hiding inside the tool can be a way to avoid saying the true thing plainly.",
+      "turtle_dare": "Take a tool you normally use for work and make something completely useless and beautiful with it. Give it away.",
+      "real_2026": {
+        "type": "camp-terrible-turtle",
+        "name": "Terrible Turtle Camp",
+        "note": "'code becomes canvas'; the camp of artists, engineers, and AI enthusiasts",
+        "confidence": "high"
+      },
+      "live_hook": "camp:terrible-turtle",
+      "image_prompt": "Lines of glowing code blooming off a screen into a spray of painterly color and light, a maker delighted at the overlap of machine and art.",
+      "image_file": "cards/art/branches-10.png"
+    },
+    {
+      "id": "branches-11",
+      "number": 11,
+      "name": "Make Something Weird",
+      "realm": "branches",
+      "keywords": [
+        "play",
+        "courage",
+        "self-expression",
+        "creation"
+      ],
+      "reading": "Not everything you make needs a reason, an audience, or a return on investment. The weird thing you're embarrassed to admit you want to build is exactly the thing worth building. Make it. Strange is just honest with the lights on.",
+      "shadow": "Weird for its own sake is just a costume; strangeness should reveal you, not hide you.",
+      "turtle_dare": "Build the weird thing you've been too self-conscious to attempt. Show exactly one person. Watch what it draws.",
+      "real_2026": {
+        "type": "camp-terrible-turtle",
+        "name": "Terrible Turtle Camp",
+        "note": "'just want to make something weird in the desert'",
+        "confidence": "high"
+      },
+      "live_hook": "camp:terrible-turtle",
+      "image_prompt": "A joyfully inexplicable homemade contraption glowing in the desert night, its maker beaming beside it, one curious stranger approaching.",
+      "image_file": "cards/art/branches-11.png"
+    },
+    {
+      "id": "branches-12",
+      "number": 12,
+      "name": "Headwaters",
+      "realm": "branches",
+      "keywords": [
+        "pilgrimage",
+        "introspection",
+        "seeking",
+        "the center"
+      ],
+      "reading": "The way out is through the center, not around it. You keep looking for the answer at the edges of your life when the thing you're seeking is sitting quietly at the middle, waiting for you to walk all the way in. Enter with the question. Leave it at the center.",
+      "shadow": "Perpetual seeking is a way to never arrive; at some point you stop walking the labyrinth and live.",
+      "turtle_dare": "Walk the Headwaters labyrinth in complete silence. Enter carrying your hardest question; leave it at the center and walk out empty.",
+      "real_2026": {
+        "type": "art",
+        "name": "Headwaters",
+        "note": "MSALIGNED Creative; a bamboo meditation labyrinth inspired by sacred Mount Kailash",
+        "confidence": "high"
+      },
+      "live_hook": "art:headwaters",
+      "image_prompt": "A spiraling bamboo labyrinth on the open playa modeled on a sacred mountain, a single pilgrim walking its winding path toward the center.",
+      "image_file": "cards/art/branches-12.png"
+    }
+  ]
+}

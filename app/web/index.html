@@ -1,0 +1,195 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1, viewport-fit=cover">
+<title>The Terrible Turtle Oracle</title>
+<style>
+  :root{
+    --ink:#14110c; --ink2:#1d1810; --gold:#c8a24a; --gold-dim:#8a6f34;
+    --parch:#e9dcc0; --parch-dim:#b6a684; --edge:#3a3020;
+  }
+  *{box-sizing:border-box}
+  html,body{margin:0;height:100%}
+  body{
+    background:radial-gradient(120% 90% at 50% -10%, #241d12 0%, var(--ink) 60%, #0d0b07 100%);
+    color:var(--parch); font-family:"Iowan Old Style","Palatino Linotype",Palatino,Georgia,serif;
+    -webkit-font-smoothing:antialiased; line-height:1.55; padding:24px; min-height:100%;
+  }
+  .wrap{max-width:960px;margin:0 auto}
+  header{text-align:center;padding:18px 0 6px}
+  h1{font-size:1.9rem;letter-spacing:.06em;margin:.2em 0;color:var(--gold);font-weight:600}
+  .sub{color:var(--parch-dim);font-style:italic;letter-spacing:.08em;font-size:.95rem}
+  .status{margin-top:6px;font-size:.72rem;letter-spacing:.12em;text-transform:uppercase;color:var(--gold-dim)}
+  .ask{margin:26px auto;max-width:680px;background:linear-gradient(180deg,var(--ink2),#100d08);
+    border:1px solid var(--edge);border-radius:14px;padding:18px;box-shadow:0 0 0 1px rgba(200,162,74,.12) inset, 0 18px 50px rgba(0,0,0,.5)}
+  textarea{width:100%;min-height:84px;resize:vertical;background:#0e0b06;color:var(--parch);
+    border:1px solid var(--edge);border-radius:9px;padding:12px 14px;font:inherit;font-size:1.05rem}
+  textarea::placeholder{color:#7d6f52;font-style:italic}
+  .row{display:flex;gap:10px;margin-top:12px;align-items:center;flex-wrap:wrap}
+  button{font:inherit;cursor:pointer;border-radius:9px;border:1px solid var(--gold-dim);
+    background:linear-gradient(180deg,#caa64f,#9c7c33);color:#1a1408;font-weight:600;
+    letter-spacing:.04em;padding:11px 20px;font-size:1.02rem}
+  button.ghost{background:transparent;color:var(--parch-dim);border-color:var(--edge)}
+  button:disabled{opacity:.5;cursor:default}
+  .hint{color:var(--parch-dim);font-size:.82rem;font-style:italic;margin-left:auto}
+  .thinking{text-align:center;color:var(--gold-dim);font-style:italic;letter-spacing:.1em;
+    padding:30px;display:none}
+  .thinking.on{display:block;animation:pulse 2.4s ease-in-out infinite}
+  @keyframes pulse{0%,100%{opacity:.45}50%{opacity:1}}
+  .cards{display:grid;grid-template-columns:repeat(3,1fr);gap:16px;margin:8px 0 30px}
+  @media(max-width:720px){.cards{grid-template-columns:1fr}}
+  .card{background:linear-gradient(180deg,#191309,#0f0b06);border:1px solid var(--edge);
+    border-radius:12px;overflow:hidden;opacity:0;transform:translateY(14px) rotateX(6deg);
+    transition:opacity .7s ease,transform .7s ease;box-shadow:0 10px 30px rgba(0,0,0,.5)}
+  .card.show{opacity:1;transform:none}
+  .card .slot{font-size:.68rem;letter-spacing:.18em;text-transform:uppercase;color:var(--gold-dim);
+    padding:12px 14px 0}
+  .card .art{width:100%;aspect-ratio:1024/1536;object-fit:cover;display:block;margin-top:8px;
+    border-top:1px solid var(--edge);border-bottom:1px solid var(--edge);background:#0b0805}
+  .card .noart{width:100%;aspect-ratio:1024/1536;display:flex;align-items:center;justify-content:center;
+    color:var(--gold-dim);font-style:italic;text-align:center;padding:18px;border-top:1px solid var(--edge)}
+  .card .name{color:var(--gold);font-size:1.12rem;padding:12px 14px 2px;letter-spacing:.03em}
+  .card .body{color:var(--parch);padding:0 14px 6px;font-size:.94rem}
+  .card .real{color:var(--parch-dim);font-size:.78rem;font-style:italic;padding:4px 14px 14px}
+  .scroll{max-width:680px;margin:0 auto;opacity:0;transition:opacity 1s ease .3s}
+  .scroll.show{opacity:1}
+  .scroll h2{color:var(--gold);letter-spacing:.14em;text-transform:uppercase;font-size:.9rem;
+    border-bottom:1px solid var(--edge);padding-bottom:6px;margin-top:26px}
+  .reading{font-size:1.1rem}
+  .adventure{font-size:1.06rem;color:#f0e6cf}
+  .card .loc{color:var(--gold-dim);font-size:.78rem;padding:0 14px 12px}
+  .map{font-family:ui-monospace,Menlo,Consolas,monospace;color:var(--gold);background:#0e0b06;
+    border:1px solid var(--edge);border-radius:8px;padding:12px;font-size:.82rem;line-height:1.35;
+    overflow-x:auto;white-space:pre;margin-top:8px}
+  .dirs{list-style:none;padding:0;margin:12px 0}
+  .dirs li{padding:7px 0;border-bottom:1px solid var(--edge);font-size:.92rem}
+  .dirs li b{color:var(--gold)}
+  footer{text-align:center;color:var(--gold-dim);font-size:.72rem;letter-spacing:.14em;
+    text-transform:uppercase;margin:36px 0 10px}
+  .err{color:#d98b6a;text-align:center;font-style:italic}
+</style>
+</head>
+<body>
+<div class="wrap">
+  <header>
+    <h1>🐢 The Terrible Turtle Oracle</h1>
+    <div class="sub">Black Rock City MMXXVI · Move Slow &amp; Bite Things</div>
+    <div class="status" id="status">consulting the shell…</div>
+    <div style="margin-top:8px"><a href="/" style="color:var(--gold-dim);font-size:.8rem;letter-spacing:.1em;text-decoration:none">← about the deck</a></div>
+  </header>
+
+  <div class="ask">
+    <textarea id="q" placeholder="What's on your mind, traveler? Tell the Turtle what you're carrying, or what you're deciding…"></textarea>
+    <div class="row">
+      <button id="ask">Ask the Turtle</button>
+      <button id="mic" class="ghost" title="Speak your question">🎙 Speak</button>
+      <span class="hint" id="hint"></span>
+    </div>
+  </div>
+
+  <div class="thinking" id="thinking">the turtle is considering, slowly…</div>
+  <div class="cards" id="cards"></div>
+  <div class="scroll" id="scroll">
+    <h2>The Reading</h2>
+    <div class="reading" id="reading"></div>
+    <h2>Your Adventure Tonight</h2>
+    <div class="adventure" id="adventure"></div>
+    <h2>Where To Go</h2>
+    <pre class="map" id="map"></pre>
+    <ul class="dirs" id="dirs"></ul>
+    <div class="row">
+      <button id="print">🧾 Print my quest</button>
+      <span class="hint" id="printstatus"></span>
+    </div>
+  </div>
+  <div class="err" id="err"></div>
+
+  <footer>there's a spot in the shell for you</footer>
+</div>
+
+<script>
+const $ = id => document.getElementById(id);
+const SLOTS = ["roots","trunk","branches"];
+
+fetch("/api/deck").then(r=>r.json()).then(d=>{
+  $("status").textContent = d.llm
+    ? "the turtle dreams with a living mind" : "the turtle dreams from the deck alone";
+}).catch(()=>{ $("status").textContent=""; });
+
+async function ask(){
+  const q = $("q").value.trim();
+  if(!q){ $("q").focus(); return; }
+  $("err").textContent=""; $("scroll").classList.remove("show");
+  $("cards").innerHTML=""; $("thinking").classList.add("on");
+  $("ask").disabled=true;
+  try{
+    const res = await fetch("/api/reading",{method:"POST",headers:{"Content-Type":"application/json"},
+      body:JSON.stringify({question:q})});
+    const data = await res.json();
+    if(data.error) throw new Error(data.error);
+    render(data);
+  }catch(e){ $("err").textContent = "The turtle drew back into its shell ("+e.message+"). Try again."; }
+  finally{ $("thinking").classList.remove("on"); $("ask").disabled=false; }
+}
+
+function render(data){
+  $("cards").innerHTML="";
+  SLOTS.forEach((slot,i)=>{
+    const c = data.cards[slot];
+    const art = c.image
+      ? `<img class="art" src="${c.image}" alt="${c.name}">`
+      : `<div class="noart">— ${c.name} —</div>`;
+    const el = document.createElement("div");
+    el.className="card";
+    const loc = c.location && c.location.directions ? `<div class="loc">📍 ${c.location.directions}</div>` : "";
+    el.innerHTML = `<div class="slot">${c.slot}</div>${art}
+      <div class="name">${c.name}</div>
+      <div class="body">${c.reading}</div>
+      <div class="real">↳ ${c.real_2026}</div>${loc}`;
+    $("cards").appendChild(el);
+    setTimeout(()=>el.classList.add("show"), 250 + i*550);
+  });
+  $("reading").textContent = data.reading;
+  $("adventure").textContent = data.adventure;
+  $("map").textContent = data.map || "";
+  $("dirs").innerHTML = (data.directions||[]).map(d=>{
+    const i = d.indexOf(": ");
+    return i>0 ? `<li><b>${d.slice(0,i)}</b> — ${d.slice(i+2)}</li>` : `<li>${d}</li>`;
+  }).join("");
+  $("printstatus").textContent = "";
+  setTimeout(()=>$("scroll").classList.add("show"), 250 + SLOTS.length*550);
+}
+
+async function printQuest(){
+  $("printstatus").textContent="printing…"; $("print").disabled=true;
+  try{
+    const r = await fetch("/api/print",{method:"POST"});
+    const d = await r.json();
+    $("printstatus").textContent = d.status==="printed"
+      ? "printed ✓ — tear it off, traveler"
+      : "saved a preview (no printer connected yet)";
+  }catch(e){ $("printstatus").textContent="print failed"; }
+  finally{ $("print").disabled=false; }
+}
+
+$("ask").addEventListener("click", ask);
+$("print").addEventListener("click", printQuest);
+$("q").addEventListener("keydown", e=>{ if((e.metaKey||e.ctrlKey)&&e.key==="Enter") ask(); });
+
+// Voice: uses the browser's speech recognition when available (needs connectivity in most
+// browsers). Offline voice via local Whisper is a later addition; text always works.
+const SR = window.SpeechRecognition || window.webkitSpeechRecognition;
+if(SR){
+  const rec = new SR(); rec.lang="en-US"; rec.interimResults=false;
+  $("mic").addEventListener("click", ()=>{ $("hint").textContent="listening…"; try{rec.start()}catch(e){} });
+  rec.onresult = e=>{ $("q").value = e.results[0][0].transcript; $("hint").textContent=""; ask(); };
+  rec.onerror = ()=>{ $("hint").textContent="couldn't hear you — type instead"; };
+  rec.onend = ()=>{ if($("hint").textContent==="listening…") $("hint").textContent=""; };
+} else {
+  $("mic").style.display="none";
+  $("hint").textContent="type your question";
+}
+</script>
+</body>
+</html>
