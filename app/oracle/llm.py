@@ -24,8 +24,11 @@ class LLM:
             "model": self.model,
             "prompt": prompt,
             "stream": False,
-            "options": {"temperature": 0.8},
+            "options": {"temperature": 0.75},
+            "keep_alive": -1,  # stay resident: no 20s reload between seekers
         }
+        if self.model.startswith(("qwen3", "deepseek")):
+            body["think"] = False
         if system:
             body["system"] = system
         if as_json:

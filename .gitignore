@@ -7,3 +7,4 @@ app/receipts/
 __pycache__/
 *.pyc
 .DS_Store
+app/models/

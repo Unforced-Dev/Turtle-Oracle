@@ -8,6 +8,7 @@ running; otherwise the offline template weave. Single-threaded on purpose: one s
 import json
 import os
 import re
+import threading
 from http.server import BaseHTTPRequestHandler, ThreadingHTTPServer
 
 from .deck import load_deck, REPO, card_payload
@@ -17,6 +18,7 @@ from .llm import LLM
 from .geo import locate, locate_spread, directions_lines, COMPASS_ROSE
 from . import printer
 from . import session
+from . import ears
 
 WEB = os.path.join(REPO, "app", "web")
 ART = os.path.join(REPO, "cards", "art")
@@ -159,6 +161,16 @@ class Handler(BaseHTTPRequestHandler):
             result = printer.print_or_preview(text)
             result["receipt"] = text
             return self._send(200, result)
+        if path == "/api/transcribe":
+            if not raw:
+                return self._send(400, {"error": "no audio"})
+            ctype = (self.headers.get("Content-Type") or "").split(";")[0].strip()
+            suffix = {"audio/webm": ".webm", "audio/mp4": ".mp4", "audio/mpeg": ".mp3",
+                      "audio/ogg": ".ogg", "audio/wav": ".wav"}.get(ctype, ".webm")
+            text = ears.transcribe(raw, suffix)
+            if text is None:
+                return self._send(501, {"error": "the Turtle has no ears on this machine"})
+            return self._send(200, {"text": text})
         if path.startswith("/api/session/"):
             try:
                 body = json.loads(raw or b"{}")
@@ -203,6 +215,11 @@ class OracleServer(ThreadingHTTPServer):
 def main():
     print(f"🐢  Terrible Turtle Oracle at http://localhost:{PORT}")
     print(f"    LLM (Ollama {LLM_SINGLETON.model}): {'available' if LLM_SINGLETON.available() else 'OFF — using offline weave'}")
+    print(f"    Ears (whisper.cpp): {'available' if ears.available() else 'OFF — typed input only'}")
+    if LLM_SINGLETON.available():
+        # warm the model into memory (keep_alive=-1) so the first seeker isn't kept waiting
+        threading.Thread(target=lambda: LLM_SINGLETON.generate("wake", timeout=300),
+                         daemon=True).start()
     OracleServer(("0.0.0.0", PORT), Handler).serve_forever()
 
 

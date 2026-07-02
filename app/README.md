@@ -40,3 +40,11 @@ PYTHONPATH=app python3 -m oracle.cli "what should I do about the thing I keep av
 - Ollama + a pulled model installed **before** leaving (no downloads on playa).
 - Card art present in `cards/art/` (bundled).
 - Start the server; point a tablet/browser at it. Text input always works; local-Whisper voice is a planned addition.
+
+## Ears (local voice input)
+`brew install whisper-cpp ffmpeg`, then fetch the model (not in git — 148 MB):
+```
+curl -L -o app/models/ggml-base.en.bin \
+  https://huggingface.co/ggerganov/whisper.cpp/resolve/main/ggml-base.en.bin
+```
+The kiosk records in the browser and POSTs to `/api/transcribe` (whisper.cpp, ~0.6 s warm).

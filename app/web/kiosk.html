@@ -235,18 +235,31 @@ let SID=null, SPOKEN=true, VOICE=null, IDLE=null, CARD_IDS="";
 
 /* ---------- voice of the turtle ---------- */
 function pickVoice(){
-  const vs=speechSynthesis.getVoices().filter(v=>v.lang.startsWith("en"));
-  VOICE=vs.find(v=>/Daniel|Fred|Alex|Aaron|Gordon|Male/i.test(v.name))||vs[0]||null;
+  const vs=speechSynthesis.getVoices().filter(v=>v.lang&&v.lang.startsWith("en"));
+  const rank=v=>(/premium|enhanced/i.test(v.name)?4:0)+(/Daniel/i.test(v.name)?6:0)
+    +(/Oliver|Alex|Tom|Aaron|Evan|Nathan|Fred/i.test(v.name)?3:0)
+    +(v.localService?2:0)+(/en-GB/i.test(v.lang)?1:0);
+  vs.sort((a,b)=>rank(b)-rank(a));
+  VOICE=vs[0]||null;
 }
 if("speechSynthesis" in window){ pickVoice(); speechSynthesis.onvoiceschanged=pickVoice; }
+/* sentence-by-sentence: long utterances stall some engines, and the gaps ARE the turtle */
 function speak(text,cb){
   if(!SPOKEN||!("speechSynthesis" in window)){ if(cb)cb(); return; }
   speechSynthesis.cancel();
-  const u=new SpeechSynthesisUtterance(text.replace(/[“”"]/g,""));
-  u.rate=.88; u.pitch=.68; if(VOICE)u.voice=VOICE;
+  const parts=(text.replace(/[“”"]/g,"").match(/[^.!?…]+[.!?…]+['”]?|[^.!?…]+$/g)||[text])
+    .map(s=>s.trim()).filter(Boolean);
   document.body.classList.add("speaking");
-  u.onend=u.onerror=()=>{ document.body.classList.remove("speaking"); if(cb)cb(); };
-  speechSynthesis.speak(u);
+  let done=false;
+  const finish=()=>{ if(done)return; done=true;
+    document.body.classList.remove("speaking"); if(cb)cb(); };
+  parts.forEach((p,i)=>{
+    const u=new SpeechSynthesisUtterance(p);
+    u.rate=.87; u.pitch=.62; if(VOICE)u.voice=VOICE;
+    if(i===parts.length-1) u.onend=u.onerror=finish;
+    speechSynthesis.speak(u);
+  });
+  setTimeout(finish, text.split(/\s+/).length*550+4000);  // engine-death safety net
 }
 $('snd').addEventListener('click',()=>{ SPOKEN=!SPOKEN; $('snd').textContent=SPOKEN?"🔊":"🔇";
   if(!SPOKEN) speechSynthesis.cancel(); });
@@ -430,20 +443,41 @@ $('print').addEventListener('click', async ()=>{
 });
 $('again').addEventListener('click', resetAll);
 
-/* ---------- listening (mic) ---------- */
-const SR=window.SpeechRecognition||window.webkitSpeechRecognition;
-if(SR){
-  const rec=new SR(); rec.lang="en-US"; rec.interimResults=false; rec.maxAlternatives=1;
-  let listening=false;
-  $('mic').addEventListener('click',()=>{
-    if(listening){ rec.stop(); return; }
-    try{ rec.start(); listening=true; $('mic').classList.add("listening"); }catch(e){}
-  });
-  rec.onresult=ev=>{ $('q').value=(($('q').value+" ")+ev.results[0][0].transcript).trim(); };
-  rec.onend=()=>{ listening=false; $('mic').classList.remove("listening"); };
-  rec.onerror=()=>{ listening=false; $('mic').classList.remove("listening");
-    toast("The Turtle couldn't hear — write it instead."); };
-} else { $('mic').style.display="none"; }
+/* ---------- listening: the Turtle's own ears (local whisper on the camp brain) ---------- */
+let REC=null, CHUNKS=[], LISTENING=false;
+async function micToggle(){
+  if(LISTENING){ try{REC.stop();}catch(e){} return; }
+  if(!navigator.mediaDevices||!window.MediaRecorder){
+    toast("No microphone on this device — write it instead."); return; }
+  try{
+    const stream=await navigator.mediaDevices.getUserMedia({audio:true});
+    const mime=["audio/webm;codecs=opus","audio/webm","audio/mp4"]
+      .find(m=>MediaRecorder.isTypeSupported(m))||"";
+    REC=new MediaRecorder(stream, mime?{mimeType:mime}:undefined);
+    CHUNKS=[];
+    REC.ondataavailable=e=>{ if(e.data&&e.data.size)CHUNKS.push(e.data); };
+    REC.onstop=async()=>{
+      stream.getTracks().forEach(t=>t.stop());
+      LISTENING=false; $('mic').classList.remove("listening");
+      const blob=new Blob(CHUNKS,{type:(REC.mimeType||"audio/webm")});
+      if(blob.size<1500){ $('mic').textContent="🎙"; return; }
+      $('mic').textContent="…";
+      try{
+        const r=await fetch("/api/transcribe",{method:"POST",
+          headers:{"Content-Type":blob.type.split(";")[0]},body:blob});
+        const d=await r.json();
+        if(d.text) $('q').value=($('q').value+" "+d.text).trim();
+        else toast("The Turtle couldn't make out the words — write them instead.");
+      }catch(e){ toast("The Turtle's ears are unreachable — write it instead."); }
+      $('mic').textContent="🎙";
+    };
+    REC.start(); LISTENING=true;
+    $('mic').classList.add("listening"); $('mic').textContent="■";
+    clearTimeout(micToggle._guard);
+    micToggle._guard=setTimeout(()=>{ if(LISTENING) try{REC.stop();}catch(e){} },60000);
+  }catch(e){ toast("The Turtle needs permission to listen — or write it instead."); }
+}
+$('mic').addEventListener('click', micToggle);
 
 /* ---------- wiring ---------- */
 function sleep(ms){ return new Promise(r=>setTimeout(r,ms)); }
