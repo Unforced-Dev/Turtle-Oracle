@@ -27,7 +27,7 @@ def _wrap(s):
     return textwrap.wrap(s, WIDTH) or [""]
 
 
-def format_receipt(payload, picks, located):
+def format_receipt(payload, picks, located, quest=None):
     L = []
     L.append(_center("* THE TERRIBLE TURTLE *"))
     L.append(_center("ORACLE"))
@@ -35,7 +35,7 @@ def format_receipt(payload, picks, located):
     L.append(_rule("="))
     L.append(time.strftime("%a %b %d  %H:%M"))
     L.append("")
-    L.append("YOU ASKED:")
+    L.append("YOU TOLD THE TURTLE:")
     L.extend(_wrap(payload["question"]))
     L.append("")
     L.append(_rule())
@@ -43,15 +43,33 @@ def format_receipt(payload, picks, located):
     labels = {"roots": "FACE", "trunk": "STAND", "branches": "REACH"}
     for realm in ("roots", "trunk", "branches"):
         c = picks[realm]
-        L.append(f"[{labels[realm]}] {c['name']}")
+        L.extend(_wrap(f"[{labels[realm]}] {c['name']}"))
     L.append(_rule())
     L.append("")
     L.append("THE READING")
     L.extend(_wrap(payload["reading"]))
     L.append("")
-    L.append("YOUR QUEST")
-    L.extend(_wrap(payload["adventure"]))
-    L.append("")
+    if quest:
+        L.append(_rule("="))
+        L.extend(_wrap(quest["title"].upper()))
+        L.append(_rule("="))
+        L.extend(_wrap(quest["charge"]))
+        L.append("")
+        for i, m in enumerate(quest["moves"], 1):
+            L.extend(_wrap(f"MOVE {i} [{m['slot']}] {m['card']}"))
+            L.extend(_wrap(m["task"]))
+            L.extend(_wrap("@ " + m["where"]))
+            L.extend(_wrap("PROOF: " + m["proof"]))
+            L.append("")
+        L.append(_rule())
+        L.append("THE VOW")
+        L.extend(_wrap(quest["vow"]))
+        L.extend(_wrap("(" + quest["vow_where"] + ")"))
+        L.append("")
+    else:
+        L.append("YOUR QUEST")
+        L.extend(_wrap(payload["adventure"]))
+        L.append("")
     L.append(_rule())
     L.append("WHERE TO GO")
     L.append(COMPASS_ROSE)

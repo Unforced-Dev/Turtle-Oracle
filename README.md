@@ -14,6 +14,7 @@ Built on a synchronicity: Burning Man 2026's theme is **Axis Mundi** (the World 
 - **📱 The oracle** — two flavors:
   - **Static (this site):** the reading engine runs client-side in JS. Always on, nothing to break.
   - **Local server (`app/`):** the full experience — fluid **LLM** readings (Ollama), city **map + directions**, and a **58 mm thermal-receipt** "adventure guide." Runs fully offline on a laptop in the shell. `PYTHONPATH=app python3 -m oracle.server`.
+  - **🔮 The Séance (`/kiosk`):** the tablet ritual for playa — a speaking Oracle avatar greets the seeker, asks how their burn is going (voice or keyboard), asks one light LLM-crafted follow-up, theatrically pulls three cards shaped by what they shared, reads them, and offers a **quest**: three moves with real places, a proof to bring back from each, and the vow — *return to the shell, tell the tale, receive a gift.* Accept it or say "hear me further" and the quest is re-woven around your words. Printable on receipt paper.
 
 ## Repo map
 - `index.html` / `oracle.html` / `cards.web.json` — the static Pages site (showcase + client-side oracle).

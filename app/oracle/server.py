@@ -10,12 +10,13 @@ import os
 import re
 from http.server import BaseHTTPRequestHandler, ThreadingHTTPServer
 
-from .deck import load_deck, SLOT_LABEL, REPO
+from .deck import load_deck, REPO, card_payload
 from .select import select_cards
 from .weave import weave
 from .llm import LLM
 from .geo import locate, locate_spread, directions_lines, COMPASS_ROSE
 from . import printer
+from . import session
 
 WEB = os.path.join(REPO, "app", "web")
 ART = os.path.join(REPO, "cards", "art")
@@ -24,23 +25,6 @@ LLM_SINGLETON = LLM()
 ART_RE = re.compile(r"^(shell|roots|trunk|branches)-\d{2}\.png$")
 WEBIMG_RE = re.compile(r"^((shell|roots|trunk|branches)-\d{2}|back)\.jpg$")
 LAST = {}  # last built reading (kiosk = one seeker at a time), for /api/print
-
-
-def card_payload(c, loc=None):
-    loc = loc or {}
-    return {
-        "id": c["id"], "name": c["name"], "realm": c["realm"],
-        "slot": SLOT_LABEL.get(c["realm"], ""),
-        "reading": c["reading"], "shadow": c.get("shadow", ""),
-        "turtle_dare": c["turtle_dare"],
-        "real_2026": c["real_2026"]["name"],
-        "location": {"directions": loc.get("directions", ""), "status": loc.get("status", ""),
-                     "clock": loc.get("clock")},
-        "image": (f"/med/{c['id']}.jpg" if os.path.exists(os.path.join(REPO, "cards/web/med", f"{c['id']}.jpg"))
-                  else (f"/art/{c['id']}.png" if os.path.exists(os.path.join(ART, f"{c['id']}.png")) else None)),
-        "thumb": (f"/thumb/{c['id']}.jpg" if os.path.exists(os.path.join(REPO, "cards/web/thumb", f"{c['id']}.jpg"))
-                  else (f"/med/{c['id']}.jpg" if os.path.exists(os.path.join(REPO, "cards/web/med", f"{c['id']}.jpg")) else None)),
-    }
 
 
 def build_reading(question):
@@ -114,6 +98,12 @@ class Handler(BaseHTTPRequestHandler):
             return self._serve_file("app/web/site.html", "text/html; charset=utf-8")
         if path in ("/oracle", "/oracle.html", "/app"):
             return self._serve_file("app/web/index.html", "text/html; charset=utf-8")
+        if path in ("/kiosk", "/kiosk.html"):
+            return self._serve_file("app/web/kiosk.html", "text/html; charset=utf-8")
+        if path == "/avatar.jpg":
+            rel = "cards/web/med/avatar.jpg" if os.path.exists(os.path.join(REPO, "cards/web/med/avatar.jpg")) \
+                else "cards/back.png"
+            return self._serve_file(rel, "image/jpeg" if rel.endswith(".jpg") else "image/png")
         if path == "/api/deck":
             data, cards, _ = load_deck()
             return self._send(200, {"title": data["deck"]["title"],
@@ -164,10 +154,40 @@ class Handler(BaseHTTPRequestHandler):
         if path == "/api/print":
             if not LAST:
                 return self._send(400, {"error": "no reading to print yet"})
-            text = printer.format_receipt(LAST["payload"], LAST["picks"], LAST["located"])
+            text = printer.format_receipt(LAST["payload"], LAST["picks"], LAST["located"],
+                                          quest=LAST.get("quest"))
             result = printer.print_or_preview(text)
             result["receipt"] = text
             return self._send(200, result)
+        if path.startswith("/api/session/"):
+            try:
+                body = json.loads(raw or b"{}")
+            except Exception:
+                body = {}
+            action = path.rsplit("/", 1)[1]
+            try:
+                if action == "start":
+                    return self._send(200, session.start())
+                sid = (body.get("session") or "").strip()
+                if action == "say":
+                    return self._send(200, session.hear(sid, body.get("text"), LLM_SINGLETON))
+                if action == "accept":
+                    event = session.accept(sid)
+                    sess = session.snapshot(sid)
+                    if sess and sess.get("quest"):
+                        # stage the sealed quest for /api/print
+                        told = " / ".join(sess["shares"])
+                        LAST.clear()
+                        LAST.update({
+                            "payload": {"question": told, "reading": sess["reading"],
+                                        "adventure": sess["adventure"]},
+                            "picks": sess["picks"], "located": sess["located"],
+                            "quest": sess["quest"],
+                        })
+                    return self._send(200, event)
+            except Exception as e:
+                return self._send(500, {"error": str(e)})
+            return self._send(404, {"error": "unknown séance action"})
         return self._send(404, {"error": "not found"})
 
     def log_message(self, *a):

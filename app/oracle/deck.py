@@ -37,3 +37,24 @@ def load_deck(path=CARDS_PATH):
 
 def card_by_id(cards, cid):
     return next((c for c in cards if c["id"] == cid), None)
+
+
+def card_payload(c, loc=None):
+    """The card as the web clients see it (med/thumb image routes + location)."""
+    loc = loc or {}
+    med = os.path.join(REPO, "cards/web/med", f"{c['id']}.jpg")
+    thumb = os.path.join(REPO, "cards/web/thumb", f"{c['id']}.jpg")
+    art = os.path.join(REPO, "cards/art", f"{c['id']}.png")
+    return {
+        "id": c["id"], "name": c["name"], "realm": c["realm"],
+        "slot": SLOT_LABEL.get(c["realm"], ""),
+        "reading": c["reading"], "shadow": c.get("shadow", ""),
+        "turtle_dare": c["turtle_dare"],
+        "real_2026": c["real_2026"]["name"],
+        "location": {"directions": loc.get("directions", ""), "status": loc.get("status", ""),
+                     "clock": loc.get("clock")},
+        "image": (f"/med/{c['id']}.jpg" if os.path.exists(med)
+                  else (f"/art/{c['id']}.png" if os.path.exists(art) else None)),
+        "thumb": (f"/thumb/{c['id']}.jpg" if os.path.exists(thumb)
+                  else (f"/med/{c['id']}.jpg" if os.path.exists(med) else None)),
+    }
