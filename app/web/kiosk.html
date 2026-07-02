@@ -120,7 +120,12 @@
   .cardcap.on{opacity:1}
   .cardcap .cslot{font-size:.66rem;letter-spacing:.3em;text-transform:uppercase;color:var(--gold-dim)}
   .cardcap .cname{color:var(--gold);font-size:clamp(.9rem,1.8vw,1.12rem);line-height:1.25}
+  .cardcap .cbite{color:#a3743f;font-size:.72rem;font-style:italic;margin-top:3px}
   .cardcap .cwhere{color:var(--parch-dim);font-size:.74rem;font-style:italic;margin-top:3px}
+  .flip{cursor:pointer}
+  .flip.yourturn .face.back{animation:chosepulse 1.5s ease-in-out infinite}
+  @keyframes chosepulse{0%,100%{box-shadow:0 14px 40px rgba(0,0,0,.55)}
+    50%{box-shadow:0 0 34px rgba(232,205,133,.65), 0 14px 40px rgba(0,0,0,.55)}}
 
   /* ---- reading scroll ---- */
   .scroll{width:100%;max-width:720px;margin-top:8px}
@@ -151,6 +156,9 @@
   .move .mtask{margin:4px 0 2px;font-size:1rem}
   .move .mwhere{font-size:.9rem;color:#5c4a26}
   .move .mproof{font-size:.9rem;color:#7a5218;font-style:italic;margin-top:4px}
+  .move .mleave{font-size:.9rem;color:#8a3b18;font-style:italic;margin-top:2px}
+  .sealedfor{text-align:center;font-size:.8rem;letter-spacing:.24em;text-transform:uppercase;color:#8a6f34;margin-bottom:10px}
+  .chosen{text-align:center;letter-spacing:.2em;text-transform:uppercase;font-size:.78rem;color:#6b5426;margin-top:16px}
   .vow{border-top:3px double #8a6f34;margin-top:8px;padding-top:14px;font-size:1rem}
   .vow b{letter-spacing:.24em;font-size:.78rem;color:#8a6f34}
   .vow .vwhere{font-size:.84rem;color:#8a6f34;font-style:italic;margin-top:6px}
@@ -182,6 +190,8 @@
     <div class="creed">Move Slow &amp; Bite Things</div>
   </div>
   <div class="wake">✦ &nbsp;touch the shell to wake the oracle&nbsp; ✦</div>
+  <div id="lore" style="color:var(--gold-dim);font-size:.8rem;letter-spacing:.12em;min-height:2.6em;text-align:center"></div>
+  <button class="ghost" id="returned" style="font-size:.95rem">🐢&nbsp; I have returned — I carry a tale</button>
   <div style="flex:1.2"></div>
 </section>
 
@@ -196,6 +206,11 @@
         <button class="micorb" id="mic" title="speak to the turtle">🎙</button>
         <button id="offer">Offer it to the Turtle</button>
       </div>
+    </div>
+    <div class="panel" id="giftrow" style="text-align:center">
+      <div style="font-size:1.3rem;margin-bottom:12px">🎁</div>
+      <div style="color:var(--gold2)">Receive your gift from the turtle beside you.</div>
+      <div class="row"><button class="ghost" id="taledone">↺&nbsp; The Oracle sleeps</button></div>
     </div>
     <div class="spread" id="spread"></div>
     <div class="scroll" id="scroll">
@@ -286,10 +301,10 @@ function show(scene){ document.querySelectorAll(".scene").forEach(s=>s.classList
 function toast(msg,ms=3400){ $('toast').textContent=msg; $('toast').classList.add("on");
   setTimeout(()=>$('toast').classList.remove("on"),ms); }
 
-async function wake(){
+async function wake(mode){
   show("seance"); resetSeance();
   try{
-    const e=await post("start"); SID=e.session;
+    const e=await post("start",{mode:mode||"seek"}); SID=e.session;
     const dur=incant($('says'),e.say,110); speak(e.say);
     setTimeout(()=>$('askpanel').classList.add("on"), Math.min(dur,2600));
   }catch(err){ incant($('says'),"The Turtle is asleep — the camp server isn't answering. Find a turtle."); }
@@ -299,7 +314,23 @@ function resetSeance(){
   $('says').innerHTML=""; $('askpanel').classList.remove("on"); $('q').value="";
   $('spread').innerHTML=""; $('reading').innerHTML=""; $('adventure').innerHTML="";
   $('h-read').classList.remove("on"); $('h-adv').classList.remove("on");
-  $('decide').style.display="none"; CARD_IDS="";
+  $('decide').style.display="none"; $('giftrow').classList.remove("on"); CARD_IDS="";
+}
+
+function taleTold(e){
+  $('askpanel').classList.remove("on");
+  incant($('says'),e.say,110); speak(e.say);
+  setTimeout(()=>$('giftrow').classList.add("on"), 1600);
+}
+
+async function loadLore(){
+  try{
+    const d=await fetch("/api/lore").then(r=>r.json());
+    if(!d.sealed){ $('lore').innerHTML=""; return; }
+    const recent=d.recent_titles&&d.recent_titles[0]
+      ? `<br><span style="font-style:italic">someone is out there on “${d.recent_titles[0]}”</span>`:"";
+    $('lore').innerHTML=`${d.sealed} quest${d.sealed>1?"s":""} sealed · ${d.tales} tale${d.tales===1?"":"s"} told${recent}`;
+  }catch(e){}
 }
 
 const PONDER=["The Turtle chews on your words. Slowly…","Mm. The shell hums while it thinks…",
@@ -314,12 +345,13 @@ async function offer(){
     const e=await post("say",{session:SID,text});
     document.body.classList.remove("speaking");
     $('q').value="";
-    if(e.stage==="deepening"||(e.stage==="listening")){
-      incant($('says'),e.say,110); speak(e.say);
-    } else if(e.stage==="proposed"){
+    if(e.stage==="proposed"){
       $('askpanel').classList.remove("on");
       await thePull(e);
+    } else if(e.stage==="tale_told"){
+      taleTold(e);
     } else if(e.error){ toast(e.error); }
+    else { incant($('says'),e.say,110); speak(e.say); }
   }catch(err){ toast("The Turtle lost the thread — try once more."); }
   document.body.classList.remove("speaking");
   $('offer').disabled=false; $('mic').disabled=false;
@@ -348,9 +380,8 @@ async function thePull(e){
     incant($('says'),e.say,110); speak(e.say);
     await sleep(2600);
     $('veil').classList.remove("on");
-    dealSpread(e);
     CARD_IDS=ids;
-    await sleep(3*650+1400);
+    await dealSpread(e);   // resolves after the seeker has turned all three cards
     // the reading, chanted to its end
     $('h-read').classList.add("on");
     const rdur=incant($('reading'),e.reading,105);
@@ -369,36 +400,60 @@ async function thePull(e){
   $('decide').style.display="flex";
   $('decide').scrollIntoView({behavior:"smooth",block:"nearest"});
 }
+/* Three cards land face-down. The SEEKER turns them — in order, by hand.
+   Each turn, the Turtle speaks the echo: their own words, heard back. */
 function dealSpread(e){
-  $('spread').innerHTML="";
-  SLOTS.forEach((slot,i)=>{
-    const c=e.cards[slot];
-    const cell=document.createElement("div");
-    cell.innerHTML=`
-      <div class="flip" id="flip-${slot}">
-        <div class="face back"><img src="/med/back.jpg" alt=""></div>
-        <div class="face front"><img src="${c.image}" alt="${c.name}"></div>
-      </div>
-      <div class="cardcap" id="cap-${slot}">
-        <div class="cslot">${SLOTCAP[slot]} · ${c.slot}</div>
-        <div class="cname">${c.name}</div>
-        ${c.location&&c.location.directions?`<div class="cwhere">📍 ${c.location.directions}</div>`:""}
-      </div>`;
-    $('spread').appendChild(cell);
-    setTimeout(()=>$(`flip-${slot}`).classList.add("dealt"), 150+i*220);
-    setTimeout(()=>{ $(`flip-${slot}`).classList.add("flipped");
-      $(`cap-${slot}`).classList.add("on"); }, 1100+i*650);
+  return new Promise(done=>{
+    $('spread').innerHTML="";
+    let next=0; const flips=[];
+    SLOTS.forEach((slot,i)=>{
+      const c=e.cards[slot];
+      const cell=document.createElement("div");
+      cell.innerHTML=`
+        <div class="flip" id="flip-${slot}">
+          <div class="face back"><img src="/med/back.jpg" alt=""></div>
+          <div class="face front"><img src="${c.image}" alt="${c.name}"></div>
+        </div>
+        <div class="cardcap" id="cap-${slot}">
+          <div class="cslot">${SLOTCAP[slot]} · ${c.slot}</div>
+          <div class="cname">${c.name}</div>
+          ${c.shadow?`<div class="cbite">the bite: ${c.shadow}</div>`:""}
+          ${c.location&&c.location.directions?`<div class="cwhere">📍 ${c.location.directions}</div>`:""}
+        </div>`;
+      $('spread').appendChild(cell);
+      const f=cell.querySelector('.flip');
+      flips.push(f);
+      setTimeout(()=>f.classList.add("dealt"), 150+i*220);
+      f.addEventListener('click',()=>{
+        if(i!==next||f.classList.contains('flipped')) return;
+        f.classList.remove('yourturn');
+        f.classList.add('flipped');
+        $(`cap-${slot}`).classList.add('on');
+        const echo=(e.echoes||{})[slot];
+        if(echo){ incant($('says'),echo,95); speak(echo); }
+        next++;
+        if(next<3) flips[next].classList.add('yourturn');
+        else setTimeout(done, 1600);
+      });
+    });
+    setTimeout(()=>{
+      flips[0].classList.add('yourturn');
+      const line="Three cards, face down. Turn them yourself — slowly, in order.";
+      incant($('says'),line,110); speak(line);
+    }, 150+3*220+400);
   });
 }
 
 /* ---------- decision ---------- */
 $('accept').addEventListener('click', async ()=>{
   $('accept').disabled=true;
+  $('accept').textContent="⏳  the Turtle seals it…";
   try{
     const e=await post("accept",{session:SID});
     if(e.quest){ renderQuest(e); } else toast(e.error||"The Tree hesitates — try again.");
   }catch(err){ toast("The Turtle lost the thread — try once more."); }
   $('accept').disabled=false;
+  $('accept').textContent="⚔  I accept this quest";
 });
 $('more').addEventListener('click', ()=>{
   $('decide').style.display="none";
@@ -415,6 +470,7 @@ function renderQuest(e){
   $('parch').innerHTML=`
     <div class="rune" style="text-align:center">the tree has spoken · the quest is sealed</div>
     <h1>${q.title}</h1>
+    ${q.for?`<div class="sealedfor">sealed for ${q.for}</div>`:""}
     <div class="charge">${q.charge}</div>
     ${q.moves.map((m,i)=>`
       <div class="move">
@@ -423,11 +479,13 @@ function renderQuest(e){
           <div class="mslot">${m.slot} — ${m.card}</div>
           <div class="mtask">${m.task}</div>
           <div class="mwhere">📍 ${m.where}</div>
-          <div class="mproof">⌘ ${m.proof}</div>
+          <div class="mproof">⌘ bring back: ${m.proof}</div>
+          ${m.leave?`<div class="mleave">✕ leave behind: ${m.leave}</div>`:""}
         </div>
       </div>`).join("")}
     <div class="vow"><b>THE VOW</b><br>${q.vow}<div class="vwhere">${q.vow_where}</div></div>
-    <div class="qmap">${q.map}</div>`;
+    <div class="qmap">${q.map}</div>
+    ${q.chosen?`<div class="chosen">${q.chosen}</div>`:""}`;
   show("quest");
   setTimeout(()=>$('parch').classList.add("on"),80);
   speak(e.say);
@@ -481,8 +539,11 @@ $('mic').addEventListener('click', micToggle);
 
 /* ---------- wiring ---------- */
 function sleep(ms){ return new Promise(r=>setTimeout(r,ms)); }
-$('attract').addEventListener('click', wake);
+$('attract').addEventListener('click', ()=>wake("seek"));
+$('returned').addEventListener('click', ev=>{ ev.stopPropagation(); wake("tale"); });
+$('taledone').addEventListener('click', ev=>{ ev.stopPropagation(); resetAll(); });
 $('offer').addEventListener('click', offer);
+loadLore();
 $('q').addEventListener('keydown',e=>{ if(e.key==="Enter"&&!e.shiftKey){ e.preventDefault(); offer(); } });
 
 /* motes */
@@ -493,7 +554,7 @@ for(let i=0;i<9;i++){ const m=document.createElement("div"); m.className="mote";
 
 /* idle: the oracle goes back to sleep */
 function resetAll(){ speechSynthesis&&speechSynthesis.cancel(); SID=null; resetSeance();
-  $('parch').classList.remove("on"); show("attract"); }
+  $('parch').classList.remove("on"); show("attract"); loadLore(); }
 function pokeIdle(){ clearTimeout(IDLE); IDLE=setTimeout(()=>{
   if(!$('attract').classList.contains("on")) resetAll(); }, 240000); }
 ["click","touchstart","keydown"].forEach(ev=>document.addEventListener(ev,pokeIdle,{passive:true}));

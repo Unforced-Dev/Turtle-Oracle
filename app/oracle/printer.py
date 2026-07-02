@@ -52,6 +52,8 @@ def format_receipt(payload, picks, located, quest=None):
     if quest:
         L.append(_rule("="))
         L.extend(_wrap(quest["title"].upper()))
+        if quest.get("for"):
+            L.append(_center(f"sealed for {quest['for']}"))
         L.append(_rule("="))
         L.extend(_wrap(quest["charge"]))
         L.append("")
@@ -60,11 +62,15 @@ def format_receipt(payload, picks, located, quest=None):
             L.extend(_wrap(m["task"]))
             L.extend(_wrap("@ " + m["where"]))
             L.extend(_wrap("PROOF: " + m["proof"]))
+            if m.get("leave"):
+                L.extend(_wrap("LEAVE: " + m["leave"]))
             L.append("")
         L.append(_rule())
         L.append("THE VOW")
         L.extend(_wrap(quest["vow"]))
         L.extend(_wrap("(" + quest["vow_where"] + ")"))
+        L.append("")
+        L.extend(_wrap(quest.get("chosen", "")))
         L.append("")
     else:
         L.append("YOUR QUEST")

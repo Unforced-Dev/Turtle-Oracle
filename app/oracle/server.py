@@ -19,6 +19,7 @@ from .geo import locate, locate_spread, directions_lines, COMPASS_ROSE
 from . import printer
 from . import session
 from . import ears
+from . import lore
 
 WEB = os.path.join(REPO, "app", "web")
 ART = os.path.join(REPO, "cards", "art")
@@ -114,6 +115,8 @@ class Handler(BaseHTTPRequestHandler):
                                     "llm": LLM_SINGLETON.available()})
         if path == "/api/cards":
             return self._send(200, all_cards_payload())
+        if path == "/api/lore":
+            return self._send(200, lore.counts())
         if path.startswith("/thumb/") or path.startswith("/med/"):
             sub = "thumb" if path.startswith("/thumb/") else "med"
             name = os.path.basename(path)
@@ -179,12 +182,13 @@ class Handler(BaseHTTPRequestHandler):
             action = path.rsplit("/", 1)[1]
             try:
                 if action == "start":
-                    return self._send(200, session.start())
+                    mode = (body.get("mode") or "seek").strip()
+                    return self._send(200, session.start(mode))
                 sid = (body.get("session") or "").strip()
                 if action == "say":
                     return self._send(200, session.hear(sid, body.get("text"), LLM_SINGLETON))
                 if action == "accept":
-                    event = session.accept(sid)
+                    event = session.accept(sid, LLM_SINGLETON)
                     sess = session.snapshot(sid)
                     if sess and sess.get("quest"):
                         # stage the sealed quest for /api/print
@@ -192,7 +196,8 @@ class Handler(BaseHTTPRequestHandler):
                         LAST.clear()
                         LAST.update({
                             "payload": {"question": told, "reading": sess["reading"],
-                                        "adventure": sess["adventure"]},
+                                        "adventure": sess["adventure"],
+                                        "name": sess.get("name")},
                             "picks": sess["picks"], "located": sess["located"],
                             "quest": sess["quest"],
                         })
