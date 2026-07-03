@@ -1,0 +1,64 @@
+{
+  "meta": {
+    "purpose": "The one-tap intake: the seeker names their inner weather. Each weather aims the sentence-stem, sets the Turtle's register, and tilts the quest. Authored so a small local model inherits big-model judgment.",
+    "ask": "No words yet. What is the weather in you tonight?"
+  },
+  "weathers": [
+    {
+      "id": "whiteout",
+      "name": "The Whiteout",
+      "stem": "I lost track of…",
+      "register": "They are erased, unmoored, blank — the city vanished on them. Speak very simply. Short sentences. Name solid things: water, ground, hands, names. No abstractions, no mysteries.",
+      "quest_tilt": "Orientation. Fixed points and landmarks, one clear step at a time, small radius. Nothing open-ended in space. The quest gives them back a map.",
+      "grounding": 0.4
+    },
+    {
+      "id": "starry_calm",
+      "name": "The Starry Calm",
+      "stem": "I want to keep…",
+      "register": "They are clear and quiet — do not stir them up. Deepen the stillness instead. You may go a little more abstract; they have room for it.",
+      "quest_tilt": "Preservation and witness. Quests of noticing, of keeping vigil, of making gratitude physical so it survives the week.",
+      "grounding": 0.0
+    },
+    {
+      "id": "heat_shimmer",
+      "name": "The Heat Shimmer",
+      "stem": "I can't stop chasing…",
+      "register": "They are restless, wanting, scattered by desire — everything wavers. Name the hunger without shaming it. A little more bite is welcome here.",
+      "quest_tilt": "Aim the chase. One worthy object pursued slowly; build in deliberate waiting. The quest teaches the difference between hunger and direction.",
+      "grounding": 0.1
+    },
+    {
+      "id": "dawn_wind",
+      "name": "The Dawn Wind",
+      "stem": "Something is starting, and…",
+      "register": "They are at a beginning — tender, hopeful, afraid of jinxing it. Be gentle with the new thing. Do not name it harder than they named it.",
+      "quest_tilt": "First steps made real. One small public act that commits them to the beginning — witnessed, but low-stakes.",
+      "grounding": 0.0
+    },
+    {
+      "id": "thunderhead",
+      "name": "The Thunderhead",
+      "stem": "I keep swallowing…",
+      "register": "They are charged and holding something back — anger, grief, a truth with teeth. Keep your voice steady and unafraid of it. Give the charge somewhere honorable to go.",
+      "quest_tilt": "Discharge, with consent. Speaking aloud, writing and leaving, moving the body hard. Never aimed at another person; the storm empties into the playa, not into people.",
+      "grounding": 0.2
+    },
+    {
+      "id": "fog",
+      "name": "The Fog",
+      "stem": "I can't find…",
+      "register": "They are searching and cannot see far. Do not add mystery to fog. Be their handrail: concrete, warm, near. Short reading.",
+      "quest_tilt": "Small radius. Quests within short walking distance, one thing at a time, companionship encouraged. Finding one small true thing beats seeking a big one.",
+      "grounding": 0.4
+    }
+  ],
+  "stones": [
+    {"id": "person", "name": "A Person"},
+    {"id": "question", "name": "A Question"},
+    {"id": "grief", "name": "A Grief"},
+    {"id": "hunger", "name": "A Hunger"},
+    {"id": "secret", "name": "A Secret"},
+    {"id": "nothing", "name": "Nothing — and that is the problem"}
+  ]
+}

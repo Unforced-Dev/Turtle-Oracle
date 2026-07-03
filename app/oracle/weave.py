@@ -1,5 +1,23 @@
 """Weave the three cards into one reading + one adventure. LLM -> template fallback."""
 import json
+import os
+
+from .deck import REPO
+
+_LORE = None
+
+
+def card_lore():
+    """Per-card lore bundles (data/card_lore.json) — big-model judgment baked into data
+    so the small runtime model inherits it. Tolerant of the file being absent."""
+    global _LORE
+    if _LORE is None:
+        try:
+            with open(os.path.join(REPO, "data", "card_lore.json"), encoding="utf-8") as f:
+                _LORE = json.load(f)
+        except Exception:
+            _LORE = {}
+    return _LORE
 
 SYSTEM = (
     "You are the Terrible Turtle Oracle — the ancient World Turtle of Terrible Turtle camp at "
@@ -33,9 +51,12 @@ SYSTEM = (
 
 def _line(label, c, loc):
     where = (loc or {}).get("directions", "")
+    lo = card_lore().get(c["id"], {})
+    extra = (f' essence="{lo["essence"]}" bridge="{lo["bridge"]}" seed="{lo["seed"]}"'
+             if lo else "")
     return (f'{label} — {c["name"]} ({c["realm"]}): '
             f'reading="{c["reading"]}" shadow="{c.get("shadow", "")}" dare="{c["turtle_dare"]}" '
-            f'real_2026="{c["real_2026"]["name"]}" where="{where}"')
+            f'real_2026="{c["real_2026"]["name"]}" where="{where}"{extra}')
 
 
 def weave_llm(question, cards, llm, located=None, context=""):
@@ -48,18 +69,27 @@ def weave_llm(question, cards, llm, located=None, context=""):
     prompt = (
         f'A seeker shared: "{question}"\n\n'
         + (f"CONTEXT: {context}\n\n" if context else "")
-        + f"Three cards were drawn along the World Tree:\n{body}\n\n"
-        "Weave them into ONE reading (about 130-170 words) spoken directly TO the seeker in the Turtle's "
-        "voice. Move as one connected thought about THEIR words: what to face -> how to stand -> what to "
-        "reach for. Name at least one card's shadow as a plain warning. End the reading by handing them a "
-        "choice, not a prophecy.\n\n"
-        "Then give ONE concrete quest at Burning Man, built on these rules:\n"
+        + f"Three cards rose along the World Tree:\n{body}\n\n"
+        "THE BINDING — read this first: these cards were drawn BLIND, by the playa's own chance, "
+        "not chosen to match. That is the craft: bind them to this seeker so tightly they look "
+        "inevitable. For each card, take one EXACT word or phrase the seeker said and one image "
+        "from the card (use its essence and bridge lines) and tie them into one thought. Never "
+        "apologize for a card or call it random.\n\n"
+        "Weave the three into ONE reading (about 130-170 words) spoken directly TO the seeker in the "
+        "Turtle's voice, honoring the REGISTER in CONTEXT. Move as one connected thought about THEIR "
+        "words: what to face -> how to stand -> what to reach for. Name at least one card's shadow as "
+        "a plain warning. End the reading by handing them a choice, not a prophecy.\n\n"
+        "Then give ONE concrete quest at Burning Man (use the cards' seed lines as raw material), "
+        "built on these rules:\n"
         "- THE CROSSING: find the thing the seeker confessed they avoid, don't do, or secretly want — "
         "the heart of the quest makes them do exactly that. Not visit it. Do it.\n"
         "- THE ARC: the FACE move is done alone and involves a hard truth; the STAND move is a presence "
         "practice at a real place; the REACH move must involve another human — tell, ask, give, or witness.\n"
         "- THE SACRIFICE: exactly one move has them leave something behind (a written word, an object, "
         "a habit named out loud) — left, not kept.\n"
+        "- THE SHAPE: every move pairs a concrete anchor (a named place + a physical action) with an "
+        "open interior door ('stay until…', 'leave when you have…', 'ask until someone…') — specific "
+        "on the outside, open on the inside. That openness is where the seeker finds themselves.\n"
         "- Fit the quest to the hour given in CONTEXT (heat, dark, sunrise). If they are clearly here with "
         "a partner or friends, write it for them together, including one move done apart and reunited. "
         "If it is their first burn, keep it simple and kind.\n"

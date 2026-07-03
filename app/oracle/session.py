@@ -15,11 +15,18 @@ import re
 import time
 import uuid
 
-from .deck import load_deck, card_payload
-from .select import select_cards, select_fallback, _tokens
-from .weave import weave, SYSTEM
+import os
+
+from .deck import load_deck, card_payload, REPO
+from .select import select_fallback, _tokens
+from .weave import weave, SYSTEM, card_lore
 from .geo import locate_spread, directions_lines, COMPASS_ROSE
 from . import lore
+
+WEATHER = json.load(open(os.path.join(REPO, "data", "weather.json"), encoding="utf-8"))
+WEATHERS = {w["id"]: w for w in WEATHER["weathers"]}
+STONES = WEATHER["stones"]
+WEATHER_ASK = WEATHER["meta"]["ask"]
 
 SESSIONS = {}
 MAX_SESSIONS = 60  # kiosk = one seeker at a time; keep a small tail for stragglers
@@ -30,20 +37,14 @@ NAME_ASKS = [
     "Mm. The Tree said someone was coming. Sit. Tell me the name you go by in this city.",
 ]
 
-ASK_OPENERS = [
-    "Now — how is your burn treating you, truly? Not the polite answer.",
-    "Slow down. Good. What is happening out there in your burn?",
-    "What are you carrying tonight?",
-    "How goes your burn — what has it given, and what has it taken?",
+STEM_ASKS = [
+    "Mm. Then finish this, out loud, and only this:",
+    "The Turtle believes you. Now finish this sentence — nothing more:",
+    "Good. One sentence is enough, if it is true. Finish this:",
 ]
 
-FOLLOWUPS = [
-    "Mm. And beneath that — what are you most hungry for out here?",
-    "The Turtle hears more than words. What have you been avoiding, out there in the dust?",
-    "Slowly now. If tonight went exactly right, what would happen?",
-    "And what have you been circling — the thing you keep almost doing?",
-    "Who or what do you think about when the music stops?",
-]
+STONES_ASK = ("Words are hard tonight. No matter — the shell reads weight. "
+              "Touch what you are carrying. Leave the rest in the dust.")
 
 DRAWN_LINES = [
     "Enough. The Turtle has heard you. Watch — the Tree is choosing.",
@@ -184,12 +185,42 @@ def _company(shares):
 
 def _context(sess):
     parts = [_time_context()]
+    w = WEATHERS.get(sess.get("weather"))
+    if w:
+        parts.append(f'The seeker named their inner weather "{w["name"]}". '
+                     f'REGISTER: {w["register"]} QUEST TILT: {w["quest_tilt"]}')
+    if sess.get("stones"):
+        names = [s["name"] for s in STONES if s["id"] in sess["stones"]]
+        parts.append("When words were hard, they touched what they carry: "
+                     + ", ".join(names) + ".")
+    if sess.get("ground", 0) >= 0.5:
+        parts.append("IMPORTANT — the seeker is far from shore tonight (altered, exhausted, or "
+                     "unmoored). Keep the reading SHORT (60-90 words), warm, concrete. The quest "
+                     "stays small-radius, physical, gentle. Grounding is the gift; no mysteries.")
     c = _company(sess["shares"])
     if c:
         parts.append(c)
     if sess.get("prior_line"):
         parts.append(sess["prior_line"])
     return " ".join(parts)
+
+
+def _ground_signals(sess, text, meta):
+    """Passive groundedness inference: weather + latency + speech shape. 0..1-ish."""
+    g = WEATHERS.get(sess.get("weather"), {}).get("grounding", 0.0)
+    meta = meta or {}
+    try:
+        if float(meta.get("ms", 0)) > 25000:
+            g += 0.2
+        secs = float(meta.get("audio_secs", 0))
+        words = len((text or "").split())
+        if secs > 1 and meta.get("input") == "voice":
+            rate = words / secs
+            if rate < 1.2 or rate > 4.5:
+                g += 0.3
+    except (TypeError, ValueError):
+        pass
+    sess["ground"] = max(sess.get("ground", 0.0), g)
 
 
 def start(mode="seek"):
@@ -200,7 +231,7 @@ def start(mode="seek"):
     SESSIONS[sid] = {
         "id": sid, "stage": "tale_naming" if tale else "naming",
         "name": None, "prior_line": None,
-        "shares": [], "followups": 0,
+        "shares": [], "weather": None, "stones": [], "ground": 0.0, "stem_tried": False,
         "picks": None, "located": None, "reading": None, "adventure": None,
         "quest": None, "echoes": None, "created": time.time(),
     }
@@ -221,16 +252,20 @@ def _followup_llm(shares, llm):
 
 def _echoes_llm(sess, llm):
     picks = sess["picks"]
-    lines = "\n".join(f'{r}: {picks[r]["name"]} — keywords: {", ".join(picks[r].get("keywords", []))}'
-                      for r in ("roots", "trunk", "branches"))
+    cl = card_lore()
+    lines = "\n".join(
+        f'{r}: {picks[r]["name"]} — essence: {cl.get(picks[r]["id"], {}).get("essence", "")}; '
+        f'bridge: {cl.get(picks[r]["id"], {}).get("bridge", "")}'
+        for r in ("roots", "trunk", "branches"))
     prompt = (
-        "The seeker shared, in their own words:\n"
+        "SEEKER'S WORDS (the only source you may quote from):\n"
         + "\n".join(f"- {s}" for s in sess["shares"])
-        + f"\n\nThree cards rose:\n{lines}\n\n"
+        + f"\n\nCARD NOTES (for meaning only — NEVER quote these):\n{lines}\n\n"
         "For each card, write ONE line (under 22 words) the Turtle speaks as that card turns over. "
-        "Each line quotes exactly ONE phrase of 3-8 of the seeker's EXACT words inside 'single quotes' "
-        "— one quote per line, no more — then ties those words to the card in plain speech. "
-        "No card mechanics, no fortune-telling.\n"
+        "Each line quotes exactly ONE phrase of 3-8 words copied verbatim from SEEKER'S WORDS inside "
+        "'single quotes' — never words from CARD NOTES — then ties that phrase to the card in plain "
+        "speech. No card mechanics, no fortune-telling.\n"
+        "Example shape: You said 'yes to everyone' — and the tide kept none of it for you.\n"
         'Return JSON only: {"roots": "...", "trunk": "...", "branches": "..."}'
     )
     resp = llm.generate(prompt, system=SYSTEM, as_json=True, timeout=60)
@@ -241,28 +276,45 @@ def _echoes_llm(sess, llm):
     except Exception:
         return None
     if isinstance(out, dict) and all(out.get(r) for r in ("roots", "trunk", "branches")):
-        return {r: _clean_line(out[r], 30) or "" for r in ("roots", "trunk", "branches")}
+        # structural guarantee: every echo must carry a quoted seeker phrase, else that
+        # card's echo falls back to the deterministic quote-builder
+        fb = _echoes_fallback(sess)
+        result = {}
+        for r in ("roots", "trunk", "branches"):
+            line = _clean_line(out[r], 30)
+            result[r] = line if (line and line.count("'") >= 2) else fb[r]
+        return result
     return None
 
 
 def _echoes_fallback(sess):
-    sents = [s.strip() for sh in sess["shares"] for s in re.split(r"[.!?]+", sh) if s.strip()]
+    sents = [s.strip() for sh in sess["shares"] for s in re.split(r"[.!?,]+", sh) if s.strip()]
+    words = " ".join(sess["shares"]).split()
     out = {}
-    for realm in ("roots", "trunk", "branches"):
+    used = set()
+    for i, realm in enumerate(("roots", "trunk", "branches")):
         c = sess["picks"][realm]
         kw = _tokens(" ".join(c.get("keywords", [])) + " " + c.get("reading", ""))
-        best = max(sents, key=lambda s: len(_tokens(s) & kw)) if sents else ""
+        ranked = sorted(sents, key=lambda s: len(_tokens(s) & kw), reverse=True)
+        best = next((s for s in ranked if s not in used), ranked[0] if ranked else "")
+        used.add(best)
         frag = " ".join(best.split()[:9])
+        if not frag and len(words) > 6:
+            # carve three different windows from one long share
+            third = max(3, len(words) // 3)
+            frag = " ".join(words[i * third:i * third + 8])
         out[realm] = (f"You said '{frag}…' — the Tree heard it. {c['name']} rose."
                       if frag else f"The Tree sent up {c['name']}.")
     return out
 
 
 def _draw(sess, llm):
-    """Pull the three, locate them, weave the reading + quest, write the echo lines."""
+    """THE PLAYA PULLS: pure chance, one card per realm. The AI's craft is the binding,
+    not the choosing — meaning is made, not matched."""
     _, _, by_realm = load_deck()
     told = " ".join(sess["shares"])
-    picks, sel_mode = select_cards(told, by_realm, llm)
+    picks = {realm: random.choice(by_realm[realm]) for realm in ("roots", "trunk", "branches")}
+    sel_mode = "playa"
     located = locate_spread(picks)
     sess.update(picks=picks, located=located)
     out, weave_mode = weave(told, picks, llm, located, context=_context(sess))
@@ -340,19 +392,21 @@ def _name_step(sess, text, tale):
         return {"session": sess["id"], "stage": "tale_listening",
                 "say": f"{name}. {recall}{random.choice(TALE_INVITES)}",
                 "expects": "tale"}
-    sess["stage"] = "listening"
+    sess["stage"] = "weather"
+    tiles = [{"id": w["id"], "name": w["name"], "tile": f"/tiles/{w['id']}.jpg"}
+             for w in WEATHER["weathers"]]
     if prior_q:
         sess["prior_line"] = (
             f"This seeker has quested with the Turtle before. Their last quest: “{prior_q['title']}”."
             + (f' The tale they told of it: "{prior_t["tale"][:300]}"' if prior_t else "")
             + " Build tonight on top of that — acknowledge it once, never repeat it.")
-        remembered = (f"{name}. The Turtle remembers you — you carried “{prior_q['title']}.” "
-                      + ("Your tale is in the book. " if prior_t else "The book still waits for that tale. ")
-                      + random.choice(ASK_OPENERS))
-        return {"session": sess["id"], "stage": "listening", "say": remembered, "expects": "share"}
-    return {"session": sess["id"], "stage": "listening",
-            "say": f"{name}. Good — a name the dust can hold. {random.choice(ASK_OPENERS)}",
-            "expects": "share"}
+        say = (f"{name}. The Turtle remembers you — you carried “{prior_q['title']}.” "
+               + ("Your tale is in the book. " if prior_t else "The book still waits for that tale. ")
+               + WEATHER_ASK)
+    else:
+        say = f"{name}. Good — a name the dust can hold. {WEATHER_ASK}"
+    return {"session": sess["id"], "stage": "weather", "say": say,
+            "weathers": tiles, "expects": "weather"}
 
 
 def _tale_step(sess, text, llm):
@@ -375,12 +429,35 @@ def _tale_step(sess, text, llm):
             "gift": True, "expects": "done"}
 
 
-def hear(sid, text, llm=None):
-    """The seeker speaks. Routes on the session's stage; returns the next event."""
+def hear(sid, body, llm=None):
+    """The seeker speaks or taps. Routes on the session's stage; returns the next event."""
     sess = SESSIONS.get(sid)
     if not sess:
         return {"error": "no such séance — touch the shell to begin again", "stage": "gone"}
-    text = (text or "").strip()
+    body = body if isinstance(body, dict) else {"text": body}
+    text = (body.get("text") or "").strip()
+    meta = body.get("meta") or {}
+    if sess["stage"] == "weather":
+        w = WEATHERS.get((body.get("weather") or "").strip())
+        if not w:
+            return {"session": sid, "stage": "weather",
+                    "say": "Touch one of the six skies, traveler.",
+                    "weathers": [{"id": x["id"], "name": x["name"], "tile": f"/tiles/{x['id']}.jpg"}
+                                 for x in WEATHER["weathers"]],
+                    "expects": "weather"}
+        sess["weather"] = w["id"]
+        sess["ground"] = max(sess["ground"], w.get("grounding", 0.0))
+        sess["stage"] = "stem"
+        return {"session": sid, "stage": "stem",
+                "say": f'{w["name"]}. {random.choice(STEM_ASKS)}',
+                "stem": w["stem"], "expects": "stem"}
+    if sess["stage"] == "stones":
+        valid = {x["id"] for x in STONES}
+        sess["stones"] = [s for s in (body.get("stones") or []) if s in valid]
+        names = [x["name"] for x in STONES if x["id"] in sess["stones"]]
+        sess["shares"].append("I am carrying: "
+                              + (", ".join(names) if names else "nothing I can name") + ".")
+        return _draw(sess, llm)
     if not text:
         return {"session": sid, "stage": sess["stage"],
                 "say": "The Turtle heard only wind. Try again, slower.",
@@ -395,17 +472,17 @@ def hear(sid, text, llm=None):
         return {"session": sid, "stage": "tale_told", "gift": True,
                 "say": "The tale is kept. Go get your gift, and let the next traveler in.",
                 "expects": "done"}
-    if sess["stage"] in ("listening", "deepening"):
-        sess["shares"].append(text)
-        total = sum(_words(s) for s in sess["shares"])
-        # The ritual allows at most two questions; rich shares go straight to the pull.
-        if sess["followups"] >= 2 or total >= 35 or (sess["followups"] == 1 and total >= 12):
-            return _draw(sess, llm)
-        sess["followups"] += 1
-        sess["stage"] = "deepening"
-        q = (_followup_llm(sess["shares"], llm) if llm and llm.available() else None) \
-            or random.choice(FOLLOWUPS)
-        return {"session": sid, "stage": "deepening", "say": q, "expects": "share"}
+    if sess["stage"] == "stem":
+        _ground_signals(sess, text, meta)
+        stem = WEATHERS.get(sess.get("weather"), {}).get("stem", "")
+        sess["shares"].append(f"{stem} {text}" if stem else text)
+        # thin answer → the stones rescue: recognition when words won't come
+        if len(text.split()) < 4 and not sess["stem_tried"]:
+            sess["stem_tried"] = True
+            sess["stage"] = "stones"
+            return {"session": sid, "stage": "stones", "say": STONES_ASK,
+                    "stones": STONES, "expects": "stones"}
+        return _draw(sess, llm)
     if sess["stage"] == "proposed":
         sess["shares"].append(text)
         ref = (_refine_llm(sess, llm) if llm and llm.available() else None)

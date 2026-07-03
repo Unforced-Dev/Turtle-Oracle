@@ -103,6 +103,11 @@ class Handler(BaseHTTPRequestHandler):
             return self._serve_file("app/web/index.html", "text/html; charset=utf-8")
         if path in ("/kiosk", "/kiosk.html"):
             return self._serve_file("app/web/kiosk.html", "text/html; charset=utf-8")
+        if path.startswith("/tiles/"):
+            name = os.path.basename(path)
+            if re.match(r"^[a-z_]+\.jpg$", name):
+                return self._serve_file(f"cards/web/tiles/{name}", "image/jpeg")
+            return self._send(404, {"error": "no such tile"})
         if path == "/avatar.jpg":
             rel = "cards/web/med/avatar.jpg" if os.path.exists(os.path.join(REPO, "cards/web/med/avatar.jpg")) \
                 else "cards/back.png"
@@ -186,7 +191,7 @@ class Handler(BaseHTTPRequestHandler):
                     return self._send(200, session.start(mode))
                 sid = (body.get("session") or "").strip()
                 if action == "say":
-                    return self._send(200, session.hear(sid, body.get("text"), LLM_SINGLETON))
+                    return self._send(200, session.hear(sid, body, LLM_SINGLETON))
                 if action == "accept":
                     event = session.accept(sid, LLM_SINGLETON)
                     sess = session.snapshot(sid)

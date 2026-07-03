@@ -69,6 +69,21 @@
     color:var(--parch);max-width:720px;margin:6px 0 2px}
   .oracle-says .w{opacity:0;animation:wordin .5s ease forwards}
   @keyframes wordin{to{opacity:1}}
+  .wgrid{display:none;grid-template-columns:repeat(3,1fr);gap:12px;width:100%;max-width:640px;margin-top:12px}
+  .wgrid.on{display:grid}
+  .wtile{background:linear-gradient(180deg,var(--ink2),#0e0a05);border:1px solid var(--edge);
+    border-radius:12px;padding:9px;text-align:center;cursor:pointer;transition:transform .2s,border-color .2s}
+  .wtile:active{transform:scale(.96)} .wtile:hover{border-color:var(--gold-dim)}
+  .wtile img{width:100%;aspect-ratio:1;object-fit:cover;border-radius:8px;background:#0b0805;display:block}
+  .wtile .wname{color:var(--gold);font-size:.92rem;margin-top:7px;line-height:1.2}
+  .stemline{display:none;color:var(--gold2);font-style:italic;font-size:clamp(1.3rem,3vw,1.7rem);
+    text-align:center;margin-top:10px;letter-spacing:.02em}
+  .stemline.on{display:block;animation:shimmer 3.2s ease-in-out infinite}
+  #stonesrow{display:none;flex-wrap:wrap;gap:12px;justify-content:center;max-width:640px;margin-top:14px}
+  #stonesrow.on{display:flex}
+  .stonechip{font:inherit;padding:14px 20px;border-radius:999px;border:1px solid var(--gold-dim);
+    background:transparent;color:var(--parch);font-weight:400;min-height:0}
+  .stonechip.sel{background:linear-gradient(180deg,#caa64f,#96772f);color:#1a1408;font-weight:700}
   .panel{width:100%;max-width:680px;background:linear-gradient(180deg,var(--ink2),#0e0a05);
     border:1px solid var(--edge);border-radius:16px;padding:16px;margin-top:10px;
     box-shadow:0 18px 50px rgba(0,0,0,.55);opacity:0;transform:translateY(16px);
@@ -200,6 +215,9 @@
   <div class="medallion"><img src="/avatar.jpg" alt=""></div>
   <div class="col">
     <div class="oracle-says" id="says"></div>
+    <div class="wgrid" id="wgrid"></div>
+    <div class="stemline" id="stemline"></div>
+    <div id="stonesrow"></div>
     <div class="panel" id="askpanel">
       <textarea id="q" placeholder="speak, or write it here…"></textarea>
       <div class="row">
@@ -312,9 +330,11 @@ async function wake(mode){
 
 function resetSeance(){
   $('says').innerHTML=""; $('askpanel').classList.remove("on"); $('q').value="";
+  $('q').placeholder="speak, or write it here…";
   $('spread').innerHTML=""; $('reading').innerHTML=""; $('adventure').innerHTML="";
   $('h-read').classList.remove("on"); $('h-adv').classList.remove("on");
   $('decide').style.display="none"; $('giftrow').classList.remove("on"); CARD_IDS="";
+  hideAux(); T_ASK=Date.now();
 }
 
 function taleTold(e){
@@ -335,6 +355,77 @@ async function loadLore(){
 
 const PONDER=["The Turtle chews on your words. Slowly…","Mm. The shell hums while it thinks…",
   "Slowly, slowly… the Tree is listening…","The Turtle closes its eyes to see you better…"];
+let T_ASK=Date.now(), AUDIO_SECS=0, USED_MIC=false;
+function metaNow(){
+  const m={ms:Date.now()-T_ASK, input:USED_MIC?"voice":"text", audio_secs:AUDIO_SECS};
+  AUDIO_SECS=0; USED_MIC=false; return m;
+}
+function hideAux(){ $('wgrid').classList.remove("on"); $('stemline').classList.remove("on");
+  $('stonesrow').classList.remove("on"); }
+
+/* one router for every séance event */
+async function handle(e){
+  T_ASK=Date.now();
+  if(e.stage==="weather") return renderWeather(e);
+  if(e.stage==="stem") return renderStem(e);
+  if(e.stage==="stones") return renderStones(e);
+  if(e.stage==="proposed"){ $('askpanel').classList.remove("on"); hideAux(); return thePull(e); }
+  if(e.stage==="tale_told") return taleTold(e);
+  if(e.error) return toast(e.error);
+  incant($('says'),e.say,110); speak(e.say);
+}
+
+function renderWeather(e){
+  $('askpanel').classList.remove("on"); hideAux();
+  incant($('says'),e.say,110); speak(e.say);
+  $('wgrid').innerHTML=(e.weathers||[]).map(w=>`
+    <div class="wtile" data-id="${w.id}">
+      <img src="${w.tile}" alt="" onerror="this.style.display='none'">
+      <div class="wname">${w.name}</div>
+    </div>`).join("");
+  $('wgrid').classList.add("on");
+  let tapped=false;
+  $('wgrid').querySelectorAll('.wtile').forEach(t=>t.addEventListener('click',async()=>{
+    if(tapped) return; tapped=true;
+    document.body.classList.add("speaking");
+    try{ const ev=await post("say",{session:SID,weather:t.dataset.id,meta:metaNow()}); await handle(ev); }
+    catch(err){ tapped=false; toast("The Turtle lost the thread — touch it again."); }
+    document.body.classList.remove("speaking");
+  }));
+}
+
+function renderStem(e){
+  hideAux();
+  incant($('says'),e.say,110);
+  $('stemline').textContent="“"+e.stem+"”";
+  $('stemline').classList.add("on");
+  $('q').placeholder=e.stem+" …";
+  speak(e.say+" "+e.stem);
+  $('askpanel').classList.add("on");
+}
+
+function renderStones(e){
+  $('askpanel').classList.remove("on"); hideAux();
+  incant($('says'),e.say,110); speak(e.say);
+  const sel=new Set();
+  $('stonesrow').innerHTML=(e.stones||[]).map(s=>
+    `<button class="stonechip" data-id="${s.id}">${s.name}</button>`).join("")
+    +`<button id="stonesdone">⬢&nbsp; That is all</button>`;
+  $('stonesrow').classList.add("on");
+  $('stonesrow').querySelectorAll('.stonechip').forEach(c=>c.addEventListener('click',()=>{
+    const id=c.dataset.id;
+    if(sel.has(id)){ sel.delete(id); c.classList.remove("sel"); }
+    else { sel.add(id); c.classList.add("sel"); }
+  }));
+  $('stonesdone').addEventListener('click',async()=>{
+    $('stonesdone').disabled=true;
+    document.body.classList.add("speaking");
+    try{ const ev=await post("say",{session:SID,stones:[...sel],meta:metaNow()}); await handle(ev); }
+    catch(err){ $('stonesdone').disabled=false; toast("Once more, slowly."); }
+    document.body.classList.remove("speaking");
+  });
+}
+
 async function offer(){
   const text=$('q').value.trim(); if(!text){ $('q').focus(); return; }
   $('offer').disabled=true; $('mic').disabled=true;
@@ -342,16 +433,10 @@ async function offer(){
   incant($('says'),PONDER[Math.floor(Math.random()*PONDER.length)],130);
   document.body.classList.add("speaking");
   try{
-    const e=await post("say",{session:SID,text});
+    const e=await post("say",{session:SID,text,meta:metaNow()});
     document.body.classList.remove("speaking");
-    $('q').value="";
-    if(e.stage==="proposed"){
-      $('askpanel').classList.remove("on");
-      await thePull(e);
-    } else if(e.stage==="tale_told"){
-      taleTold(e);
-    } else if(e.error){ toast(e.error); }
-    else { incant($('says'),e.say,110); speak(e.say); }
+    $('q').value=""; $('q').placeholder="speak, or write it here…";
+    await handle(e);
   }catch(err){ toast("The Turtle lost the thread — try once more."); }
   document.body.classList.remove("speaking");
   $('offer').disabled=false; $('mic').disabled=false;
@@ -517,6 +602,7 @@ async function micToggle(){
     REC.onstop=async()=>{
       stream.getTracks().forEach(t=>t.stop());
       LISTENING=false; $('mic').classList.remove("listening");
+      AUDIO_SECS=(Date.now()-(micToggle._t0||Date.now()))/1000; USED_MIC=true;
       const blob=new Blob(CHUNKS,{type:(REC.mimeType||"audio/webm")});
       if(blob.size<1500){ $('mic').textContent="🎙"; return; }
       $('mic').textContent="…";
@@ -529,7 +615,7 @@ async function micToggle(){
       }catch(e){ toast("The Turtle's ears are unreachable — write it instead."); }
       $('mic').textContent="🎙";
     };
-    REC.start(); LISTENING=true;
+    REC.start(); LISTENING=true; micToggle._t0=Date.now();
     $('mic').classList.add("listening"); $('mic').textContent="■";
     clearTimeout(micToggle._guard);
     micToggle._guard=setTimeout(()=>{ if(LISTENING) try{REC.stop();}catch(e){} },60000);
