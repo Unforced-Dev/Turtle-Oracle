@@ -45,15 +45,29 @@ PREAMBLE = (
     "axis motif somewhere in the composition — the spine of the deck. "
 )
 
+# The undertone is a SECOND spot-colour printed alongside the black and gold — say it that
+# way. Naming a colour alone gets ignored: "deep indigo undertone" produced cards
+# indistinguishable from the kraft default, while branches' sky-blue happened to survive
+# because the subject was already sky. Each realm now states the ink, where it goes, and
+# how much of the card it should touch.
 REALM_TONE = {
-    "shell": ("Gold-forward, the most ornamented realm; a radiant sunburst / axis motif. "
-              "Small carved turtle-shell glyph in a top corner."),
-    "roots": ("Deep indigo undertone; downward pull; dense subterranean cross-hatching. "
+    "shell": ("SECOND INK — metallic gold, used generously: a radiant sunburst behind the "
+              "subject, gilded ornament, gold rules and nodes down the axis. The most "
+              "ornamented realm of the four. Small carved turtle-shell glyph in a top corner."),
+    "roots": ("SECOND INK — deep indigo blue, used heavily and unmistakably: the entire "
+              "lower half of the card below the ground line is printed in dark indigo "
+              "rather than black, indigo soaking the subterranean cross-hatching, indigo "
+              "shadow pooling under the subject. The card must read as blue-black, not "
+              "brown. Downward pull; dense underground detail. Gold only as a small accent. "
               "Small carved root-knot glyph in a top corner."),
-    "trunk": ("Rust and ochre undertone; a grounded horizon line; balanced and upright. "
+    "trunk": ("SECOND INK — burnt rust-orange ochre, clearly visible: rust in the sky wash, "
+              "rust in the horizon band, rust warming the midtones. A strong grounded "
+              "horizon line across the full width. Balanced, upright, weighty. "
               "Small carved trunk-ring glyph in a top corner."),
-    "branches": ("Pale sky-blue undertone; upward reach; airy negative space and small "
-                 "carved stars. Small branch-star glyph in a top corner."),
+    "branches": ("SECOND INK — pale sky blue, clearly visible: blue filling the open sky, "
+                 "blue in the leaves and small carved stars. Upward reach, airy negative "
+                 "space, the lightest of the four. Small carved branch-star glyph in a "
+                 "top corner."),
 }
 
 # No lettering in the generated art: image models misspell, and 48 cards that each
