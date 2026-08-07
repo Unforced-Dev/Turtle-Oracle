@@ -43,6 +43,14 @@ PREAMBLE = (
     "Mythic and heraldic. Centered, symmetrical, iconic composition with calm breathing "
     "space. Thin double gold border just inside the card edge. A subtle vertical World-Tree "
     "axis motif somewhere in the composition — the spine of the deck. "
+    # Every card is the same place. Without this the model wanders somewhere prettier the
+    # moment a subject turns abstract — the first draft of The Gift came back with pine
+    # forests and green valleys, which is a lovely card for a different deck.
+    "SETTING, ALWAYS AND WITHOUT EXCEPTION: the Black Rock Desert. A dead-flat pale alkali "
+    "playa stretching to the horizon, cracked dust, distant low barren desert mountains, "
+    "enormous open sky. NO trees, NO forest, NO pines, NO grass, NO green vegetation, NO "
+    "rivers or lakes, NO rolling hills — the only tree that may ever appear is the World "
+    "Tree itself. If the subject implies a landscape, that landscape is still this desert. "
 )
 
 # The undertone is a SECOND spot-colour printed alongside the black and gold — say it that
