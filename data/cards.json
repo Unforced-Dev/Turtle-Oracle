@@ -37,7 +37,7 @@
         "confidence": "high"
       },
       "live_hook": "camp:terrible-turtle",
-      "image_prompt": "A vast ancient turtle beneath the desert floor, a great tree growing from cracks in its shell — roots reaching into the dark below, branches into a field of stars above.",
+      "image_prompt": "An immense ancient turtle seen from the side, so vast that its shell IS the desert floor — mesas and a lone cactus stand on its back, and the World Tree grows straight up from the crown of the shell. The turtle's head is lowered and its jaws are closed, with quiet finality, on one single taut root. Everything else about the creature is patient and still; only the bite is decisive. Deep carved strata beneath it.",
       "image_file": "cards/art/shell-01.png"
     },
     {
@@ -349,7 +349,7 @@
         "confidence": "high"
       },
       "live_hook": "art:heart-remains",
-      "image_prompt": "A human-scale glowing ribcage sculpture with a single luminous heart suspended in its center, a person sitting inside it at dusk.",
+      "image_prompt": "A colossal ribcage standing on the desert floor and built like a small chapel — the ribs are its walls, and a single lamp shaped like a heart hangs at its center on a long chain. One empty chair sits directly beneath the heart. In the near rib a low door stands open, unlatched, with a path of stones leading out of it into the dark. The room is tended, not abandoned. Dense subterranean cross-hatching all around.",
       "image_file": "cards/art/roots-02.png"
     },
     {
@@ -685,7 +685,7 @@
         "confidence": "high"
       },
       "live_hook": "ritual:howl",
-      "image_prompt": "A crowd of silhouettes on the open playa throwing their heads back to howl as the sun touches the mountains, dust glowing gold.",
+      "image_prompt": "A line of figures in silhouette along a flat horizon, heads thrown back, mouths open. Their sound is carved as thick radiating rays that fill the entire upper sky like a sunburst — the noise and the sunrise are the same thing. At the exact center of the line one figure stands with head level and mouth closed, hands open at their sides, simply present. A grounded horizon line runs the full width.",
       "image_file": "cards/art/trunk-04.png"
     },
     {
@@ -997,7 +997,7 @@
         "confidence": "high"
       },
       "live_hook": "ritual:greeters",
-      "image_prompt": "A greeter flinging arms wide to embrace a dusty first-timer stepping out of a car at the gate, pure unconditional welcome.",
+      "image_prompt": "Two dust-covered figures meeting in a full embrace, their arms and bent backs forming a clean archway between them. Through that arch, a road runs to the horizon, and a line of small travellers is already walking through the opening the two of them make. The embrace is the gate. Airy negative space above, a scatter of small carved stars.",
       "image_file": "cards/art/branches-05.png"
     },
     {

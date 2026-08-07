@@ -9,3 +9,6 @@ __pycache__/
 .DS_Store
 app/models/
 app/state/
+
+# Local style tests / generation scratch
+.scratch/
