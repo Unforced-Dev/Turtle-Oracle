@@ -40,6 +40,19 @@ def _printer_host(kiosk):
     return os.environ.get(f"ESCPOS_HOST_{kiosk}") if kiosk else None
 
 
+# The fallback weave is good enough that a dead model reads as a working oracle — the
+# séance completes, the reading is real, nobody notices. On playa that could go a whole
+# night. Count which tier actually served each reading so a camp turtle can check.
+TIERS = {"llm": 0, "fallback": 0}
+TIERS_LOCK = threading.Lock()
+
+
+def note_tier(mode):
+    with TIERS_LOCK:
+        if mode in TIERS:
+            TIERS[mode] += 1
+
+
 def build_reading(question):
     _, _, by_realm = load_deck()
     picks, sel_mode = select_cards(question, by_realm, LLM_SINGLETON)
@@ -148,6 +161,23 @@ class Handler(BaseHTTPRequestHandler):
             return self._send(200, all_cards_payload())
         if path == "/api/lore":
             return self._send(200, lore.counts())
+        if path == "/api/health":
+            with TIERS_LOCK:
+                tiers = dict(TIERS)
+            total = tiers["llm"] + tiers["fallback"]
+            return self._send(200, {
+                "llm_reachable": LLM_SINGLETON.available(),
+                "model": LLM_SINGLETON.model,
+                "ears": ears.available(),
+                "readings": tiers,
+                # the number to look at: if this is climbing, the Turtle has gone dumb
+                # and is hiding it behind a very convincing template
+                "fallback_pct": round(100.0 * tiers["fallback"] / total, 1) if total else None,
+                "live_seances": len(session.SESSIONS),
+                "printer": ("network" if os.environ.get("ESCPOS_HOST") or
+                            os.environ.get("ESCPOS_HOST_1")
+                            else "usb" if os.environ.get("ESCPOS_VENDOR_ID") else "preview-only"),
+            })
         if path.startswith("/thumb/") or path.startswith("/med/"):
             sub = "thumb" if path.startswith("/thumb/") else "med"
             name = os.path.basename(path)
@@ -230,7 +260,9 @@ class Handler(BaseHTTPRequestHandler):
                     return self._send(200, session.start(mode))
                 sid = (body.get("session") or "").strip()
                 if action == "say":
-                    return self._send(200, session.hear(sid, body, LLM_SINGLETON))
+                    event = session.hear(sid, body, LLM_SINGLETON)
+                    note_tier((event.get("modes") or {}).get("weave"))
+                    return self._send(200, event)
                 if action == "accept":
                     # The sealed quest stays on the session; /api/print reads it back by
                     # session id. Nothing is staged in shared state.

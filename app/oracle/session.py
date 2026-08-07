@@ -31,11 +31,18 @@ WEATHER_ASK = WEATHER["meta"]["ask"]
 SESSIONS = {}
 MAX_SESSIONS = 200  # two stations plus phones on the camp network: many séances at once
 
-# LLM patience. Every one of these calls has a template fallback, so a timeout costs a
-# little magic, not the séance — whereas a seeker staring at a silent turtle for two
-# minutes costs the whole thing. Tune up only if the Spark benchmarks slower than hoped.
-T_SHORT = float(os.environ.get("ORACLE_T_SHORT", "25"))   # one-liners: follow-up, echoes
-T_LONG = float(os.environ.get("ORACLE_T_LONG", "40"))     # structured: refine, seal
+# LLM patience, set from measurement on the DGX Spark (qwen3:30b-a3b, 2026-08-07).
+#
+#   1 seeker,  warm:   full séance 10.5s   (weave+echoes 5.7, refine 2.1, seal 2.7)
+#   6 seekers, warm:   slowest single call 24.4s, whole séance ~57s wall
+#
+# Ollama serialises on one GPU, so per-call latency scales with how many seekers are
+# mid-séance. 25s looked generous against the solo number and would have tripped at a
+# busy moment — the worst possible time, because that is when the most people are
+# watching. These are guards against a genuinely hung model, not pacing controls: the
+# fallback is a VISIBLE drop in quality, so let the model win whenever it is merely slow.
+T_SHORT = float(os.environ.get("ORACLE_T_SHORT", "45"))   # one-liners: follow-up, echoes
+T_LONG = float(os.environ.get("ORACLE_T_LONG", "60"))     # structured: refine, seal
 
 NAME_ASKS = [
     "Ah. A traveler. Come closer — the shell is warm. First things first: what do they call you out here?",
