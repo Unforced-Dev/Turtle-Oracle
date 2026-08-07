@@ -6,7 +6,8 @@ Bleed is added by extending edge pixels OUTWARD, so no card's gold border is eve
 from PIL import Image, ImageDraw, ImageFont
 import json, os
 
-REPO = "/Users/parachute/Code/oracle-ai"
+import os
+REPO = os.path.dirname(os.path.dirname(os.path.abspath(__file__)))
 ART = f"{REPO}/cards/art"
 OUT = f"{REPO}/print"
 os.makedirs(f"{OUT}/fronts", exist_ok=True)

@@ -1,7 +1,8 @@
 from PIL import Image, ImageDraw, ImageFont
 import json, os
 
-REPO = "/Users/parachute/Code/oracle-ai"
+import os
+REPO = os.path.dirname(os.path.dirname(os.path.abspath(__file__)))
 d = json.load(open(f"{REPO}/data/cards.json"))
 order = {"shell": 0, "roots": 1, "trunk": 2, "branches": 3}
 cards = sorted(d["cards"], key=lambda c: (order[c["realm"]], c["number"]))

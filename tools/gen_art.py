@@ -59,9 +59,16 @@ PREAMBLE = (
 # because the subject was already sky. Each realm now states the ink, where it goes, and
 # how much of the card it should touch.
 REALM_TONE = {
-    "shell": ("SECOND INK — metallic gold, used generously: a radiant sunburst behind the "
-              "subject, gilded ornament, gold rules and nodes down the axis. The most "
-              "ornamented realm of the four. Small carved turtle-shell glyph in a top corner."),
+    # The Shell twelve are the axis — the rare card the séance now surfaces about one time
+    # in ten. They should be recognisable across a dusty tent before anyone reads the name,
+    # so they get a heavier frame and markedly more gold than the three Tree realms.
+    "shell": ("SECOND INK — metallic gold, used lavishly, far more than any other realm: a "
+              "full radiant sunburst behind the subject, gilded ornament throughout, gold "
+              "rules and nodes running the whole axis. THIS REALM'S FRAME IS DIFFERENT AND "
+              "HEAVIER: an ornate engraved gold border several times the width of a plain "
+              "rule, with a decorative corner boss at each of the four corners, so the card "
+              "is identifiable as one of the twelve from across a room. Small carved "
+              "turtle-shell glyph in a top corner."),
     "roots": ("SECOND INK — deep indigo blue, used heavily and unmistakably: the entire "
               "lower half of the card below the ground line is printed in dark indigo "
               "rather than black, indigo soaking the subterranean cross-hatching, indigo "

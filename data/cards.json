@@ -61,7 +61,7 @@
         "confidence": "high"
       },
       "live_hook": "the-man",
-      "image_prompt": "A towering cedar-tree effigy with a double-helix of spiral staircases winding up and down its trunk, glowing against the night, ready to burn.",
+      "image_prompt": "A colossal wooden effigy of a man built as a spiral staircase tower — one half still clean carved timber, the other half already burnt to glowing embers and ash, the two halves meeting down the exact centre line. The spiral stair runs both up into the figure and down into the ground. At its base one small figure stands holding a lit torch in one hand and a watering can in the other, looking up, having not yet chosen.",
       "image_file": "cards/art/shell-02.png"
     },
     {
@@ -85,7 +85,7 @@
         "confidence": "high"
       },
       "live_hook": "temple",
-      "image_prompt": "An enormous wooden flower-shaped temple, slatted petals radiating from a tall central stamen, moonlight pouring through the gaps, one glowing bloom that lasts a single night.",
+      "image_prompt": "A domed temple open to the night sky, a single enormous night-blooming flower opened wide at its centre and lit gold from within. Figures file out through the doorway with empty hands, having left small objects on the shelves — and one figure has made a bed of blankets among the offerings and lies asleep there, settled in, while everyone else leaves. The flower is fully open and will close by morning.",
       "image_file": "cards/art/shell-03.png"
     },
     {
@@ -109,7 +109,7 @@
         "confidence": "high"
       },
       "live_hook": "art:resonant-spire",
-      "image_prompt": "A tall slender wooden spire on the open playa at night, human voices visualized as ribbons of light and sound spiraling up its length.",
+      "image_prompt": "A tall slender wooden tower of stacked rings. One figure at its base speaks quietly into an opening at the bottom, and the tower carries it upward as widening bands of gold light that leave the top and cross the whole sky. Beside the tower a second figure shouts through an enormous horn, straining, and it produces only a thick plume of dust that hangs in the air and falls back down.",
       "image_file": "cards/art/shell-04.png"
     },
     {
@@ -133,7 +133,7 @@
         "confidence": "high"
       },
       "live_hook": "art:yggdrasil",
-      "image_prompt": "A massive World Tree woven from pale bamboo, roots and canopy equally vast, tiny offerings tucked into its base.",
+      "image_prompt": "An immense tree of bound bamboo. Below the ground line its roots do not end in soil — they end in hundreds of small open human hands holding them up, ranks of them receding into the dark. In the hollow between two great roots a figure sits comfortably, leaning back, sheltered. Beside them, forgotten, a single small sapling stands in a tin can, its roots dry and exposed, never planted.",
       "image_file": "cards/art/shell-05.png"
     },
     {
@@ -157,7 +157,7 @@
         "confidence": "high"
       },
       "live_hook": "place:trash-fence",
-      "image_prompt": "A lone figure standing at an orange plastic construction fence at the far edge of a vast empty desert, dust haze on the horizon.",
+      "image_prompt": "A long low fence of weathered slats running the full width of the card, close to the viewer. A lone figure stands at the fence with both hands on it, back to us, looking through and away toward a distant glittering city on the flat horizon — the fence frames that view like a window. At one end the same fence has been built up into a solid blank wall twice a person's height, with nothing behind it but empty dust.",
       "image_file": "cards/art/shell-06.png"
     },
     {
@@ -181,7 +181,7 @@
         "confidence": "high"
       },
       "live_hook": "camp:terrible-turtle",
-      "image_prompt": "The interior of an enormous turtle shell reimagined as a warm domed sanctuary, mismatched people of every kind gathered inside, desert light through the seams.",
+      "image_prompt": "An enormous turtle shell resting on the playa and propped open like a lid, warm light spilling from inside, mismatched figures sitting close together within it — someone with tools, someone with a pot, someone with an instrument — and at the raised lip a hand reaching down to pull one more traveller up and in. Some distance behind it, a second identical shell sits clamped shut on the dust, with one small silhouette visible inside.",
       "image_file": "cards/art/shell-07.png"
     },
     {
@@ -205,7 +205,7 @@
         "confidence": "high"
       },
       "live_hook": "camp:terrible-turtle",
-      "image_prompt": "A turtle-shaped shrine of warm circuitry and candlelight, a screen or crystal at its heart glowing with slow light, a hand reaching toward it.",
+      "image_prompt": "A seated figure facing a squat carved machine shaped like a turtle, oracle slot at its front. The machine's face is a polished mirror, so the seeker is looking directly at their own reflection. A printed slip has emerged from the slot and it is completely blank. The seeker's own hand has stopped halfway to it. The scene is calm, not sinister.",
       "image_file": "cards/art/shell-08.png"
     },
     {
@@ -229,7 +229,7 @@
         "confidence": "high"
       },
       "live_hook": "artcar:el-pulpo",
-      "image_prompt": "A giant rusted scrap-metal octopus on wheels, eight tentacles shooting jets of fire into the night sky over a crowd of dancers.",
+      "image_prompt": "A towering octopus welded from scrap metal, fire pouring from two of its raised arms, a ring of small figures gathered close with their hands out to the warmth. From this angle one lowered tentacle is open along its underside, showing it is hollow — and a single figure stands back there alone, at the exact spot where that hollow is the only thing visible.",
       "image_file": "cards/art/shell-09.png"
     },
     {
@@ -253,7 +253,7 @@
         "confidence": "high"
       },
       "live_hook": "camp:barbie-death",
-      "image_prompt": "A gleefully macabre wood-chipper fed with a stream of pink dolls, confetti of plastic limbs, a laughing crowd in a surreal desert theme park.",
+      "image_prompt": "A figure feeding a flawless smiling mannequin of themselves head-first into a large hand-cranked chipper. What sprays out the far side is not plastic but dark rich earth, already sprouting. Behind them a second figure feeds an identical mannequin into an identical chipper while looking directly out at a ring of raised camera-poles and lit screens, posed, chin lifted.",
       "image_file": "cards/art/shell-10.png"
     },
     {
@@ -277,7 +277,7 @@
         "confidence": "high"
       },
       "live_hook": "art:caduceus",
-      "image_prompt": "A towering steel staff with two serpents spiraling up it, wings at the top, backlit by desert sun — an ancient healing symbol as monument.",
+      "image_prompt": "An immense steel staff standing upright on the playa, two great serpents coiled around it in opposition, their tension holding it up — remove either and it falls. At its base two figures face each other with clasped hands. On the ground exactly between their feet lies a bared blade, unhidden and plainly visible to both, not buried and not thrown away.",
       "image_file": "cards/art/shell-11.png"
     },
     {
@@ -301,7 +301,7 @@
         "confidence": "high"
       },
       "live_hook": "camp:gigsville",
-      "image_prompt": "A ramshackle, gloriously absurd camp of misfits and pranksters, hand-painted signs, a jester energy, decades of accumulated playful chaos.",
+      "image_prompt": "A tall hand-built timber archway, its joinery visibly immaculate and precisely fitted, surmounted by a comically enormous carved rubber chicken. Figures in absurd costume — one in a jester's cap, one wearing a traffic cone — work on the joints with real carpentry tools and total concentration. Off to one side a masked figure stands with hands in pockets, laughing, back turned to the work, touching nothing.",
       "image_file": "cards/art/shell-12.png"
     },
     {
@@ -325,7 +325,7 @@
         "confidence": "high"
       },
       "live_hook": "art:mebuyan-pulse",
-      "image_prompt": "A climbable cluster of glowing suspended spheres like a many-breasted constellation, a nurturing underworld deity, figures climbing among them at night.",
+      "image_prompt": "A deep vertical shaft cut below the ground line, its walls hung with dozens of glowing round spheres like a constellation. A figure climbs up a ladder formed of those spheres toward the opening far above. Lower down, in a hollowed alcove off the shaft, a second figure has made a nest among the spheres and lies curled and comfortable, not climbing.",
       "image_file": "cards/art/roots-01.png"
     },
     {
@@ -373,7 +373,7 @@
         "confidence": "high"
       },
       "live_hook": "art:titanic",
-      "image_prompt": "A colossal ship broken in half and half-buried in the desert as if sinking into the playa, bow tilted to the sky, tiny figures at its base at night.",
+      "image_prompt": "An enormous ship broken clean in half, its bow sunk deep into cracked playa and still going down. A figure grips a taut rope tied to the sinking half and is being dragged toward it, heels furrowing the dust. To one side another figure has released their rope and stands clear, watching. Further off, a third walks away from a rope still tied to something entirely intact and sitting level on solid ground.",
       "image_file": "cards/art/roots-03.png"
     },
     {
@@ -397,7 +397,7 @@
         "confidence": "high"
       },
       "live_hook": "art:behind-closed-eyes",
-      "image_prompt": "A giant reclining human figure whose skin is carved like a topographic landscape of ridges and valleys, eyes closed, at rest on the desert floor.",
+      "image_prompt": "A colossal reclining human figure lying on the playa whose body is a topographic landscape — ridges, dry valleys, contour lines. A tiny traveller with a lantern walks across the sleeping giant's chest, mapping it. Down at the giant's feet a small circle of ordinary people sit around a fire that has burned down to embers, faces turned toward the traveller, waiting.",
       "image_file": "cards/art/roots-04.png"
     },
     {
@@ -421,7 +421,7 @@
         "confidence": "high"
       },
       "live_hook": "ritual:dust-angel",
-      "image_prompt": "The imprint of a person's dust angel in pale alkali desert, a figure rising from it covered head to toe in fine white dust, grinning.",
+      "image_prompt": "A figure lying on their back in the dust sweeping their arms and legs to make a dust angel, chalk-white with alkali, laughing, eyes open. Beside them a second figure lies face-down and motionless, limbs slack, already half drifted over by blown dust.",
       "image_file": "cards/art/roots-05.png"
     },
     {
@@ -445,7 +445,7 @@
         "confidence": "med"
       },
       "live_hook": "camp:carcass-wash",
-      "image_prompt": "A gentle assembly line of many soapy hands washing a single trusting stranger passing through, warm and reverent rather than sexual, desert morning light.",
+      "image_prompt": "Two facing rows of figures holding cloths and basins form a corridor. A person walks through it with arms outstretched and eyes closed, and around their body is a carved arc of ribbon-work like a heraldic shield — clearly drawn, enclosing them, a spoken boundary made visible. Behind them a second person walks the same corridor with no arc at all, head down, arms hanging.",
       "image_file": "cards/art/roots-06.png"
     },
     {
@@ -469,7 +469,7 @@
         "confidence": "high"
       },
       "live_hook": "camp:zendo",
-      "image_prompt": "A soft, dim, cushioned tent of calm, one person gently sitting with another who is having a hard time, warm lantern light, total safety.",
+      "image_prompt": "The interior of a low domed tent, warm and dim. Two figures sit cross-legged on the ground facing each other, one holding the other's hands while they weather something hard. Just outside the doorway a third figure stands holding a folded blanket, facing in, ready — and directly behind that figure their own dark doorway stands open, unentered, with nothing coming out of it.",
       "image_file": "cards/art/roots-07.png"
     },
     {
@@ -493,7 +493,7 @@
         "confidence": "high"
       },
       "live_hook": "deep-playa",
-      "image_prompt": "A tiny solitary figure walking into an immense black emptiness, distant art lights like far galaxies, a dome of stars overhead.",
+      "image_prompt": "A lone small figure walking away from the viewer into an enormous dark emptiness, the lights of the distant city glittering far behind them. A single unbroken line of their own footprints runs back from their heels toward those lights. Much further out, a second figure walks in the same direction with no footprints behind them at all.",
       "image_file": "cards/art/roots-08.png"
     },
     {
@@ -517,7 +517,7 @@
         "confidence": "high"
       },
       "live_hook": "artcar:mayan-warrior",
-      "image_prompt": "A sleek Mayan-spaceship art car glowing with lasers and sacred geometry, rising from an implied fire, sound and light pouring off it at night.",
+      "image_prompt": "An ornate vehicle standing on the playa, its left half a charred blackened wreck and its right half newly rebuilt in bright worked metal, luminous — figures on ladders work along the seam with tools, mid-repair. Some distance away a lone figure sits on an upturned crate facing an untouched burnt hulk, hands empty in their lap, waiting.",
       "image_file": "cards/art/roots-09.png"
     },
     {
@@ -541,7 +541,7 @@
         "confidence": "high"
       },
       "live_hook": "camp:terrible-turtle",
-      "image_prompt": "Dry cracked ridges being terraced by hand to catch water, the first green shoots of native grass returning, a turtle watching patiently.",
+      "image_prompt": "A slope below the ground line cut into a staircase of curved water terraces. On one terrace a kneeling figure pours water from a can onto a small green shoot pushing through the dust. On the terrace directly beside it a shrivelled seedling has died, and a full watering can sits beside it on its side, a skin of dust across the top.",
       "image_file": "cards/art/roots-10.png"
     },
     {
@@ -565,7 +565,7 @@
         "confidence": "high"
       },
       "live_hook": "workshop:wellness",
-      "image_prompt": "Rows of people lying still under a shade sail while a facilitator plays large singing bowls, visible sound waves rippling the heat, deep calm.",
+      "image_prompt": "A figure lying beneath a canopy of suspended metal singing bowls, gold ripples spreading in rings down over their body, which is drawn as worn ground marked with old scars and seams. At the edge of the frame a second figure lies walled in by bowls stacked into a fortress around them — and just outside that wall, out of reach, a heavy pack and a shovel wait in the dust.",
       "image_file": "cards/art/roots-11.png"
     },
     {
@@ -589,7 +589,7 @@
         "confidence": "high"
       },
       "live_hook": "camp:terrible-turtle",
-      "image_prompt": "An artist's studio improbably thriving in the middle of empty white desert — easels, welding sparks, code on a screen — emptiness turned fertile.",
+      "image_prompt": "A figure kneels on bare cracked playa scoring an enormous intricate radiating design into the dust with a single stick; the pattern spreads out around them and is beautiful and clearly temporary. Behind them, on the same empty ground, a second figure has built a small tidy permanent cottage with a picket fence and a mailbox, and stands at the gate with their arms folded.",
       "image_file": "cards/art/roots-12.png"
     },
     {
@@ -613,7 +613,7 @@
         "confidence": "high"
       },
       "live_hook": "camp:terrible-turtle",
-      "image_prompt": "A calm, ancient snapping turtle mid-motion — unhurried body, jaws decisively closing — patience and bite in one image.",
+      "image_prompt": "A great turtle mid-stride across the flat playa, moving with visible slowness, its jaws closed hard and final on one single taut rope that runs off the edge of the frame. Behind it on the same ground sits a second turtle fully retracted, shell sealed shut, dust drifted high against its sides, clearly unmoved for a long time.",
       "image_file": "cards/art/trunk-01.png"
     },
     {
@@ -637,7 +637,7 @@
         "confidence": "high"
       },
       "live_hook": "sunrise_soundcamp",
-      "image_prompt": "A double-decker bus with a huge glowing red heart, silhouetted dancers on the dunes around it, the first band of sunrise cracking the horizon.",
+      "image_prompt": "A crowd standing along a low horizon facing a rising sun, faces lit gold, one figure among them with head tilted back having arrived exactly in time. To one side, propped upright against a stack of speakers, another figure sleeps standing with their chin on their chest, facing away from the sunrise entirely.",
       "image_file": "cards/art/trunk-02.png"
     },
     {
@@ -661,7 +661,7 @@
         "confidence": "high"
       },
       "live_hook": "art:pulse",
-      "image_prompt": "A large stone-like heart sculpture riven with glowing cracks, light pulsing out in a slow heartbeat rhythm against the dark.",
+      "image_prompt": "An enormous heart of riveted metal standing on the playa, cracked through from top to base, gold light pouring out of every fracture. A figure stands in that light with arms open. Another sits on the ground with their back against the heart in its shadow, hands held up to a single crack for warmth, not moving.",
       "image_file": "cards/art/trunk-03.png"
     },
     {
@@ -709,7 +709,7 @@
         "confidence": "high"
       },
       "live_hook": "place:center-camp",
-      "image_prompt": "A vast circular shade canopy full of mismatched couches, performers, and resting strangers, dusty light beams cutting through the interior.",
+      "image_prompt": "A great tented pavilion at the meeting point of wide roads that converge from every edge of the frame, small figures streaming inward along all of them. One figure walks steadily in toward the pavilion. Another walks a tight closed ring around it, and their path has worn a deep visible rut in the dust from going round so many times.",
       "image_file": "cards/art/trunk-05.png"
     },
     {
@@ -733,7 +733,7 @@
         "confidence": "high"
       },
       "live_hook": "place:playa-info",
-      "image_prompt": "A humble information kiosk and a khaki-clad ranger with a warm, unhurried demeanor helping a lost dusty traveler read a city map.",
+      "image_prompt": "A weathered wooden information kiosk. A ranger leans on the counter with one arm outstretched, pointing away toward the open playa rather than at a map. One traveller is already walking off along that line. At the counter another traveller stands holding a thick fan of written question-slips, handing over yet another.",
       "image_file": "cards/art/trunk-06.png"
     },
     {
@@ -757,7 +757,7 @@
         "confidence": "high"
       },
       "live_hook": "principle:lnt",
-      "image_prompt": "A single hand plucking a tiny scrap of glitter from the pale desert floor, the vast clean playa stretching out spotless behind it.",
+      "image_prompt": "A figure crouched alone on an immense empty stretch of clean playa, pinching one tiny scrap of debris from the dust, no one anywhere near them. In the middle distance a second figure sweeps an already spotless square of ground with great concentration, and beside that figure a full set of untouched tools and raw materials sits in a neat unopened stack.",
       "image_file": "cards/art/trunk-07.png"
     },
     {
@@ -781,7 +781,7 @@
         "confidence": "high"
       },
       "live_hook": "art:queen",
-      "image_prompt": "A monumental sculpture of a serene reclining midlife woman, unbothered and regal, resting in the open desert like a mountain.",
+      "image_prompt": "A figure sitting in a plain folding camp chair on flat open playa doing nothing in particular, ordinary and unposed — and a broad carved sunburst of gold light falls across them anyway, treating them as worth looking at. Nearby, a second figure reclines on an ornate throne with lamps on poles aimed at themselves, arranged in a posture of rest.",
       "image_file": "cards/art/trunk-08.png"
     },
     {
@@ -805,7 +805,7 @@
         "confidence": "high"
       },
       "live_hook": "weather:whiteout",
-      "image_prompt": "Two goggled figures holding hands, seated calmly in a total white dust storm that has erased the world around them into blank light.",
+      "image_prompt": "Two figures sitting together on the ground holding hands, heads bowed, enclosed on all sides by a churning wall of white dust. At one edge of the frame that wall simply ends: clear air, a clean horizon, open sun — and a third figure sits there under a pulled-down tarp with their hood up and their back to all that light.",
       "image_file": "cards/art/trunk-09.png"
     },
     {
@@ -829,7 +829,7 @@
         "confidence": "high"
       },
       "live_hook": "camp:consent",
-      "image_prompt": "A doorway with clear painted rules and a warm attendant, two people practicing a spoken yes-and-no at the threshold, dignity and play.",
+      "image_prompt": "Two figures facing each other, one holding out an open hand in offering, the other with palm raised flat in a clear refusal. Between them a single clean gold line is drawn across the ground. The offering figure has inclined their head, accepting it. Behind them a third figure strides across an identical gold line without looking down at it.",
       "image_file": "cards/art/trunk-10.png"
     },
     {
@@ -853,7 +853,7 @@
         "confidence": "high"
       },
       "live_hook": "principle:self-reliance",
-      "image_prompt": "A well-prepared lone traveler on a dusty bike, water and gear neatly stowed, self-sufficient and calm under a huge sky.",
+      "image_prompt": "A well-provisioned traveller stands on the playa with water bottles and gear neatly stowed, holding out a full canteen to a stranger. Beside them a second figure walks bent almost double beneath an enormous overloaded pack, mouth cracked and dry, passing an offered canteen held out by another hand without turning their head toward it.",
       "image_file": "cards/art/trunk-11.png"
     },
     {
@@ -877,7 +877,7 @@
         "confidence": "high"
       },
       "live_hook": "camp:tea-house",
-      "image_prompt": "A hushed cushioned tent lit by warm lanterns, steam rising from small cups, a few strangers in unhurried silent ceremony.",
+      "image_prompt": "A small open-sided tea structure. One figure sits upright at a low table with a single cup, hands still, eyes open, entirely present. Behind them in the same structure a second figure lies sprawled among a dozen scattered cups with the canvas walls pulled closed and eyes shut, the lit city visible through the one remaining gap.",
       "image_file": "cards/art/trunk-12.png"
     },
     {
@@ -901,7 +901,7 @@
         "confidence": "high"
       },
       "live_hook": "art:above-and-below",
-      "image_prompt": "A soaring treehouse structure linked by a twisting beanstalk climber, a person at the top reaching skyward, roots implied deep below.",
+      "image_prompt": "A single tree standing on the vertical axis, its canopy above the ground line and its root mass below mirroring it exactly in size and spread. To one side a slender sapling with a shallow root plate is tipping over sideways in the wind, half lifted out of the dust. To the other side a broad cut stump sits above an enormous root system, rotting, with nothing growing from it.",
       "image_file": "cards/art/branches-01.png"
     },
     {
@@ -925,7 +925,7 @@
         "confidence": "high"
       },
       "live_hook": "art:seven-sisters",
-      "image_prompt": "Seven tall illuminated star-sculptures clustered like the Pleiades, a person lying beneath them gazing up at the matching real stars.",
+      "image_prompt": "Seven bright stars in the upper sky, each joined by a fine gold thread down to a small figure standing alone far apart from the others on the flat playa, every one of them looking up. The nearest figure holds their thread. Behind that figure, on the ground, a small dark doorway stands shut with a slack unheld thread running toward it, and they have turned their back to it.",
       "image_file": "cards/art/branches-02.png"
     },
     {
@@ -973,7 +973,7 @@
         "confidence": "high"
       },
       "live_hook": "ritual:playa-name",
-      "image_prompt": "A hand-painted name tag being pinned onto a delighted, surprised person by a circle of new friends around a fire.",
+      "image_prompt": "Two figures facing each other. One presses a small carved wooden name-token into the open palms of the other, who stands relaxed and entirely recognisable as themselves. Beside them a third figure stands hung all over with dozens of name-tokens on strings, so many that their face and body are completely obscured by them.",
       "image_file": "cards/art/branches-04.png"
     },
     {
@@ -1021,7 +1021,7 @@
         "confidence": "high"
       },
       "live_hook": "camp:soulmate-outlet",
-      "image_prompt": "A deadpan mock warehouse-store aisle with a 'SOULMATES' sign, volunteer associates interviewing hopeful dusty applicants on clipboards.",
+      "image_prompt": "An open market aisle of rough shelving on the playa. One figure stands in it plainly, empty-handed, arms at their sides, easy to see — and a passing stranger has stopped mid-step and turned toward them. Further along the aisle another figure stands behind a long table covered end to end with their entire life laid out in labelled objects, and the crowd flows past without slowing.",
       "image_file": "cards/art/branches-06.png"
     },
     {
@@ -1045,7 +1045,7 @@
         "confidence": "high"
       },
       "live_hook": "camp:ashram-galactica",
-      "image_prompt": "White-gloved bellhops rolling out a red carpet in the dust for a filthy, grinning traveler, a gilded champagne bar glinting behind them.",
+      "image_prompt": "A dust-caked traveller seated in a velvet armchair on the open playa, being poured tea by an attendant in a crisp uniform with a folded towel over one arm. Beside them a second attendant serves another guest while balancing a tall stack of towels — and directly behind that attendant sits an identical empty velvet armchair with their own name lettered on a small card, never sat in.",
       "image_file": "cards/art/branches-07.png"
     },
     {
@@ -1069,7 +1069,7 @@
         "confidence": "high"
       },
       "live_hook": "sunrise_soundcamp",
-      "image_prompt": "A cathedral-scale dance stage crowned by a great sphere, towering columns of fire erupting on the beat over an ecstatic crowd at night.",
+      "image_prompt": "A temple-like structure of speakers and carved arches. The dancing crowd before it is drawn as one rising flame, arms up, bodies merging into the shape of fire, and at its heart a single figure is dissolving into light. At the far outer edge one figure dances alone with eyes shut and face turned away from the crowd, and behind them a plain door stands open onto empty dark.",
       "image_file": "cards/art/branches-08.png"
     },
     {
@@ -1093,7 +1093,7 @@
         "confidence": "high"
       },
       "live_hook": "daytime_soundcamp",
-      "image_prompt": "A packed open-air daytime dancefloor blazing under the desert sun, thousands moving together in dust and joy, no night required.",
+      "image_prompt": "A daylight crowd dancing in full hard sun and thick dust, arms raised, faces turned toward one another and open. In the middle of them one figure dances with their arms up the same as everyone else but their face turned away from every other face, and a clean circle of empty ground surrounds their feet that no one steps into.",
       "image_file": "cards/art/branches-09.png"
     },
     {
@@ -1117,7 +1117,7 @@
         "confidence": "high"
       },
       "live_hook": "camp:terrible-turtle",
-      "image_prompt": "Lines of glowing code blooming off a screen into a spray of painterly color and light, a maker delighted at the overlap of machine and art.",
+      "image_prompt": "A workbench where circuit boards, wire and salvaged components grow upward and flower into an intricate blossoming structure reaching into the sky — clearly useless, clearly beautiful — with its maker standing back looking up at it. Beside them a second figure sits entirely enclosed inside a dense lattice cage woven from their own wiring, still working, with a blank unwritten page resting untouched on their knee.",
       "image_file": "cards/art/branches-10.png"
     },
     {
@@ -1141,7 +1141,7 @@
         "confidence": "high"
       },
       "live_hook": "camp:terrible-turtle",
-      "image_prompt": "A joyfully inexplicable homemade contraption glowing in the desert night, its maker beaming beside it, one curious stranger approaching.",
+      "image_prompt": "A figure standing proudly beside an absurd inexplicable machine they have built out of salvage — and the machine's silhouette unmistakably echoes the shape of their own body and face. Beside them another figure wears an elaborate outlandish mask and stands next to nothing at all, hands empty at their sides.",
       "image_file": "cards/art/branches-11.png"
     },
     {
@@ -1165,7 +1165,7 @@
         "confidence": "high"
       },
       "live_hook": "art:headwaters",
-      "image_prompt": "A spiraling bamboo labyrinth on the open playa modeled on a sacred mountain, a single pilgrim walking its winding path toward the center.",
+      "image_prompt": "An enormous labyrinth scored into the playa in concentric rings. One figure is deep inside it, close to the centre, carrying a small object to set down. Out on the furthest ring another figure walks the outer circuit, which they have worn into a deep smooth track, passing the labyrinth's entrance again without turning in.",
       "image_file": "cards/art/branches-12.png"
     }
   ]

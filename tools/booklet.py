@@ -2,7 +2,8 @@
 from PIL import Image, ImageDraw, ImageFont
 import json, os
 
-REPO = "/Users/parachute/Code/oracle-ai"
+import os
+REPO = os.path.dirname(os.path.dirname(os.path.abspath(__file__)))
 ART = f"{REPO}/cards/art"
 d = json.load(open(f"{REPO}/data/cards.json"))
 playa = json.load(open(f"{REPO}/data/playa_2026.json"))["hooks"]
