@@ -29,7 +29,13 @@ STONES = WEATHER["stones"]
 WEATHER_ASK = WEATHER["meta"]["ask"]
 
 SESSIONS = {}
-MAX_SESSIONS = 60  # kiosk = one seeker at a time; keep a small tail for stragglers
+MAX_SESSIONS = 200  # two stations plus phones on the camp network: many séances at once
+
+# LLM patience. Every one of these calls has a template fallback, so a timeout costs a
+# little magic, not the séance — whereas a seeker staring at a silent turtle for two
+# minutes costs the whole thing. Tune up only if the Spark benchmarks slower than hoped.
+T_SHORT = float(os.environ.get("ORACLE_T_SHORT", "25"))   # one-liners: follow-up, echoes
+T_LONG = float(os.environ.get("ORACLE_T_LONG", "40"))     # structured: refine, seal
 
 NAME_ASKS = [
     "Ah. A traveler. Come closer — the shell is warm. First things first: what do they call you out here?",
@@ -247,7 +253,7 @@ def _followup_llm(shares, llm):
         "specific to their words, inviting one level deeper. It must be a question. "
         "Return the question only, no quotes, no preamble."
     )
-    return _clean_line(llm.generate(prompt, system=SYSTEM, timeout=45), max_words=32)
+    return _clean_line(llm.generate(prompt, system=SYSTEM, timeout=T_SHORT), max_words=32)
 
 
 def _echoes_llm(sess, llm):
@@ -268,7 +274,7 @@ def _echoes_llm(sess, llm):
         "Example shape: You said 'yes to everyone' — and the tide kept none of it for you.\n"
         'Return JSON only: {"roots": "...", "trunk": "...", "branches": "..."}'
     )
-    resp = llm.generate(prompt, system=SYSTEM, as_json=True, timeout=60)
+    resp = llm.generate(prompt, system=SYSTEM, as_json=True, timeout=T_SHORT)
     if not resp:
         return None
     try:
@@ -355,7 +361,7 @@ def _refine_llm(sess, llm):
         "naming the new truth.\n"
         'Return JSON only: {"say": "...", "adventure": "..."}'
     )
-    resp = llm.generate(prompt, system=SYSTEM, as_json=True, timeout=120)
+    resp = llm.generate(prompt, system=SYSTEM, as_json=True, timeout=T_LONG)
     if not resp:
         return None
     try:
@@ -423,7 +429,7 @@ def _tale_step(sess, text, llm):
             "In the Turtle's voice, honor the tale in TWO sentences (under 40 words): first name one "
             "specific detail from the tale itself, then address the human turtle who witnessed it, "
             "telling THEM to hand this seeker their gift. Return the lines only.",
-            system=SYSTEM, timeout=60), max_words=50)
+            system=SYSTEM, timeout=T_SHORT), max_words=50)
     return {"session": sess["id"], "stage": "tale_told",
             "say": say or random.choice(TALE_THANKS),
             "gift": True, "expects": "done"}
@@ -526,7 +532,7 @@ def _seal_llm(sess, llm):
         "human. Nothing risky, nothing without consent.\n"
         'Return JSON only: {"moves": [{"task":"","where":"","proof":"","leave":""}, {...}, {...}]}'
     )
-    resp = llm.generate(prompt, system=SYSTEM, as_json=True, timeout=120)
+    resp = llm.generate(prompt, system=SYSTEM, as_json=True, timeout=T_LONG)
     if not resp:
         return None
     try:

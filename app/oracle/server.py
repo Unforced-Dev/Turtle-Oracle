@@ -27,7 +27,17 @@ PORT = int(os.environ.get("ORACLE_PORT", "8777"))
 LLM_SINGLETON = LLM()
 ART_RE = re.compile(r"^(shell|roots|trunk|branches)-\d{2}\.png$")
 WEBIMG_RE = re.compile(r"^((shell|roots|trunk|branches)-\d{2}|back)\.jpg$")
-LAST = {}  # last built reading (kiosk = one seeker at a time), for /api/print
+
+# Legacy single-question flow (/api/reading, app/web/index.html) only. The séance
+# (/api/session/*) never touches this — its state is per-session, because two tablets
+# plus phones on the camp network mean several seekers are mid-reading at once and a
+# shared "last reading" prints one person's quest for another.
+LAST = {}
+LAST_LOCK = threading.Lock()
+
+# Per-station printer binding: ESCPOS_HOST_1 / _2 pick a printer for kiosk=1 / kiosk=2.
+def _printer_host(kiosk):
+    return os.environ.get(f"ESCPOS_HOST_{kiosk}") if kiosk else None
 
 
 def build_reading(question):
@@ -44,9 +54,25 @@ def build_reading(question):
         "directions": directions_lines(picks, located),
         "modes": {"select": sel_mode, "weave": weave_mode},
     }
-    LAST.clear()
-    LAST.update({"payload": payload, "picks": picks, "located": located})
+    with LAST_LOCK:
+        LAST.clear()
+        LAST.update({"payload": payload, "picks": picks, "located": located})
     return payload
+
+
+def receipt_for_session(sid):
+    """Format the receipt for one séance, from that séance's own state."""
+    sess = session.snapshot(sid)
+    if not sess:
+        return None
+    payload = {
+        "question": " / ".join(sess["shares"]),
+        "reading": sess["reading"],
+        "adventure": sess["adventure"],
+        "name": sess.get("name"),
+    }
+    return printer.format_receipt(payload, sess["picks"], sess["located"],
+                                  quest=sess.get("quest"))
 
 
 REALM_ORDER = {"shell": 0, "roots": 1, "trunk": 2, "branches": 3}
@@ -162,11 +188,24 @@ class Handler(BaseHTTPRequestHandler):
             except Exception as e:
                 return self._send(500, {"error": str(e)})
         if path == "/api/print":
-            if not LAST:
-                return self._send(400, {"error": "no reading to print yet"})
-            text = printer.format_receipt(LAST["payload"], LAST["picks"], LAST["located"],
-                                          quest=LAST.get("quest"))
-            result = printer.print_or_preview(text)
+            try:
+                body = json.loads(raw or b"{}")
+            except Exception:
+                body = {}
+            sid = (body.get("session") or "").strip()
+            if sid:
+                text = receipt_for_session(sid)
+                if text is None:
+                    return self._send(400, {"error": "no such séance to print"})
+            else:
+                # legacy /api/reading flow
+                with LAST_LOCK:
+                    if not LAST:
+                        return self._send(400, {"error": "no reading to print yet"})
+                    snap = dict(LAST)
+                text = printer.format_receipt(snap["payload"], snap["picks"], snap["located"],
+                                              quest=snap.get("quest"))
+            result = printer.print_or_preview(text, host=_printer_host(body.get("kiosk")))
             result["receipt"] = text
             return self._send(200, result)
         if path == "/api/transcribe":
@@ -193,20 +232,9 @@ class Handler(BaseHTTPRequestHandler):
                 if action == "say":
                     return self._send(200, session.hear(sid, body, LLM_SINGLETON))
                 if action == "accept":
-                    event = session.accept(sid, LLM_SINGLETON)
-                    sess = session.snapshot(sid)
-                    if sess and sess.get("quest"):
-                        # stage the sealed quest for /api/print
-                        told = " / ".join(sess["shares"])
-                        LAST.clear()
-                        LAST.update({
-                            "payload": {"question": told, "reading": sess["reading"],
-                                        "adventure": sess["adventure"],
-                                        "name": sess.get("name")},
-                            "picks": sess["picks"], "located": sess["located"],
-                            "quest": sess["quest"],
-                        })
-                    return self._send(200, event)
+                    # The sealed quest stays on the session; /api/print reads it back by
+                    # session id. Nothing is staged in shared state.
+                    return self._send(200, session.accept(sid, LLM_SINGLETON))
             except Exception as e:
                 return self._send(500, {"error": str(e)})
             return self._send(404, {"error": "unknown séance action"})
