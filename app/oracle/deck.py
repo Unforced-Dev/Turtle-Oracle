@@ -1,12 +1,36 @@
 """Load the deck and model the Tree spread."""
 import json
 import os
+import random
 import time
 
 REPO = os.path.abspath(os.path.join(os.path.dirname(__file__), "..", ".."))
 CARDS_PATH = os.path.join(REPO, "data", "cards.json")
 
 SPREAD_REALMS = ("roots", "trunk", "branches")
+
+# The Tree spread pulls Root / Trunk / Branch. The twelve Shell cards are the axis itself,
+# and cards.json has always promised they "can substitute into any position" — but nothing
+# ever implemented it, so a quarter of the printed deck (including The World Turtle, the
+# camp's own mascot) could never appear in a reading.
+#
+# One slot per spread may become a Shell card, at most, so it stays an event rather than a
+# flavour. At 1-in-10 a busy night sees a handful — often enough that the turtles witness
+# it, rare enough that it means something when it lands.
+SHELL_CHANCE = float(os.environ.get("ORACLE_SHELL_CHANCE", "0.10"))
+
+
+def draw_spread(by_realm, rng=random):
+    """Pure chance, one card per slot. Returns (picks, axis_slot|None).
+
+    axis_slot names the slot the Turtle's own axis spoke into, if any.
+    """
+    picks = {slot: rng.choice(by_realm[slot]) for slot in SPREAD_REALMS}
+    axis_slot = None
+    if by_realm.get("shell") and rng.random() < SHELL_CHANCE:
+        axis_slot = rng.choice(SPREAD_REALMS)
+        picks[axis_slot] = rng.choice(by_realm["shell"])
+    return picks, axis_slot
 SLOT_LABEL = {
     "roots": "what to face",
     "trunk": "where you stand",

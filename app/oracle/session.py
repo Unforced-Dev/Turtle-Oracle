@@ -17,7 +17,7 @@ import uuid
 
 import os
 
-from .deck import load_deck, card_payload, REPO
+from .deck import load_deck, card_payload, draw_spread, REPO
 from .select import select_fallback, _tokens
 from .weave import weave, SYSTEM, card_lore
 from .geo import locate_spread, directions_lines, COMPASS_ROSE
@@ -64,6 +64,12 @@ DRAWN_LINES = [
     "The shell hums. Three cards rise for you: what to face, where you stand, what to reach for.",
     "Good. That is enough truth to pull on. The Tree is choosing your three.",
 ]
+
+# Spoken instead of the usual line when a Shell card substitutes into a slot — roughly
+# one séance in ten. The Turtle interrupting its own format is the whole point.
+AXIS_LINE = ("The shell goes quiet. Mm. That is not a card from the Tree — that is the "
+             "Tree's own spine. “{card}” has come up for you, and the Turtle does not "
+             "choose when that happens. Sit with it.")
 
 REFINE_ACKS = [
     "Mm. That changes the shape of it. The Tree bends — hear your quest again.",
@@ -213,6 +219,12 @@ def _context(sess):
     c = _company(sess["shares"])
     if c:
         parts.append(c)
+    if sess.get("axis_slot"):
+        parts.append("THE AXIS HAS SPOKEN: one of the three is not a Tree card but a Shell "
+                     "card — the World Turtle's own axis, which surfaces for roughly one "
+                     "seeker in ten. Name that this is rare, once, without ceremony or "
+                     "flattery, and let it carry more weight in the reading than the "
+                     "other two.")
     if sess.get("prior_line"):
         parts.append(sess["prior_line"])
     return " ".join(parts)
@@ -246,6 +258,7 @@ def start(mode="seek"):
         "name": None, "prior_line": None,
         "shares": [], "weather": None, "stones": [], "ground": 0.0, "stem_tried": False,
         "picks": None, "located": None, "reading": None, "adventure": None,
+        "axis_slot": None,
         "quest": None, "echoes": None, "created": time.time(),
     }
     say = random.choice(TALE_NAME_ASKS if tale else NAME_ASKS)
@@ -326,19 +339,24 @@ def _draw(sess, llm):
     not the choosing — meaning is made, not matched."""
     _, _, by_realm = load_deck()
     told = " ".join(sess["shares"])
-    picks = {realm: random.choice(by_realm[realm]) for realm in ("roots", "trunk", "branches")}
+    picks, axis_slot = draw_spread(by_realm)
     sel_mode = "playa"
     located = locate_spread(picks)
-    sess.update(picks=picks, located=located)
+    sess.update(picks=picks, located=located, axis_slot=axis_slot)
     out, weave_mode = weave(told, picks, llm, located, context=_context(sess))
     echoes = (_echoes_llm(sess, llm) if llm and llm.available() else None) or _echoes_fallback(sess)
     sess.update(reading=out["reading"], adventure=out["adventure"],
                 echoes=echoes, stage="proposed")
+    say = random.choice(DRAWN_LINES)
+    if axis_slot:
+        say = AXIS_LINE.format(card=picks[axis_slot]["name"])
     return {
         "session": sess["id"], "stage": "proposed",
-        "say": random.choice(DRAWN_LINES),
+        "say": say,
         "cards": {r: card_payload(picks[r], located[r]) for r in ("roots", "trunk", "branches")},
         "echoes": echoes,
+        # which slot, if any, the Turtle's own axis spoke into — the kiosk marks it
+        "axis_slot": axis_slot,
         "reading": out["reading"], "adventure": out["adventure"],
         "map": COMPASS_ROSE, "directions": directions_lines(picks, located),
         "ask": DECISION_ASK, "expects": "decision",
@@ -386,6 +404,12 @@ def _refine_fallback(sess):
     _, _, by_realm = load_deck()
     told = " ".join(sess["shares"])
     picks = select_fallback(told, by_realm)
+    # select_fallback only knows the three Tree realms, so a re-score would quietly swap
+    # out an axis card the seeker has already been shown. The Turtle does not take that
+    # back — once the spine has spoken, it stays on the table.
+    axis_slot = sess.get("axis_slot")
+    if axis_slot and sess.get("picks"):
+        picks[axis_slot] = sess["picks"][axis_slot]
     located = locate_spread(picks)
     out = weave(told, picks, None, located)[0]
     sess.update(picks=picks, located=located, reading=out["reading"])

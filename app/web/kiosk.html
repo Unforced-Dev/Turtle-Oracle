@@ -137,6 +137,11 @@
   .cardcap{text-align:center;margin-top:9px;opacity:0;transition:opacity .6s}
   .cardcap.on{opacity:1}
   .cardcap .cslot{font-size:.66rem;letter-spacing:.3em;text-transform:uppercase;color:var(--gold-dim)}
+  /* the axis: a Shell card in a Tree slot, ~1 séance in 10. Quiet, not confetti — a
+     steady glow that says the machine knows this one is different. */
+  .flip.axis{box-shadow:0 0 0 2px var(--gold),0 0 34px 6px rgba(198,160,74,.42)}
+  .cardcap.axis .cslot{color:var(--gold);animation:axispulse 3.2s ease-in-out infinite}
+  @keyframes axispulse{0%,100%{opacity:.65}50%{opacity:1}}
   .cardcap .cname{color:var(--gold);font-size:clamp(.9rem,1.8vw,1.12rem);line-height:1.25}
   .cardcap .cbite{color:#a3743f;font-size:.72rem;font-style:italic;margin-top:3px}
   .cardcap .cwhere{color:var(--parch-dim);font-size:.74rem;font-style:italic;margin-top:3px}
@@ -506,14 +511,17 @@ function dealSpread(e){
     let next=0; const flips=[];
     SLOTS.forEach((slot,i)=>{
       const c=e.cards[slot];
+      // roughly one séance in ten, a Shell card substitutes into a slot — the Tree's own
+      // spine. Mark it, or the rarest thing the deck can do passes unnoticed.
+      const isAxis = (e.axis_slot===slot) || c.realm==="shell";
       const cell=document.createElement("div");
       cell.innerHTML=`
-        <div class="flip" id="flip-${slot}">
+        <div class="flip${isAxis?" axis":""}" id="flip-${slot}">
           <div class="face back"><img src="/med/back.jpg" alt=""></div>
           <div class="face front"><img src="${c.image}" alt="${c.name}"></div>
         </div>
-        <div class="cardcap" id="cap-${slot}">
-          <div class="cslot">${SLOTCAP[slot]} · ${c.slot}</div>
+        <div class="cardcap${isAxis?" axis":""}" id="cap-${slot}">
+          <div class="cslot">${isAxis?"◆ The Axis Speaks":`${SLOTCAP[slot]} · ${c.slot}`}</div>
           <div class="cname">${c.name}</div>
           ${c.shadow?`<div class="cbite">the bite: ${c.shadow}</div>`:""}
           ${c.location&&c.location.directions?`<div class="cwhere">📍 ${c.location.directions}</div>`:""}

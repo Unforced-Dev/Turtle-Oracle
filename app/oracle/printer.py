@@ -62,7 +62,10 @@ def format_receipt(payload, picks, located, quest=None):
     labels = {"roots": "FACE", "trunk": "STAND", "branches": "REACH"}
     for realm in ("roots", "trunk", "branches"):
         c = picks[realm]
-        L.extend(_wrap(f"[{labels[realm]}] {c['name']}"))
+        # a Shell card standing in a Tree slot is the axis; say so on the paper too, so
+        # the seeker still has the evidence of it days later
+        label = "* AXIS *" if c.get("realm") == "shell" else labels[realm]
+        L.extend(_wrap(f"[{label}] {c['name']}"))
     L.append(_rule())
     L.append("")
     L.append("THE READING")
