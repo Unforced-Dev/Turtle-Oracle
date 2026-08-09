@@ -192,6 +192,12 @@ def main():
                 png = generate(prompt, headers)
                 with open(dest, "wb") as f:
                     f.write(png)
+                # The .png master stays local (gitignored); the committed archive
+                # is a q95 4:4:4 JPEG — visually lossless at print size.
+                from PIL import Image
+                Image.open(dest).convert("RGB").save(
+                    dest[:-4] + ".jpg", "JPEG",
+                    quality=95, optimize=True, subsampling=0)
                 used[card["id"]] = prompt
                 with open(used_path, "w") as f:
                     json.dump(used, f, indent=2)

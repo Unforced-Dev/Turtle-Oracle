@@ -12,6 +12,12 @@ ART = f"{REPO}/cards/art"
 OUT = f"{REPO}/print"
 os.makedirs(f"{OUT}/fronts", exist_ok=True)
 
+
+def art_src(cid):
+    # .png masters are local-only (gitignored); the committed archive is q95 .jpg
+    p = f"{ART}/{cid}.png"
+    return p if os.path.exists(p) else f"{ART}/{cid}.jpg"
+
 DPI = 300
 TRIM = (int(3.5 * DPI), int(5.25 * DPI))   # 1050 x 1575
 BLEED = int(0.125 * DPI)                    # 38 px
@@ -102,7 +108,7 @@ def print_ready(src, name=None):
 
 # --- fronts + back with bleed ---
 for c in cards:
-    print_ready(f"{ART}/{c['id']}.png", c["name"]).save(
+    print_ready(art_src(c["id"]), c["name"]).save(
         f"{OUT}/fronts/{c['id']}.png", dpi=(DPI, DPI))
 print_ready(f"{REPO}/cards/back.png").save(f"{OUT}/back.png", dpi=(DPI, DPI))
 
@@ -126,7 +132,7 @@ pages.append(cover)
 seq = cards + [{"id": "back", "name": "Card Back (all cards)", "realm": "", "number": 0}]
 for c in seq:
     page = Image.new("RGB", (PW, PH), (245, 240, 230))
-    src = f"{OUT}/back.png" if c["id"] == "back" else f"{ART}/{c['id']}.png"
+    src = f"{OUT}/back.png" if c["id"] == "back" else art_src(c["id"])
     im = Image.open(src).convert("RGB")
     tw = PW - 120
     th = int(tw * im.size[1] / im.size[0])

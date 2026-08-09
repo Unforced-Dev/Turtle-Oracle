@@ -30,7 +30,10 @@ for i, c in enumerate(cards):
     x = PAD + col * (TW + PAD)
     y = TITLE + r * (TH + LBL + PAD)
     try:
-        im = Image.open(f"{REPO}/cards/art/{c['id']}.png").convert("RGB").resize((TW, TH))
+        _p = f"{REPO}/cards/art/{c['id']}.png"
+        if not os.path.exists(_p):
+            _p = f"{REPO}/cards/art/{c['id']}.jpg"
+        im = Image.open(_p).convert("RGB").resize((TW, TH))
         sheet.paste(im, (x, y))
     except Exception:
         draw.rectangle([x, y, x + TW, y + TH], fill=(70, 40, 40))
