@@ -2,8 +2,17 @@
 from PIL import Image, ImageDraw, ImageFont
 import json, os
 
-REPO = "/Users/parachute/Code/oracle-ai"
+import os
+REPO = os.path.dirname(os.path.dirname(os.path.abspath(__file__)))
 ART = f"{REPO}/cards/art"
+
+
+def art_src(cid):
+    # .png masters are local-only (gitignored); the committed archive is q95 .jpg
+    p = f"{ART}/{cid}.png"
+    return p if os.path.exists(p) else f"{ART}/{cid}.jpg"
+
+
 d = json.load(open(f"{REPO}/data/cards.json"))
 playa = json.load(open(f"{REPO}/data/playa_2026.json"))["hooks"]
 order = {"shell": 0, "roots": 1, "trunk": 2, "branches": 3}
@@ -73,7 +82,7 @@ def card_block(dr, c, x, y, h):
     tint = REALM_TINT[c["realm"]]
     tw = 300; th = int(tw * 1.5)
     try:
-        im = Image.open(f"{ART}/{c['id']}.png").convert("RGB").resize((tw, th))
+        im = Image.open(art_src(c["id"])).convert("RGB").resize((tw, th))
         dr._image.paste(im, (x, y))
     except Exception:
         dr.rectangle([x, y, x + tw, y + th], outline=tint, width=2)

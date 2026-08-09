@@ -1,8 +1,14 @@
-"""Thermal receipt: format the reading + quest for a 58mm ESC/POS printer.
+"""Thermal receipt: format the reading + quest for an ESC/POS printer.
 
-Prints to a USB ESC/POS printer if python-escpos is installed and ESCPOS_VENDOR_ID /
-ESCPOS_PRODUCT_ID are set; otherwise saves a text preview to app/receipts/ so you can see
-exactly what would print. 58mm printers are ~32 characters wide.
+The camp runs Epson TM-m30III units: 80mm paper, 48 columns in font A. Set
+ORACLE_PRINT_WIDTH to 32 for a 58mm printer.
+
+Transport, in order of preference:
+  ESCPOS_HOST            -> network printer on port 9100 (the TM-m30III's ethernet port;
+                            one cable to the camp router, nothing to kick loose)
+  ESCPOS_VENDOR_ID/_PRODUCT_ID -> USB
+  neither                -> save a text preview to app/receipts/ so you can see exactly
+                            what would have printed
 """
 import os
 import textwrap
@@ -11,7 +17,9 @@ import time
 from .deck import REPO
 from .geo import COMPASS_ROSE, directions_lines
 
-WIDTH = 32
+# 80mm / font A = 48 cols on the TM-m30III; 58mm printers are 32.
+WIDTH = int(os.environ.get("ORACLE_PRINT_WIDTH", "48"))
+PROFILE = os.environ.get("ESCPOS_PROFILE", "TM-m30")
 RECEIPTS = os.path.join(REPO, "app", "receipts")
 
 
@@ -25,6 +33,17 @@ def _center(s):
 
 def _wrap(s):
     return textwrap.wrap(s, WIDTH) or [""]
+
+
+def _center_block(block):
+    """Centre a fixed-width ASCII block (the compass rose) inside WIDTH.
+
+    The rose is hand-drawn at <=32 cols; on 80mm paper it would otherwise hug the
+    left edge while everything around it fills the width.
+    """
+    lines = block.split("\n")
+    pad = max(0, (WIDTH - max(len(l) for l in lines)) // 2)
+    return "\n".join(" " * pad + l for l in lines)
 
 
 def format_receipt(payload, picks, located, quest=None):
@@ -43,7 +62,10 @@ def format_receipt(payload, picks, located, quest=None):
     labels = {"roots": "FACE", "trunk": "STAND", "branches": "REACH"}
     for realm in ("roots", "trunk", "branches"):
         c = picks[realm]
-        L.extend(_wrap(f"[{labels[realm]}] {c['name']}"))
+        # a Shell card standing in a Tree slot is the axis; say so on the paper too, so
+        # the seeker still has the evidence of it days later
+        label = "* AXIS *" if c.get("realm") == "shell" else labels[realm]
+        L.extend(_wrap(f"[{label}] {c['name']}"))
     L.append(_rule())
     L.append("")
     L.append("THE READING")
@@ -78,7 +100,7 @@ def format_receipt(payload, picks, located, quest=None):
         L.append("")
     L.append(_rule())
     L.append("WHERE TO GO")
-    L.append(COMPASS_ROSE)
+    L.append(_center_block(COMPASS_ROSE))
     L.append("")
     for line in directions_lines(picks, located):
         for w in _wrap("> " + line):
@@ -91,14 +113,30 @@ def format_receipt(payload, picks, located, quest=None):
     return "\n".join(L)
 
 
-def print_or_preview(text):
-    """Try the USB printer; fall back to saving a preview file. Returns a status dict."""
+def print_or_preview(text, host=None):
+    """Print to the network or USB printer; fall back to a preview file. Returns a status dict.
+
+    host overrides ESCPOS_HOST so a station can be bound to its own printer.
+    """
+    host = host or os.environ.get("ESCPOS_HOST")
     vid = os.environ.get("ESCPOS_VENDOR_ID")
     pid = os.environ.get("ESCPOS_PRODUCT_ID")
+    if host:
+        try:
+            from escpos.printer import Network  # requires: pip install python-escpos
+            p = Network(host, port=int(os.environ.get("ESCPOS_PORT", "9100")),
+                        timeout=10, profile=PROFILE)
+            p.text(text + "\n")
+            p.cut()
+            p.close()
+            return {"status": "printed", "target": f"net {host}"}
+        except Exception as e:  # noqa: BLE001
+            preview = _save_preview(text)
+            return {"status": "preview", "path": preview, "error": f"printer error: {e}"}
     if vid and pid:
         try:
             from escpos.printer import Usb  # requires: pip install python-escpos pyusb
-            p = Usb(int(vid, 16), int(pid, 16), profile="TM-T88III")
+            p = Usb(int(vid, 16), int(pid, 16), profile=PROFILE)
             p.text(text + "\n")
             p.cut()
             return {"status": "printed", "target": f"usb {vid}:{pid}"}
@@ -107,7 +145,8 @@ def print_or_preview(text):
             return {"status": "preview", "path": preview, "error": f"printer error: {e}"}
     preview = _save_preview(text)
     return {"status": "preview", "path": preview,
-            "note": "No ESCPOS_VENDOR_ID/PRODUCT_ID set — saved a preview instead of printing."}
+            "note": "No ESCPOS_HOST or ESCPOS_VENDOR_ID/PRODUCT_ID set — saved a preview "
+                    "instead of printing."}
 
 
 def _save_preview(text):

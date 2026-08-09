@@ -13,7 +13,10 @@
   html,body{margin:0;height:100%;overflow:hidden}
   body{
     background:var(--ink); color:var(--parch);
-    font-family:"Iowan Old Style","Palatino Linotype",Palatino,Georgia,serif;
+    /* Android has none of the Apple/Windows serifs and would fall back to Roboto (a
+       sans) — "serif" and Noto Serif are the Galaxy Tab's real serif faces. */
+    font-family:"Iowan Old Style","Palatino Linotype",Palatino,Georgia,
+                "Noto Serif","Droid Serif",serif;
     line-height:1.55; -webkit-font-smoothing:antialiased; touch-action:manipulation;
     user-select:none;
   }
@@ -134,6 +137,11 @@
   .cardcap{text-align:center;margin-top:9px;opacity:0;transition:opacity .6s}
   .cardcap.on{opacity:1}
   .cardcap .cslot{font-size:.66rem;letter-spacing:.3em;text-transform:uppercase;color:var(--gold-dim)}
+  /* the axis: a Shell card in a Tree slot, ~1 séance in 10. Quiet, not confetti — a
+     steady glow that says the machine knows this one is different. */
+  .flip.axis{box-shadow:0 0 0 2px var(--gold),0 0 34px 6px rgba(198,160,74,.42)}
+  .cardcap.axis .cslot{color:var(--gold);animation:axispulse 3.2s ease-in-out infinite}
+  @keyframes axispulse{0%,100%{opacity:.65}50%{opacity:1}}
   .cardcap .cname{color:var(--gold);font-size:clamp(.9rem,1.8vw,1.12rem);line-height:1.25}
   .cardcap .cbite{color:#a3743f;font-size:.72rem;font-style:italic;margin-top:3px}
   .cardcap .cwhere{color:var(--parch-dim);font-size:.74rem;font-style:italic;margin-top:3px}
@@ -265,13 +273,23 @@ const $=id=>document.getElementById(id);
 const SLOTS=["roots","trunk","branches"];
 const SLOTCAP={roots:"Face",trunk:"Stand",branches:"Reach"};
 let SID=null, SPOKEN=true, VOICE=null, IDLE=null, CARD_IDS="";
+/* Which station this tablet is, from ?kiosk=1 — routes the print to its own printer. */
+const KIOSK=new URLSearchParams(location.search).get("kiosk")||"";
 
 /* ---------- voice of the turtle ---------- */
+/* Ranks across engines. macOS ships Daniel/Alex/Oliver; the Galaxy Tabs ship Google TTS
+   ("English United Kingdom" / male variants) or Samsung TTS, and none of the Apple names
+   exist there — an Apple-only ranking silently lands on a bright American default and the
+   Turtle stops sounding like a turtle. localService is weighted hard: on playa there is no
+   network voice, so a remote voice is no voice at all. */
 function pickVoice(){
   const vs=speechSynthesis.getVoices().filter(v=>v.lang&&v.lang.startsWith("en"));
-  const rank=v=>(/premium|enhanced/i.test(v.name)?4:0)+(/Daniel/i.test(v.name)?6:0)
-    +(/Oliver|Alex|Tom|Aaron|Evan|Nathan|Fred/i.test(v.name)?3:0)
-    +(v.localService?2:0)+(/en-GB/i.test(v.lang)?1:0);
+  const rank=v=>(/premium|enhanced|neural/i.test(v.name)?4:0)
+    +(/Daniel/i.test(v.name)?6:0)                                    // macOS, the reference voice
+    +(/Oliver|Alex|Tom|Aaron|Evan|Nathan|Fred/i.test(v.name)?3:0)    // macOS alternates
+    +(/\bmale\b|#male|_male/i.test(v.name)?3:0)                      // Google/Samsung naming
+    +(/\bgb\b|united kingdom|\bau\b|australia/i.test(v.name)?2:0)
+    +(v.localService?4:0)+(/en-GB/i.test(v.lang)?1:0);
   vs.sort((a,b)=>rank(b)-rank(a));
   VOICE=vs[0]||null;
 }
@@ -493,14 +511,17 @@ function dealSpread(e){
     let next=0; const flips=[];
     SLOTS.forEach((slot,i)=>{
       const c=e.cards[slot];
+      // roughly one séance in ten, a Shell card substitutes into a slot — the Tree's own
+      // spine. Mark it, or the rarest thing the deck can do passes unnoticed.
+      const isAxis = (e.axis_slot===slot) || c.realm==="shell";
       const cell=document.createElement("div");
       cell.innerHTML=`
-        <div class="flip" id="flip-${slot}">
+        <div class="flip${isAxis?" axis":""}" id="flip-${slot}">
           <div class="face back"><img src="/med/back.jpg" alt=""></div>
           <div class="face front"><img src="${c.image}" alt="${c.name}"></div>
         </div>
-        <div class="cardcap" id="cap-${slot}">
-          <div class="cslot">${SLOTCAP[slot]} · ${c.slot}</div>
+        <div class="cardcap${isAxis?" axis":""}" id="cap-${slot}">
+          <div class="cslot">${isAxis?"◆ The Axis Speaks":`${SLOTCAP[slot]} · ${c.slot}`}</div>
           <div class="cname">${c.name}</div>
           ${c.shadow?`<div class="cbite">the bite: ${c.shadow}</div>`:""}
           ${c.location&&c.location.directions?`<div class="cwhere">📍 ${c.location.directions}</div>`:""}
@@ -578,7 +599,9 @@ function renderQuest(e){
 $('print').addEventListener('click', async ()=>{
   $('print').disabled=true;
   try{
-    const r=await fetch("/api/print",{method:"POST"}).then(r=>r.json());
+    const r=await fetch("/api/print",{method:"POST",
+      headers:{"Content-Type":"application/json"},
+      body:JSON.stringify({session:SID,kiosk:KIOSK})}).then(r=>r.json());
     toast(r.status==="printed"?"The shell is printing your quest… take the scroll.":
       "No printer attached — your quest was saved at the shell.");
   }catch(err){ toast("The printer spirit is unreachable."); }

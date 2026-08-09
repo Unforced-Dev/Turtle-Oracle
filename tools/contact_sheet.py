@@ -1,7 +1,8 @@
 from PIL import Image, ImageDraw, ImageFont
 import json, os
 
-REPO = "/Users/parachute/Code/oracle-ai"
+import os
+REPO = os.path.dirname(os.path.dirname(os.path.abspath(__file__)))
 d = json.load(open(f"{REPO}/data/cards.json"))
 order = {"shell": 0, "roots": 1, "trunk": 2, "branches": 3}
 cards = sorted(d["cards"], key=lambda c: (order[c["realm"]], c["number"]))
@@ -29,7 +30,10 @@ for i, c in enumerate(cards):
     x = PAD + col * (TW + PAD)
     y = TITLE + r * (TH + LBL + PAD)
     try:
-        im = Image.open(f"{REPO}/cards/art/{c['id']}.png").convert("RGB").resize((TW, TH))
+        _p = f"{REPO}/cards/art/{c['id']}.png"
+        if not os.path.exists(_p):
+            _p = f"{REPO}/cards/art/{c['id']}.jpg"
+        im = Image.open(_p).convert("RGB").resize((TW, TH))
         sheet.paste(im, (x, y))
     except Exception:
         draw.rectangle([x, y, x + TW, y + TH], fill=(70, 40, 40))

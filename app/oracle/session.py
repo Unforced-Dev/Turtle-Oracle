@@ -17,7 +17,7 @@ import uuid
 
 import os
 
-from .deck import load_deck, card_payload, REPO
+from .deck import load_deck, card_payload, draw_spread, REPO
 from .select import select_fallback, _tokens
 from .weave import weave, SYSTEM, card_lore
 from .geo import locate_spread, directions_lines, COMPASS_ROSE
@@ -29,7 +29,20 @@ STONES = WEATHER["stones"]
 WEATHER_ASK = WEATHER["meta"]["ask"]
 
 SESSIONS = {}
-MAX_SESSIONS = 60  # kiosk = one seeker at a time; keep a small tail for stragglers
+MAX_SESSIONS = 200  # two stations plus phones on the camp network: many séances at once
+
+# LLM patience, set from measurement on the DGX Spark (qwen3:30b-a3b, 2026-08-07).
+#
+#   1 seeker,  warm:   full séance 10.5s   (weave+echoes 5.7, refine 2.1, seal 2.7)
+#   6 seekers, warm:   slowest single call 24.4s, whole séance ~57s wall
+#
+# Ollama serialises on one GPU, so per-call latency scales with how many seekers are
+# mid-séance. 25s looked generous against the solo number and would have tripped at a
+# busy moment — the worst possible time, because that is when the most people are
+# watching. These are guards against a genuinely hung model, not pacing controls: the
+# fallback is a VISIBLE drop in quality, so let the model win whenever it is merely slow.
+T_SHORT = float(os.environ.get("ORACLE_T_SHORT", "45"))   # one-liners: follow-up, echoes
+T_LONG = float(os.environ.get("ORACLE_T_LONG", "60"))     # structured: refine, seal
 
 NAME_ASKS = [
     "Ah. A traveler. Come closer — the shell is warm. First things first: what do they call you out here?",
@@ -51,6 +64,12 @@ DRAWN_LINES = [
     "The shell hums. Three cards rise for you: what to face, where you stand, what to reach for.",
     "Good. That is enough truth to pull on. The Tree is choosing your three.",
 ]
+
+# Spoken instead of the usual line when a Shell card substitutes into a slot — roughly
+# one séance in ten. The Turtle interrupting its own format is the whole point.
+AXIS_LINE = ("The shell goes quiet. Mm. That is not a card from the Tree — that is the "
+             "Tree's own spine. “{card}” has come up for you, and the Turtle does not "
+             "choose when that happens. Sit with it.")
 
 REFINE_ACKS = [
     "Mm. That changes the shape of it. The Tree bends — hear your quest again.",
@@ -200,6 +219,12 @@ def _context(sess):
     c = _company(sess["shares"])
     if c:
         parts.append(c)
+    if sess.get("axis_slot"):
+        parts.append("THE AXIS HAS SPOKEN: one of the three is not a Tree card but a Shell "
+                     "card — the World Turtle's own axis, which surfaces for roughly one "
+                     "seeker in ten. Name that this is rare, once, without ceremony or "
+                     "flattery, and let it carry more weight in the reading than the "
+                     "other two.")
     if sess.get("prior_line"):
         parts.append(sess["prior_line"])
     return " ".join(parts)
@@ -233,6 +258,7 @@ def start(mode="seek"):
         "name": None, "prior_line": None,
         "shares": [], "weather": None, "stones": [], "ground": 0.0, "stem_tried": False,
         "picks": None, "located": None, "reading": None, "adventure": None,
+        "axis_slot": None,
         "quest": None, "echoes": None, "created": time.time(),
     }
     say = random.choice(TALE_NAME_ASKS if tale else NAME_ASKS)
@@ -247,7 +273,7 @@ def _followup_llm(shares, llm):
         "specific to their words, inviting one level deeper. It must be a question. "
         "Return the question only, no quotes, no preamble."
     )
-    return _clean_line(llm.generate(prompt, system=SYSTEM, timeout=45), max_words=32)
+    return _clean_line(llm.generate(prompt, system=SYSTEM, timeout=T_SHORT), max_words=32)
 
 
 def _echoes_llm(sess, llm):
@@ -268,7 +294,7 @@ def _echoes_llm(sess, llm):
         "Example shape: You said 'yes to everyone' — and the tide kept none of it for you.\n"
         'Return JSON only: {"roots": "...", "trunk": "...", "branches": "..."}'
     )
-    resp = llm.generate(prompt, system=SYSTEM, as_json=True, timeout=60)
+    resp = llm.generate(prompt, system=SYSTEM, as_json=True, timeout=T_SHORT)
     if not resp:
         return None
     try:
@@ -313,19 +339,24 @@ def _draw(sess, llm):
     not the choosing — meaning is made, not matched."""
     _, _, by_realm = load_deck()
     told = " ".join(sess["shares"])
-    picks = {realm: random.choice(by_realm[realm]) for realm in ("roots", "trunk", "branches")}
+    picks, axis_slot = draw_spread(by_realm)
     sel_mode = "playa"
     located = locate_spread(picks)
-    sess.update(picks=picks, located=located)
+    sess.update(picks=picks, located=located, axis_slot=axis_slot)
     out, weave_mode = weave(told, picks, llm, located, context=_context(sess))
     echoes = (_echoes_llm(sess, llm) if llm and llm.available() else None) or _echoes_fallback(sess)
     sess.update(reading=out["reading"], adventure=out["adventure"],
                 echoes=echoes, stage="proposed")
+    say = random.choice(DRAWN_LINES)
+    if axis_slot:
+        say = AXIS_LINE.format(card=picks[axis_slot]["name"])
     return {
         "session": sess["id"], "stage": "proposed",
-        "say": random.choice(DRAWN_LINES),
+        "say": say,
         "cards": {r: card_payload(picks[r], located[r]) for r in ("roots", "trunk", "branches")},
         "echoes": echoes,
+        # which slot, if any, the Turtle's own axis spoke into — the kiosk marks it
+        "axis_slot": axis_slot,
         "reading": out["reading"], "adventure": out["adventure"],
         "map": COMPASS_ROSE, "directions": directions_lines(picks, located),
         "ask": DECISION_ASK, "expects": "decision",
@@ -355,7 +386,7 @@ def _refine_llm(sess, llm):
         "naming the new truth.\n"
         'Return JSON only: {"say": "...", "adventure": "..."}'
     )
-    resp = llm.generate(prompt, system=SYSTEM, as_json=True, timeout=120)
+    resp = llm.generate(prompt, system=SYSTEM, as_json=True, timeout=T_LONG)
     if not resp:
         return None
     try:
@@ -373,6 +404,12 @@ def _refine_fallback(sess):
     _, _, by_realm = load_deck()
     told = " ".join(sess["shares"])
     picks = select_fallback(told, by_realm)
+    # select_fallback only knows the three Tree realms, so a re-score would quietly swap
+    # out an axis card the seeker has already been shown. The Turtle does not take that
+    # back — once the spine has spoken, it stays on the table.
+    axis_slot = sess.get("axis_slot")
+    if axis_slot and sess.get("picks"):
+        picks[axis_slot] = sess["picks"][axis_slot]
     located = locate_spread(picks)
     out = weave(told, picks, None, located)[0]
     sess.update(picks=picks, located=located, reading=out["reading"])
@@ -423,7 +460,7 @@ def _tale_step(sess, text, llm):
             "In the Turtle's voice, honor the tale in TWO sentences (under 40 words): first name one "
             "specific detail from the tale itself, then address the human turtle who witnessed it, "
             "telling THEM to hand this seeker their gift. Return the lines only.",
-            system=SYSTEM, timeout=60), max_words=50)
+            system=SYSTEM, timeout=T_SHORT), max_words=50)
     return {"session": sess["id"], "stage": "tale_told",
             "say": say or random.choice(TALE_THANKS),
             "gift": True, "expects": "done"}
@@ -526,7 +563,7 @@ def _seal_llm(sess, llm):
         "human. Nothing risky, nothing without consent.\n"
         'Return JSON only: {"moves": [{"task":"","where":"","proof":"","leave":""}, {...}, {...}]}'
     )
-    resp = llm.generate(prompt, system=SYSTEM, as_json=True, timeout=120)
+    resp = llm.generate(prompt, system=SYSTEM, as_json=True, timeout=T_LONG)
     if not resp:
         return None
     try:

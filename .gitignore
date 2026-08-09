@@ -1,5 +1,7 @@
-# Full-resolution & print-bleed art — kept local (too big for git; add via Git LFS later)
-cards/art/
+# PNG masters and print-bleed fronts stay local — the committed archive of every
+# card is cards/art/*.jpg (q95, 4:4:4), which the tools fall back to when the
+# .png master is absent. A fresh clone can rebuild print/fronts from the JPEGs.
+cards/art/*.png
 print/fronts/
 # Ephemera
 server.log
@@ -9,3 +11,6 @@ __pycache__/
 .DS_Store
 app/models/
 app/state/
+
+# Local style tests / generation scratch
+.scratch/

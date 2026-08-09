@@ -4,6 +4,10 @@ import os
 
 from .deck import REPO
 
+# Same knob as session.py's T_LONG — the weave is the single most expensive call in the
+# séance and was hardcoded to 120s, so tuning the others left this one untouched.
+T_WEAVE = float(os.environ.get("ORACLE_T_LONG", "60"))
+
 _LORE = None
 
 
@@ -97,7 +101,7 @@ def weave_llm(question, cards, llm, located=None, context=""):
         "City is a clock + street grid, the Man at center, deep playa past it).\n\n"
         'Return JSON only: {"reading": "...", "adventure": "..."}'
     )
-    resp = llm.generate(prompt, system=SYSTEM, as_json=True, timeout=120)
+    resp = llm.generate(prompt, system=SYSTEM, as_json=True, timeout=T_WEAVE)
     if not resp:
         return None
     try:
