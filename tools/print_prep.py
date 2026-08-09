@@ -107,43 +107,48 @@ def print_ready(src, name=None):
     return add_bleed(im, BLEED)
 
 
-# --- fronts + back with bleed ---
-for c in cards:
-    print_ready(art_src(c["id"]), c["name"]).save(
-        f"{OUT}/fronts/{c['id']}.png", dpi=(DPI, DPI))
-print_ready(f"{REPO}/cards/back.png").save(f"{OUT}/back.png", dpi=(DPI, DPI))
+def build():
+    # --- fronts + back with bleed ---
+    for c in cards:
+        print_ready(art_src(c["id"]), c["name"]).save(
+            f"{OUT}/fronts/{c['id']}.png", dpi=(DPI, DPI))
+    print_ready(f"{REPO}/cards/back.png").save(f"{OUT}/back.png", dpi=(DPI, DPI))
 
-# --- proof PDF: one card per page, name caption, for review (not for the printer) ---
-try:
-    gio = "/System/Library/Fonts/Supplemental/Georgia.ttf"
-    fname = ImageFont.truetype(gio, 34)
-    fsub = ImageFont.truetype(gio, 22)
-except Exception:
-    fname = fsub = ImageFont.load_default()
+    # --- proof PDF: one card per page, name caption, for review (not for the printer) ---
+    try:
+        gio = "/System/Library/Fonts/Supplemental/Georgia.ttf"
+        fname = ImageFont.truetype(gio, 34)
+        fsub = ImageFont.truetype(gio, 22)
+    except Exception:
+        fname = fsub = ImageFont.load_default()
 
-PW, PH = 850, 1350
-pages = []
-cover = Image.new("RGB", (PW, PH), (20, 17, 12))
-cd = ImageDraw.Draw(cover)
-cd.text((PW // 2, 480), "THE TERRIBLE TURTLE ORACLE", font=fname, fill=(200, 162, 74), anchor="mm")
-cd.text((PW // 2, 540), "48 cards · Black Rock City MMXXVI", font=fsub, fill=(182, 166, 132), anchor="mm")
-cd.text((PW // 2, 600), "PROOF — full-art fronts + uniform back", font=fsub, fill=(150, 140, 110), anchor="mm")
-pages.append(cover)
+    PW, PH = 850, 1350
+    pages = []
+    cover = Image.new("RGB", (PW, PH), (20, 17, 12))
+    cd = ImageDraw.Draw(cover)
+    cd.text((PW // 2, 480), "THE TERRIBLE TURTLE ORACLE", font=fname, fill=(200, 162, 74), anchor="mm")
+    cd.text((PW // 2, 540), "48 cards · Black Rock City MMXXVI", font=fsub, fill=(182, 166, 132), anchor="mm")
+    cd.text((PW // 2, 600), "PROOF — full-art fronts + uniform back", font=fsub, fill=(150, 140, 110), anchor="mm")
+    pages.append(cover)
 
-seq = cards + [{"id": "back", "name": "Card Back (all cards)", "realm": "", "number": 0}]
-for c in seq:
-    page = Image.new("RGB", (PW, PH), (245, 240, 230))
-    src = f"{OUT}/back.png" if c["id"] == "back" else art_src(c["id"])
-    im = Image.open(src).convert("RGB")
-    tw = PW - 120
-    th = int(tw * im.size[1] / im.size[0])
-    im = im.resize((tw, th), Image.LANCZOS)
-    page.paste(im, ((PW - tw) // 2, 40))
-    dr = ImageDraw.Draw(page)
-    label = c["name"] if c["id"] == "back" else f"{c['name']}  ·  {c['realm']}"
-    dr.text((PW // 2, 40 + th + 40), label, font=fname, fill=(30, 24, 12), anchor="mm")
-    pages.append(page)
+    seq = cards + [{"id": "back", "name": "Card Back (all cards)", "realm": "", "number": 0}]
+    for c in seq:
+        page = Image.new("RGB", (PW, PH), (245, 240, 230))
+        src = f"{OUT}/back.png" if c["id"] == "back" else art_src(c["id"])
+        im = Image.open(src).convert("RGB")
+        tw = PW - 120
+        th = int(tw * im.size[1] / im.size[0])
+        im = im.resize((tw, th), Image.LANCZOS)
+        page.paste(im, ((PW - tw) // 2, 40))
+        dr = ImageDraw.Draw(page)
+        label = c["name"] if c["id"] == "back" else f"{c['name']}  ·  {c['realm']}"
+        dr.text((PW // 2, 40 + th + 40), label, font=fname, fill=(30, 24, 12), anchor="mm")
+        pages.append(page)
 
-pages[0].save(f"{OUT}/proof.pdf", save_all=True, append_images=pages[1:], resolution=150.0)
-print(f"fronts: {len(cards)}  |  back: 1  |  proof pages: {len(pages)}")
-print(f"card: 3.5x5.25in @ {DPI}dpi  trim={TRIM}  bleed={BLEED}px  full={tuple(t+2*BLEED for t in TRIM)}")
+    pages[0].save(f"{OUT}/proof.pdf", save_all=True, append_images=pages[1:], resolution=150.0)
+    print(f"fronts: {len(cards)}  |  back: 1  |  proof pages: {len(pages)}")
+    print(f"card: 3.5x5.25in @ {DPI}dpi  trim={TRIM}  bleed={BLEED}px  full={tuple(t+2*BLEED for t in TRIM)}")
+
+
+if __name__ == "__main__":
+    build()

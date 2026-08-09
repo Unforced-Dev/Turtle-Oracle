@@ -14,3 +14,5 @@ app/state/
 
 # Local style tests / generation scratch
 .scratch/
+print/mpc/
+print/ttoracle-mpc-upload.zip
