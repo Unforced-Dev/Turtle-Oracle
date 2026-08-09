@@ -14,9 +14,10 @@ os.makedirs(f"{OUT}/fronts", exist_ok=True)
 
 
 def art_src(cid):
-    # .png masters are local-only (gitignored); the committed archive is q95 .jpg
-    p = f"{ART}/{cid}.png"
-    return p if os.path.exists(p) else f"{ART}/{cid}.jpg"
+    # The committed q95 .jpg archive is the build source, so every clone builds
+    # identical bytes; the local-only .png master is the fallback for fresh gens.
+    p = f"{ART}/{cid}.jpg"
+    return p if os.path.exists(p) else f"{ART}/{cid}.png"
 
 DPI = 300
 TRIM = (int(3.5 * DPI), int(5.25 * DPI))   # 1050 x 1575

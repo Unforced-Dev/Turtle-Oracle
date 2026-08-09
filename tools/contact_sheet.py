@@ -30,9 +30,9 @@ for i, c in enumerate(cards):
     x = PAD + col * (TW + PAD)
     y = TITLE + r * (TH + LBL + PAD)
     try:
-        _p = f"{REPO}/cards/art/{c['id']}.png"
+        _p = f"{REPO}/cards/art/{c['id']}.jpg"
         if not os.path.exists(_p):
-            _p = f"{REPO}/cards/art/{c['id']}.jpg"
+            _p = f"{REPO}/cards/art/{c['id']}.png"
         im = Image.open(_p).convert("RGB").resize((TW, TH))
         sheet.paste(im, (x, y))
     except Exception:

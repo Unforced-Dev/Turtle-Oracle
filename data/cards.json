@@ -397,7 +397,7 @@
         "confidence": "high"
       },
       "live_hook": "art:behind-closed-eyes",
-      "image_prompt": "A colossal reclining human figure lying on the playa whose body is a topographic landscape — ridges, dry valleys, contour lines. A tiny traveller with a lantern walks across the sleeping giant's chest, mapping it. Down at the giant's feet a small circle of ordinary people sit around a fire that has burned down to embers, faces turned toward the traveller, waiting.",
+      "image_prompt": "A colossal reclining human figure lying on the playa whose body is a topographic landscape — ridges, dry valleys, contour lines. The giant is printed as a BOLD DARK ink mass, unmistakably darker than the pale bare playa around it, its silhouette readable from across a room. A tiny traveller walks across the sleeping giant's chest carrying a lantern that is the single brightest gold point on the whole card, with a delicate dotted trail behind them. At the giant's feet a small circle of people sit around embers, faces turned toward the traveller. Large areas of plain untouched pale playa for breathing space. NO TREE ON THIS CARD: the axis is the traveller's plumb-straight dotted path.",
       "image_file": "cards/art/roots-04.png"
     },
     {
@@ -469,7 +469,7 @@
         "confidence": "high"
       },
       "live_hook": "camp:zendo",
-      "image_prompt": "The interior of a low domed tent, warm and dim. Two figures sit cross-legged on the ground facing each other, one holding the other's hands while they weather something hard. Just outside the doorway a third figure stands holding a folded blanket, facing in, ready — and directly behind that figure their own dark doorway stands open, unentered, with nothing coming out of it.",
+      "image_prompt": "The interior of a low domed tent framed by its dark heavy arch. Inside, the scene is lit warm and pale: two figures sit cross-legged on the ground facing each other, one holding the other's hands while they weather something hard, their forms printed bold and clear against a light bright ground so the pair reads instantly even as a thumbnail. Strong contrast: dark tent canvas, luminous pale interior. Just outside the doorway a third figure stands holding a folded blanket, facing in, ready — and directly behind that figure their own dark doorway stands open, unentered, with nothing coming out of it.",
       "image_file": "cards/art/roots-07.png"
     },
     {
@@ -613,7 +613,7 @@
         "confidence": "high"
       },
       "live_hook": "camp:terrible-turtle",
-      "image_prompt": "A great turtle mid-stride across the flat playa, moving with visible slowness, its jaws closed hard and final on one single taut rope that runs off the edge of the frame. Behind it on the same ground sits a second turtle fully retracted, shell sealed shut, dust drifted high against its sides, clearly unmoved for a long time.",
+      "image_prompt": "A great turtle mid-stride across the flat playa, moving with visible slowness, its jaws closed hard and final on one single taut rope that runs off the edge of the frame. Behind it on the same ground sits a second turtle fully retracted, shell sealed shut, dust drifted high against its sides, clearly unmoved for a long time. NO TREE ON THIS CARD: the World-Tree axis appears only as a thin vertical gold plumb line of drifting dust motes hanging in the sky above the striding turtle, subtle and easy to miss. The striding turtle is the whole subject and the largest thing in the frame. The sky is a FULL rust-orange wash from horizon to top of frame, deep and saturated — this card must read as the rust-orange card of the deck at a glance.",
       "image_file": "cards/art/trunk-01.png"
     },
     {

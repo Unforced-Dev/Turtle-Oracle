@@ -9,9 +9,10 @@ def save(src, dst, w, q=82):
     im = Image.open(src).convert("RGB"); h = int(w*im.size[1]/im.size[0])
     im.resize((w, h), Image.LANCZOS).save(dst, "JPEG", quality=q, optimize=True)
 def art_src(cid):
-    # .png masters are local-only (gitignored); the committed archive is q95 .jpg
-    p = f"{ART}/{cid}.png"
-    return p if os.path.exists(p) else f"{ART}/{cid}.jpg"
+    # The committed q95 .jpg archive is the build source, so every clone builds
+    # identical bytes; the local-only .png master is the fallback for fresh gens.
+    p = f"{ART}/{cid}.jpg"
+    return p if os.path.exists(p) else f"{ART}/{cid}.png"
 for c in d["cards"]:
     save(art_src(c["id"]), f"{REPO}/cards/web/thumb/{c['id']}.jpg", 300)
     save(art_src(c["id"]), f"{REPO}/cards/web/med/{c['id']}.jpg", 900)
