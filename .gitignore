@@ -3,6 +3,12 @@
 # .png master is absent. A fresh clone can rebuild print/fronts from the JPEGs.
 cards/art/*.png
 print/fronts/
+# The Burning Man API snapshot stays local. Burning Man's API terms embargo
+# public display of placement data — art until gates open, camps until the
+# Sunday before the event — and this repo is public. Rebuild it any time with
+# `python3 tools/fetch_brc.py`.
+data/brc_*_snapshot.json
+
 # Ephemera
 server.log
 app/receipts/
