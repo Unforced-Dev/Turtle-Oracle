@@ -4,9 +4,11 @@ Card: 3.5 x 5.25 in (exact 2:3, matches the art — no cropping), 300 DPI, 1/8" 
 Bleed is added by extending edge pixels OUTWARD, so no card's gold border is ever trimmed.
 """
 from PIL import Image, ImageDraw, ImageFont
-import json, os
+import json, os, sys
 
-import os
+sys.path.insert(0, os.path.dirname(os.path.abspath(__file__)))
+from cardtitle import set_title  # the banner typesetting, shared with the web export
+
 REPO = os.path.dirname(os.path.dirname(os.path.abspath(__file__)))
 ART = f"{REPO}/cards/art"
 OUT = f"{REPO}/print"
@@ -40,63 +42,6 @@ def add_bleed(im, b):
     canvas.paste(im.crop((0, h - 1, 1, h)).resize((b, b)), (0, b + h))
     canvas.paste(im.crop((w - 1, h - 1, w, h)).resize((b, b)), (b + w, b + h))
     return canvas
-
-
-# --- the title cartouche -----------------------------------------------------------
-# The generated art deliberately leaves the bottom banner EMPTY. Image models misspell,
-# and 48 cards each misspelling differently would wreck the cohesion the style guide
-# exists to protect. So the name is set here instead: one font, one size rule, one
-# baseline, identical across the deck.
-TITLE_FONTS = [
-    "/System/Library/Fonts/Supplemental/Bodoni 72 Smallcaps Book.ttf",  # the style guide's face
-    "/System/Library/Fonts/Supplemental/Baskerville.ttc",
-    "/System/Library/Fonts/Supplemental/Georgia.ttf",
-]
-TITLE_Y = 0.888        # baseline centre, as a fraction of card height — inside the banner
-TITLE_MAX_W = 0.66     # longest names shrink to fit rather than crowding the frame
-TITLE_INK = (38, 28, 14)
-TRACKING = 0.14        # letter-spacing, in ems — small caps want air
-
-
-def _title_font(size):
-    for path in TITLE_FONTS:
-        try:
-            return ImageFont.truetype(path, size)
-        except Exception:
-            continue
-    return ImageFont.load_default()
-
-
-def _draw_tracked(draw, text, font, cx, cy, fill, tracking):
-    """Centre `text` at (cx, cy) with letter-spacing. PIL has no tracking of its own."""
-    widths = [draw.textlength(ch, font=font) for ch in text]
-    gap = font.size * tracking
-    total = sum(widths) + gap * (len(text) - 1)
-    x = cx - total / 2
-    ascent, descent = font.getmetrics()
-    y = cy - (ascent - descent) / 2
-    for ch, w in zip(text, widths):
-        draw.text((x, y), ch, font=font, fill=fill)
-        x += w + gap
-
-
-def set_title(im, name):
-    """Composite the card name into the empty banner. Returns a new image."""
-    im = im.copy()
-    draw = ImageDraw.Draw(im)
-    W, H = im.size
-    size = int(H * 0.030)
-    font = _title_font(size)
-    # shrink until it fits the banner's usable width, tracking included
-    while size > 8:
-        widths = [draw.textlength(ch, font=font) for ch in name]
-        total = sum(widths) + font.size * TRACKING * (len(name) - 1)
-        if total <= W * TITLE_MAX_W:
-            break
-        size -= 2
-        font = _title_font(size)
-    _draw_tracked(draw, name, font, W / 2, H * TITLE_Y, TITLE_INK, TRACKING)
-    return im
 
 
 def print_ready(src, name=None):
