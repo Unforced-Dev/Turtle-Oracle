@@ -35,14 +35,39 @@ URL = "https://chatgpt.com/backend-api/codex/responses"
 MODEL = os.environ.get("CODEX_IMAGE_MODEL", "gpt-5.6-sol")
 
 # docs/STYLE_GUIDE.md — every card prepends this so all 48 read as one deck.
+#
+# The v1 deck read as 48 individually decent cards rather than one deck, and the
+# diagnosis was always furniture, never subject: two different frame systems inside the
+# Shell twelve, three different cartouche shapes across the deck, ground value drifting
+# light-to-dark inside a single realm, the realm glyph wandering between corners or
+# vanishing, and a handful of cards (Center Camp, Playa Info & the Rangers) sliding out
+# of the woodcut idiom into soft illustration. Everything below exists to nail one of
+# those five down. The rule this file now follows everywhere: describe the furniture as
+# a printer would specify it — which ink, exactly where, how much of the card it covers —
+# never as an adjective. Adjectives are what drifted.
 PREAMBLE = (
-    "Hand-carved woodblock print / letterpress relief illustration, bold black ink "
-    "linework with visible carving texture, cross-hatch and stipple shading, printed on "
-    "warm desert-tan kraft paper with subtle paper grain, sparing metallic gold accents. "
-    "Flat printed ink — no 3D render, no photography, no gradients, no digital smoothness. "
-    "Mythic and heraldic. Centered, symmetrical, iconic composition with calm breathing "
-    "space. Thin double gold border just inside the card edge. A subtle vertical World-Tree "
-    "axis motif somewhere in the composition — the spine of the deck. "
+    # --- the idiom ---------------------------------------------------------------
+    "Hand-carved woodblock print / letterpress relief illustration. Bold black ink "
+    "linework with visible carving texture; EVERY tone is built from carved marks — "
+    "parallel hatching, cross-hatch, stipple, chatter, and white gouges where the block "
+    "was cut away. Flat opaque ink, hard edges, strong figure-ground. "
+    # The named offenders both failed here and nowhere else: right subject, right palette,
+    # rendered like a book illustration. Naming the failure modes individually is what
+    # stops them; "woodcut" alone did not.
+    "THIS IS A RELIEF PRINT, NOT A DRAWING OF ONE. No airbrush, no soft or blended "
+    "shading, no gradients, no painterly or watercolour light, no rendered skin, cloth or "
+    "metal, no 3D render, no photography, no pencil sketch, no comic or graphic-novel "
+    "inking, no children's-book or storybook warmth, no cosy illustrated charm. Faces, "
+    "hands and figures are carved exactly like rock and cloth — blunt, angular, built "
+    "from hatching, never modelled, never smooth, never softly lit. If any passage could "
+    "pass for a soft digital illustration it is WRONG: cut it back to hard black marks on "
+    "bare paper. "
+    "Exactly three inks touch this paper — black, metallic gold, and the realm's second "
+    "ink named below — with no blends or intermediate colours between them. Printed on "
+    "warm desert-tan kraft paper with visible paper grain. "
+    "Mythic and heraldic. Centred, symmetrical, iconic composition with calm breathing "
+    "space. A subtle vertical World-Tree axis motif somewhere in the composition — the "
+    "spine of the deck. "
     # Every card is the same place. Without this the model wanders somewhere prettier the
     # moment a subject turns abstract — the first draft of The Gift came back with pine
     # forests and green valleys, which is a lovely card for a different deck.
@@ -53,44 +78,142 @@ PREAMBLE = (
     "Tree itself. If the subject implies a landscape, that landscape is still this desert. "
 )
 
+# --- the frame ---------------------------------------------------------------------
+# Two frames in the deck, on purpose, and exactly two. The Shell twelve are the axis —
+# the rare card the séance surfaces about one time in ten — and they are meant to be
+# identifiable as one of the twelve from across a dusty tent before anyone reads the
+# name, so they carry deliberately heavier furniture. That asymmetry is the design. What
+# was NOT the design was half the Shell realm printing the heavy frame and half printing
+# the plain one. Each frame is now specified to the millimetre so there is nothing left
+# to interpret.
+TREE_FRAME = (
+    "FRAME — IDENTICAL ON EVERY ROOTS, TRUNK AND BRANCHES CARD, NO VARIATION: a plain "
+    "rectangular double keyline in metallic gold and nothing else. The outer rule is a "
+    "fine gold line inset 3% of the card width from the card edge on all four sides; the "
+    "inner rule is a second, thinner gold line 1.5% of the card width further in. Both "
+    "rules are thin — hairline weight, the outer barely heavier than the inner — and the "
+    "bare kraft paper shows between them. Square corners, mitred cleanly. NOTHING ELSE "
+    "IN THE FRAME: no corner bosses, no medallions, no rosettes, no filigree, no vine, "
+    "no engraved band, no ornamental band, no black frame ground, no third rule. "
+)
+SHELL_FRAME = (
+    "FRAME — IDENTICAL ON ALL TWELVE SHELL CARDS, NO VARIATION, and deliberately much "
+    "heavier than the other realms: an ornate engraved gold-on-black border. A solid "
+    "black band, inset 2% of the card width from the card edge, running the full "
+    "perimeter at a width of 6% of the card width — roughly eight times a plain rule. "
+    "The band is filled edge to edge with a repeating engraved gold ornament of vine, "
+    "dot and lozenge, and is bounded by a fine gold hairline along both its outer and "
+    "its inner edge. At each of the four corners sits a circular gold boss the full width "
+    "of the band: a filled gold disc with a carved rosette inside it. The TOP-LEFT boss "
+    "alone carries the turtle-shell glyph instead of the rosette; the other three bosses "
+    "are identical plain rosettes. Same band width, same ornament, same four bosses on "
+    "every one of the twelve. NEVER a plain thin keyline frame on a Shell card. "
+)
+
+# --- the cartouche -----------------------------------------------------------------
+# One shape for all 48. The v1 deck grew three — a plain rectangle, an ornate shaped
+# cartouche with scalloped ends, and a wavy ribbon scroll with rolled tails that took
+# over most of the Branches row — and nothing wrecks a fan of cards faster than the
+# title sitting on a different object each time.
+#
+# The geometry is not free: tools/print_prep.py sets the title with its baseline centred
+# at 0.888 of the card height (TITLE_Y) and shrinks the face until the tracked line fits
+# 0.66 of the card width (TITLE_MAX_W). The band specified here is centred on 0.888 and
+# is 0.76 wide, which clears the longest name with margin on both sides. Move one and
+# move the other.
+CARTOUCHE = (
+    "TITLE BANNER — IDENTICAL SHAPE, SIZE AND POSITION ON EVERY CARD IN THE DECK: one "
+    "plain rectangular banner with square corners, lying flat and horizontal. Its top "
+    "edge is 84.5% of the way down the image and its bottom edge is 93% of the way down; "
+    "it is exactly 76% of the image width and centred left-to-right. It is drawn as bare "
+    "kraft paper enclosed by a single fine keyline, sitting on top of the artwork, and it "
+    "is COMPLETELY EMPTY — flat blank paper, no lettering, no ornament, no rule, no "
+    "flourish, no device inside it. NOT a ribbon, NOT a scroll, NOT a banderole, NO "
+    "curled or rolled ends, NO wavy or draped edges, NO swallowtails, NO scalloped or "
+    "lobed or shaped cartouche, NO tapered ends, NO corner ornaments on the banner. A "
+    "plain rectangle, every time. "
+)
+
+# --- the realm glyph ---------------------------------------------------------------
+# It wandered corner to corner and sometimes evaporated. One corner, stated twice.
+GLYPH = {
+    r: ("REALM GLYPH — ALWAYS PRESENT, ALWAYS IN THE TOP-LEFT CORNER OF THE CARD AND "
+        "NOWHERE ELSE: a small carved " + mark + ", about 5% of the card width across, "
+        "sitting just inside the frame at the top left. It appears on every card without "
+        "exception. Never in the top-right, never at the bottom, never in more than one "
+        "corner, never omitted. ")
+    for r, mark in {
+        "shell": "turtle-shell glyph (it rides inside the top-left corner boss)",
+        "roots": "root-knot glyph in a plain circular medallion",
+        "trunk": "trunk-ring glyph (concentric growth rings) in a plain circular medallion",
+        "branches": "branch-star glyph in a plain circular medallion",
+    }.items()
+}
+
+# --- the second ink, and the ground value ------------------------------------------
 # The undertone is a SECOND spot-colour printed alongside the black and gold — say it that
 # way. Naming a colour alone gets ignored: "deep indigo undertone" produced cards
 # indistinguishable from the kraft default, while branches' sky-blue happened to survive
-# because the subject was already sky. Each realm now states the ink, where it goes, and
-# how much of the card it should touch.
+# because the subject was already sky. Each realm states the ink, where it goes, and how
+# much of the card it should touch.
+#
+# GROUND VALUE is the same lesson applied to overall darkness, which drifted inside every
+# realm in v1 — a night-black Shell card next to a pale one, a Roots card with no indigo
+# below the line at all, a Trunk card two stops lighter than its neighbours. So each realm
+# now fixes where the horizon sits and how dark the card is allowed to print, in the same
+# ink terms.
 REALM_TONE = {
-    # The Shell twelve are the axis — the rare card the séance now surfaces about one time
-    # in ten. They should be recognisable across a dusty tent before anyone reads the name,
-    # so they get a heavier frame and markedly more gold than the three Tree realms.
     "shell": ("SECOND INK — metallic gold, used lavishly, far more than any other realm: a "
               "full radiant sunburst behind the subject, gilded ornament throughout, gold "
-              "rules and nodes running the whole axis. THIS REALM'S FRAME IS DIFFERENT AND "
-              "HEAVIER: an ornate engraved gold border several times the width of a plain "
-              "rule, with a decorative corner boss at each of the four corners, so the card "
-              "is identifiable as one of the twelve from across a room. Small carved "
-              "turtle-shell glyph in a top corner."),
+              "rules and nodes running the whole axis. "
+              "GROUND VALUE — ONE FIXED VALUE ACROSS ALL TWELVE: the field is warm mid-tan "
+              "kraft paper, and the gold sunburst behind the subject covers the middle two "
+              "thirds of the image, so every Shell card reads gold-dominant at the same "
+              "brightness. The field is NEVER flooded with black and NEVER left as pale "
+              "washed-out paper: no night sky, no dark background, no black field. In this "
+              "realm the black lives in the frame band and the linework, not in the "
+              "field."),
     "roots": ("SECOND INK — deep indigo blue, used heavily and unmistakably: the entire "
               "lower half of the card below the ground line is printed in dark indigo "
               "rather than black, indigo soaking the subterranean cross-hatching, indigo "
               "shadow pooling under the subject. The card must read as blue-black, not "
-              "brown. Downward pull; dense underground detail. Gold only as a small accent. "
-              "Small carved root-knot glyph in a top corner."),
+              "brown. Downward pull; dense underground detail. Gold only as a small "
+              "accent. "
+              "GROUND VALUE — ONE FIXED VALUE ACROSS ALL TWELVE: the ground line CUTS THE "
+              "IMAGE EXACTLY IN HALF. The top half of the card, and only the top half, is "
+              "bare warm kraft with light black linework and open pale sky. The bottom "
+              "half of the card, all of it, is solid dark indigo at the same density "
+              "every time, corner to corner. Not a third, not two thirds — half and half, "
+              "on every one of the twelve. NEVER a Roots card that is warm tan below the "
+              "line, and never a Roots card whose sky is dark."),
     "trunk": ("SECOND INK — burnt rust-orange ochre, clearly visible: rust in the sky wash, "
-              "rust in the horizon band, rust warming the midtones. A strong grounded "
-              "horizon line across the full width. Balanced, upright, weighty. "
-              "Small carved trunk-ring glyph in a top corner."),
+              "rust in the horizon band, rust warming the midtones. Balanced, upright, "
+              "weighty. "
+              "GROUND VALUE — ONE FIXED VALUE ACROSS ALL TWELVE: a strong horizon line "
+              "across the full width at 45% of the image height. Above it, the sky is "
+              "filled solidly with rust-orange ink at the same saturation on every card — "
+              "never pale, never blue, never night. Below it, pale cracked playa in bare "
+              "kraft carrying black linework only. The rust sky is the constant that makes "
+              "the twelve one realm."),
     "branches": ("SECOND INK — pale sky blue, clearly visible: blue filling the open sky, "
                  "blue in the leaves and small carved stars. Upward reach, airy negative "
-                 "space, the lightest of the four. Small carved branch-star glyph in a "
-                 "top corner."),
+                 "space, the lightest of the four realms. "
+                 "GROUND VALUE — ONE FIXED VALUE ACROSS ALL TWELVE: THE HORIZON SITS LOW "
+                 "AND THE SKY IS ENORMOUS. Pale sky blue fills the WHOLE TOP TWO THIRDS "
+                 "of the image, at the same light value on every card; the cracked kraft "
+                 "playa gets only the bottom third, and the horizon line where they meet "
+                 "is two thirds of the way down. Whatever the subject is, it is small "
+                 "against that sky, standing in the bottom third — do not raise the "
+                 "horizon to fit it in. The sky is NEVER dark, never night, never rust, "
+                 "never black — this realm is always the lightest card on the table."),
 }
 
 # No lettering in the generated art: image models misspell, and 48 cards that each
-# misspell differently is the fastest way to lose deck cohesion. The title cartouche
-# is composited in tools/print_prep.py, where the typography is exact and identical.
-NO_TEXT = (" Leave a clean empty banner cartouche across the bottom sixth of the image for "
-           "a title to be printed later. Absolutely no letters, words, numerals or "
-           "signatures anywhere in the image.")
+# misspell differently is the fastest way to lose deck cohesion. The title is composited
+# into the empty banner by tools/print_prep.py, where the typography is exact and
+# identical across the deck.
+NO_TEXT = (" Absolutely no letters, words, numerals or signatures anywhere in the image; "
+           "the title banner stays blank.")
 
 
 def auth_headers():
@@ -108,7 +231,13 @@ def auth_headers():
 
 
 def build_prompt(card):
-    return (PREAMBLE + f"[{card['realm'].upper()} undertone: {REALM_TONE[card['realm']]}] "
+    realm = card["realm"]
+    # Furniture first, subject last: the fixed deck-wide spec, then the one card.
+    return (PREAMBLE
+            + (SHELL_FRAME if realm == "shell" else TREE_FRAME)
+            + CARTOUCHE
+            + GLYPH[realm]
+            + f"[{realm.upper()} undertone: {REALM_TONE[realm]}] "
             + "Subject: " + card["image_prompt"].strip() + NO_TEXT)
 
 
