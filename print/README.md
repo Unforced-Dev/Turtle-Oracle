@@ -17,7 +17,10 @@ Print-ready assets for the physical deck (~50 copies). **Full-art fronts + one u
 These files suit any printer that accepts a **3.5×5.25 in, 300 DPI, ⅛ in bleed** card with no crop marks (most online/offset card printers and print-on-demand services).
 
 - **Best fit:** a service/shop that accepts a **custom 2:3 card size** (offset printers, or POD that allows custom dimensions). Upload `fronts/` as the fronts and `back.png` as the shared back.
-- **Fixed-template services** (e.g. MakePlayingCards, The Game Crafter) use set sizes whose aspect (e.g. tarot 2.75×4.75 = 0.58) differs from our 2:3 (0.67). To use one, the art must be padded or slightly cropped to their template. Say the word and I'll re-export `fronts/` to any vendor's exact pixel size + aspect (padding with the deck's kraft/border so nothing important is lost).
+- **Fixed-template services** use set sizes whose aspect differs from our 2:3 (0.67), so the art has to be adapted to their template. Two are already written, each a single command, each writing a gitignored directory (the output is ~73 MB; the upload zip ships as a GitHub release, not in git):
+  - `python3 tools/export_mpc.py` → `print/mpc/` — **MakePlayingCards jumbo**, 3.5×5 in (0.70), upload 1125×1575. Fitted by height, side edges extended outward to reach the trim width.
+  - `python3 tools/export_tgc.py` → `print/tgc/` — **The Game Crafter Jumbo Deck**, 3.5×5.5 in (0.636), upload 1125×1725, RGB only (they reject CMYK). Taller than our art rather than shorter, so there is nothing to extend into: the master is resized onto the trim, a 4.76% vertical stretch, which keeps the engraved frame running to all four edges.
+  - Both typeset the title **after** the resize, through `tools/cardtitle.py`, so the name sits in its banner by the same relative rule as the house card. Any other vendor is a new `TRIM`/`FULL` pair away.
 
 ## Quantity
 ~50 decks (one per camp member). Confirm finish (matte recommended for the woodcut look), card stock, and box option with your chosen printer.
