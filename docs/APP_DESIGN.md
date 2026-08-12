@@ -33,7 +33,7 @@ Everything self-contained on one machine in the camp. No network calls at read-t
 - `app/oracle/geo.py` — `locate(card)` resolves a card to a place; `COMPASS_ROSE` (≤32-col city compass); `directions_lines()`. `/api/reading` returns per-card `location`, a `map`, and `directions`. Refresh with GPS via the Burning Man API in August (see `data/README.md`).
 
 ## Thermal receipt printer (built)
-- Target: **58mm USB ESC/POS**. `app/oracle/printer.py` formats a 32-col receipt (header, question, the three cards, the reading, the quest with directions, the compass, footer) and prints via `python-escpos` when `ESCPOS_VENDOR_ID`/`ESCPOS_PRODUCT_ID` are set + the lib installed; otherwise saves a preview to `app/receipts/`. Endpoint: `POST /api/print` (prints the last reading). UI: "🧾 Print my quest" button.
+- Target: the camp's **Epson TM-m30III (80mm)** units. `app/oracle/printer.py` formats a 48-col receipt (header, question, the three cards, the reading, the quest with directions, the compass, footer) and prints via `python-escpos`: network first (`ESCPOS_HOST`, port 9100 — one ethernet cable to the camp router), USB fallback (`ESCPOS_VENDOR_ID`/`ESCPOS_PRODUCT_ID`); with neither set it saves a preview to `app/receipts/`. `ORACLE_PRINT_WIDTH=32` retargets a 58mm printer. Endpoint: `POST /api/print` (prints the last reading). UI: "🧾 Print my quest" button.
 - Playa setup: `pip install python-escpos pyusb`; find IDs via `system_profiler SPUSBDataType` (macOS) / `lsusb`; export the two env vars before launching the server.
 
 ## Server + UI (built)

@@ -8,9 +8,10 @@ ART = f"{REPO}/cards/art"
 
 
 def art_src(cid):
-    # .png masters are local-only (gitignored); the committed archive is q95 .jpg
-    p = f"{ART}/{cid}.png"
-    return p if os.path.exists(p) else f"{ART}/{cid}.jpg"
+    # The committed q95 .jpg archive is the build source, so every clone builds
+    # identical bytes; the local-only .png master is the fallback for fresh gens.
+    p = f"{ART}/{cid}.jpg"
+    return p if os.path.exists(p) else f"{ART}/{cid}.png"
 
 
 d = json.load(open(f"{REPO}/data/cards.json"))
