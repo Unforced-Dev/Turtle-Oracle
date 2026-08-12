@@ -13,7 +13,8 @@ from PIL import Image
 import json, os, sys
 
 sys.path.insert(0, os.path.dirname(os.path.abspath(__file__)))
-from print_prep import set_title, art_src  # same faces, same tracking, same baseline rule
+from cardtitle import set_title            # the one cartouche rule, shared with print + web
+from print_prep import art_src             # same archive-first master lookup as the house export
 
 REPO = os.path.dirname(os.path.dirname(os.path.abspath(__file__)))
 OUT = f"{REPO}/print/mpc"
