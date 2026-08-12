@@ -113,7 +113,7 @@ is allowed to print.
 | **Shell** | Metallic gold, lavishly: full radiant sunburst behind the subject, gilded ornament throughout, gold rules and nodes along the axis. | Warm mid-tan kraft field; the sunburst covers the middle two-thirds. Gold-dominant at the same brightness every time. **Never** a black-flooded field, night sky, or washed-out pale card — the black lives in the frame band and the linework. |
 | **Roots** | Deep indigo: the entire lower half below the ground line prints indigo instead of black, soaking the subterranean cross-hatching. Reads blue-black, not brown. Gold only as a small accent. | The ground line **cuts the image exactly in half** — not a third, not two thirds. Top half: bare warm kraft, light linework, open pale sky. Bottom half: solid dark indigo at one density, corner to corner. **Never** warm tan below the line; never a dark sky. |
 | **Trunk** | Burnt rust-orange ochre: rust in the sky wash, the horizon band, and the midtones. Balanced, upright, weighty. | Horizon across the full width at **45% of image height**. Above: sky solidly rust-orange at one saturation. Below: pale cracked playa, bare kraft, black linework only. **Never** pale, blue, or night. |
-| **Branches** | Pale sky blue: filling the open sky, in the leaves and small carved stars. Upward reach, airy negative space. | **Horizon low, sky enormous:** pale sky blue fills the whole **top two thirds**, playa gets only the bottom third, and the subject stays small in that bottom third rather than pushing the horizon up. **Never** dark, night, rust or black — always the lightest card on the table. |
+| **Branches** | Pale sky blue: filling the open sky, in the leaves and small carved stars. Upward reach, airy negative space. | Pale sky blue fills the whole **top half**; the cracked playa gets the bottom half, horizon crossing at exactly half the image height, corner to corner. The subject stays small in that bottom half rather than pushing the horizon up. **Never** dark, night, rust or black — always the lightest card on the table. |
 
 > **Horizon numbers are the softest part of this spec.** In the v2 sample row the model
 > honoured the frame, banner, glyph and ink assignments exactly, but treated horizon
@@ -123,6 +123,13 @@ is allowed to print.
 > raise the horizon to fit it in."* Roots' "cuts the image exactly in half" landed first
 > try. Prefer plain fractions and an explicit instruction about what to do with the
 > subject; expect the horizon to land within a band rather than on the number.
+>
+> **Resolution (approved 2026-08-11): Branches is specified at half.** The model
+> reliably delivered ~half no matter how the two-thirds clause was worded, so the spec
+> was restated to the value it actually hits — a rule the model obeys beats a prettier
+> rule it fuzzes differently on each card. The sample card (`branches-09`) was generated
+> under the old two-thirds wording, which rendered as half; its archived prompt in
+> `cards/art-v2/prompts-used.json` therefore predates this clause.
 
 ## Format
 

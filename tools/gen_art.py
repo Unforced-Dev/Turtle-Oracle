@@ -198,14 +198,15 @@ REALM_TONE = {
     "branches": ("SECOND INK — pale sky blue, clearly visible: blue filling the open sky, "
                  "blue in the leaves and small carved stars. Upward reach, airy negative "
                  "space, the lightest of the four realms. "
-                 "GROUND VALUE — ONE FIXED VALUE ACROSS ALL TWELVE: THE HORIZON SITS LOW "
-                 "AND THE SKY IS ENORMOUS. Pale sky blue fills the WHOLE TOP TWO THIRDS "
-                 "of the image, at the same light value on every card; the cracked kraft "
-                 "playa gets only the bottom third, and the horizon line where they meet "
-                 "is two thirds of the way down. Whatever the subject is, it is small "
-                 "against that sky, standing in the bottom third — do not raise the "
-                 "horizon to fit it in. The sky is NEVER dark, never night, never rust, "
-                 "never black — this realm is always the lightest card on the table."),
+                 "GROUND VALUE — ONE FIXED VALUE ACROSS ALL TWELVE: pale sky blue fills "
+                 "the WHOLE TOP HALF of the image, at the same light value on every card; "
+                 "the cracked kraft playa gets the bottom half, and the horizon line "
+                 "where they meet crosses at exactly half the image height, corner to "
+                 "corner, every time. Whatever the subject is, it stays small against "
+                 "that sky, standing in the bottom half — do not raise the horizon above "
+                 "the midline to fit it in. The sky is NEVER dark, never night, never "
+                 "rust, never black — this realm is always the lightest card on the "
+                 "table."),
 }
 
 # No lettering in the generated art: image models misspell, and 48 cards that each
