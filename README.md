@@ -24,7 +24,8 @@ Built on a synchronicity: Burning Man 2026's theme is **Axis Mundi** (the World 
 - `app/` — the offline server + reading engine (`deck`, `select`, `weave`, `geo`, `printer`, `server`).
 - `data/` — `cards.json` (canonical deck), `brc_geo.json`, `playa_2026.json`, schema. See `data/README.md`.
 - `cards/web/` — web-optimized thumbnails + medium images. `cards/back.png` — the card back.
-- `print/` — `booklet.pdf`, `proof.pdf`, print README. (Full-res fronts + `cards/art/` are kept local; too large for git.)
+- `cards/art/` — the 48 masters, q95 4:4:4 JPEG at 1024×1536, plus the prompts that made them. Every derived asset is built from these.
+- `print/` — `booklet.pdf`, `proof.pdf`, print README. (`print/fronts/` is rebuilt locally from `cards/art/`; too large for git.)
 - `docs/` — design docs (deck, app, style guide) + sourced 2026 research.
 - `tools/` — build scripts (web images, contact sheet, booklet, print prep, static build).
 

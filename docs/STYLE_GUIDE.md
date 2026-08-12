@@ -129,7 +129,7 @@ is allowed to print.
 > was restated to the value it actually hits — a rule the model obeys beats a prettier
 > rule it fuzzes differently on each card. The sample card (`branches-09`) was generated
 > under the old two-thirds wording, which rendered as half; its archived prompt in
-> `cards/art-v2/prompts-used.json` therefore predates this clause.
+> `cards/art/prompts-used.json` therefore predates this clause.
 
 ## Format
 

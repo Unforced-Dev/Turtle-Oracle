@@ -23,4 +23,4 @@ These files suit any printer that accepts a **3.5×5.25 in, 300 DPI, ⅛ in blee
 ~50 decks (one per camp member). Confirm finish (matte recommended for the woodcut look), card stock, and box option with your chosen printer.
 
 ## Regenerate
-`python3 scratchpad/print_prep.py` (uses `cards/art/*.png` + `cards/back.png`, PIL only). Change `TRIM`/`DPI`/`BLEED` at the top to retarget size.
+`python3 tools/print_prep.py` (uses the committed `cards/art/*.jpg` archive + `cards/back.png`, PIL only). Card names are typeset onto the empty banner at build time by `tools/cardtitle.py` — the same rule the web images use. Change `TRIM`/`DPI`/`BLEED` at the top to retarget size.
