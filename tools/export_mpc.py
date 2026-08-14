@@ -46,10 +46,13 @@ def mpc_ready(src, name=None):
     im = Image.open(src).convert("RGB")
     fit_w = int(TRIM[1] * im.size[0] / im.size[1])          # height-fit: 1000 wide
     im = im.resize((fit_w, TRIM[1]), Image.LANCZOS)
+    if name:
+        # Typeset BEFORE the side extension: cardtitle's fractions assume the
+        # art fills the canvas, and on the padded 1050 trim the 0.66 width cap
+        # lets long names overrun the banner drawn in the 1000px-wide art.
+        im = set_title(im, name)
     pad = TRIM[0] - fit_w
     im = extend(im, pad // 2, pad - pad // 2, 0, 0)          # -> exact trim
-    if name:
-        im = set_title(im, name)
     bw, bh = FULL[0] - TRIM[0], FULL[1] - TRIM[1]
     return extend(im, bw // 2, bw - bw // 2, bh // 2, bh - bh // 2)
 
