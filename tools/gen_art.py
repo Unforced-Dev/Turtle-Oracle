@@ -126,7 +126,10 @@ CARTOUCHE = (
     "plain rectangular banner with square corners, lying flat and horizontal. Its top "
     "edge is 84.5% of the way down the image and its bottom edge is 93% of the way down; "
     "it is exactly 76% of the image width and centred left-to-right. It is drawn as bare "
-    "kraft paper enclosed by a single fine keyline, sitting on top of the artwork, and it "
+    # Colour was left unspecified here and three Branches cards duly drew the keyline in
+    # black, which reads as a different banner object across a fan of cards. Name the ink.
+    "kraft paper enclosed by a single fine METALLIC GOLD keyline (never black), sitting "
+    "on top of the artwork, and it "
     "is COMPLETELY EMPTY — flat blank paper, no lettering, no ornament, no rule, no "
     "flourish, no device inside it. NOT a ribbon, NOT a scroll, NOT a banderole, NO "
     "curled or rolled ends, NO wavy or draped edges, NO swallowtails, NO scalloped or "
