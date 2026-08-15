@@ -23,3 +23,6 @@ app/state/
 print/mpc/
 print/ttoracle-mpc-upload.zip
 print/tgc/
+
+# Rank-mark prototypes / verification scratch
+.proto/
