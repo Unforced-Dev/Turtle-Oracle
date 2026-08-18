@@ -14,6 +14,7 @@ import json, os, sys
 
 sys.path.insert(0, os.path.dirname(os.path.abspath(__file__)))
 from cardtitle import set_title            # the one cartouche rule, shared with print + web
+from rankmark import set_rank              # the rank medallion — makes the deck deal as 52
 from print_prep import art_src             # same archive-first master lookup as the house export
 
 REPO = os.path.dirname(os.path.dirname(os.path.abspath(__file__)))
@@ -23,6 +24,7 @@ os.makedirs(f"{OUT}/fronts", exist_ok=True)
 DPI = 300
 TRIM = (int(3.5 * DPI), int(5 * DPI))      # 1050 x 1500
 FULL = (TRIM[0] + 75, TRIM[1] + 75)        # 1125 x 1575 — 1/8" bleed each side
+RANK_VARIANT = "gold"                      # "gold" (uniform antique) | "realm" (tinted)
 
 
 def extend(im, left, right, top, bottom):
@@ -42,10 +44,16 @@ def extend(im, left, right, top, bottom):
     return canvas
 
 
-def mpc_ready(src, name=None):
+def mpc_ready(src, name=None, rank=None, realm=None, variant=RANK_VARIANT, report=None):
     im = Image.open(src).convert("RGB")
     fit_w = int(TRIM[1] * im.size[0] / im.size[1])          # height-fit: 1000 wide
     im = im.resize((fit_w, TRIM[1]), Image.LANCZOS)
+    if rank:
+        # The rank goes on FIRST. It checks the title plaque so the bottom mark can
+        # never land on the name, and cardtitle.detect_banner finds that plaque by
+        # its flatness — which the name typeset into it destroys. Run the other way
+        # round the check silently returns None on every card and stops guarding.
+        im = set_rank(im, rank, realm, variant=variant, report=report)
     if name:
         # Typeset BEFORE the side extension: cardtitle's fractions assume the
         # art fills the canvas, and on the padded 1050 trim the 0.66 width cap
@@ -57,15 +65,27 @@ def mpc_ready(src, name=None):
     return extend(im, bw // 2, bw - bw // 2, bh // 2, bh - bh // 2)
 
 
-d = json.load(open(f"{REPO}/data/cards.json"))
-order = {"shell": 0, "roots": 1, "trunk": 2, "branches": 3}
-cards = sorted(d["cards"], key=lambda c: (order[c["realm"]], c["number"]))
+def build():
+    d = json.load(open(f"{REPO}/data/cards.json"))
+    order = {"shell": 0, "roots": 1, "trunk": 2, "branches": 3}
+    cards = sorted(d["cards"], key=lambda c: (order[c["realm"]], c["number"]))
 
-for c in cards:
-    mpc_ready(art_src(c["id"]), c["name"]).save(
-        f"{OUT}/fronts/{c['id']}.jpg", "JPEG",
-        quality=95, optimize=True, subsampling=0, dpi=(DPI, DPI))
-mpc_ready(f"{REPO}/cards/back.png").save(
-    f"{OUT}/back.jpg", "JPEG", quality=95, optimize=True, subsampling=0, dpi=(DPI, DPI))
+    missed = []
+    for c in cards:
+        rep = {}
+        mpc_ready(art_src(c["id"]), c["name"], c["number"], c["realm"], report=rep).save(
+            f"{OUT}/fronts/{c['id']}.jpg", "JPEG",
+            quality=95, optimize=True, subsampling=0, dpi=(DPI, DPI))
+        if not rep.get("ok"):
+            missed.append(f"{c['id']} ({rep.get('why')})")
+    mpc_ready(f"{REPO}/cards/back.png").save(
+        f"{OUT}/back.jpg", "JPEG", quality=95, optimize=True, subsampling=0, dpi=(DPI, DPI))
 
-print(f"mpc: {len(cards)} fronts + back at {FULL[0]}x{FULL[1]} (trim {TRIM[0]}x{TRIM[1]}) -> {OUT}")
+    print(f"mpc: {len(cards)} fronts + back at {FULL[0]}x{FULL[1]} "
+          f"(trim {TRIM[0]}x{TRIM[1]}) -> {OUT}")
+    if missed:
+        print(f"mpc: NO RANK MARK on {len(missed)}: {', '.join(missed)}")
+
+
+if __name__ == "__main__":
+    build()
