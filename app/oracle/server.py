@@ -261,12 +261,16 @@ class Handler(BaseHTTPRequestHandler):
                 sid = (body.get("session") or "").strip()
                 if action == "say":
                     event = session.hear(sid, body, LLM_SINGLETON)
-                    note_tier((event.get("modes") or {}).get("weave"))
+                    modes = event.get("modes") or {}
+                    note_tier(modes.get("weave"))
+                    note_tier(modes.get("refine"))
                     return self._send(200, event)
                 if action == "accept":
                     # The sealed quest stays on the session; /api/print reads it back by
                     # session id. Nothing is staged in shared state.
-                    return self._send(200, session.accept(sid, LLM_SINGLETON))
+                    result = session.accept(sid, LLM_SINGLETON)
+                    note_tier((result.get("modes") or {}).get("seal"))
+                    return self._send(200, result)
             except Exception as e:
                 return self._send(500, {"error": str(e)})
             return self._send(404, {"error": "unknown séance action"})
@@ -282,14 +286,30 @@ class OracleServer(ThreadingHTTPServer):
     allow_reuse_address = True
 
 
+# keep_alive=-1 should keep the model resident forever, but a Spark reboot, an Ollama
+# restart, or an eviction under memory pressure all silently cold the model — and the
+# NEXT seeker eats a 60s timeout and gets served the (perfectly polished, entirely
+# generic) offline template with nobody the wiser. One boot-time warm call doesn't catch
+# any of those; a standing loop does.
+WARM_INTERVAL = float(os.environ.get("ORACLE_WARM_INTERVAL", "240"))
+
+
+def _warm_keeper():
+    import time
+    while True:
+        try:
+            if LLM_SINGLETON.available():
+                LLM_SINGLETON.generate("wake", timeout=90)
+        except Exception:
+            pass
+        time.sleep(WARM_INTERVAL)
+
+
 def main():
     print(f"🐢  Terrible Turtle Oracle at http://localhost:{PORT}")
     print(f"    LLM (Ollama {LLM_SINGLETON.model}): {'available' if LLM_SINGLETON.available() else 'OFF — using offline weave'}")
     print(f"    Ears (whisper.cpp): {'available' if ears.available() else 'OFF — typed input only'}")
-    if LLM_SINGLETON.available():
-        # warm the model into memory (keep_alive=-1) so the first seeker isn't kept waiting
-        threading.Thread(target=lambda: LLM_SINGLETON.generate("wake", timeout=300),
-                         daemon=True).start()
+    threading.Thread(target=_warm_keeper, daemon=True).start()
     OracleServer(("0.0.0.0", PORT), Handler).serve_forever()
 
 

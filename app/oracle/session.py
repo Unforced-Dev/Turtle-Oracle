@@ -165,7 +165,15 @@ def _clean_line(s, max_words=40):
 
 
 def _extract_name(text):
-    t = re.sub(r"^(hi|hey|hello|um|uh|well|ok|okay)[,!. ]+", "", (text or "").strip(), flags=re.I)
+    # Filler words can stack ("um, hi there, I'm Wren") — strip repeatedly, not once,
+    # or a second filler word left behind gets read as the name itself.
+    t = (text or "").strip()
+    filler = re.compile(r"^(hi|hey|hello|hiya|there|um|uh|er|well|ok|okay|so|yeah)[,!. ]+", re.I)
+    while True:
+        stripped = filler.sub("", t)
+        if stripped == t:
+            break
+        t = stripped
     t = re.sub(r"^(i am|i'm|im|they call me|people call me|my name is|my name's|call me|it's|its|"
                r"the name is|name's|this is)\s+", "", t, flags=re.I)
     t = re.split(r"[,.!?;\n]| and | but ", t)[0].strip()
@@ -210,8 +218,9 @@ def _context(sess):
                      f'REGISTER: {w["register"]} QUEST TILT: {w["quest_tilt"]}')
     if sess.get("stones"):
         names = [s["name"] for s in STONES if s["id"] in sess["stones"]]
-        parts.append("When words were hard, they touched what they carry: "
-                     + ", ".join(names) + ".")
+        parts.append("When words were hard, they touched what they carry, instead of speaking: "
+                     + ", ".join(names) + ". These are weight felt, not words said — never write "
+                     "'you said' or quote a stone's name back to them as if they spoke it.")
     if sess.get("ground", 0) >= 0.5:
         parts.append("IMPORTANT — the seeker is far from shore tonight (altered, exhausted, or "
                      "unmoored). Keep the reading SHORT (60-90 words), warm, concrete. The quest "
@@ -380,10 +389,13 @@ def _refine_llm(sess, llm):
         + f"\n\nThe current quest:\n{sess['adventure']}\n\n"
         "Rewrite the quest around that new truth — same three cards, same three real places, but the "
         "tasks should now put what they just confessed at the center (if they said they secretly sing, "
-        "the quest makes them sing). Keep the arc: FACE alone with a hard truth, STAND as presence at a "
-        "place, REACH involving another human; keep one leave-something-behind. Concrete, doable, with "
-        "directions. Also write one short acknowledgement line (under 20 words) the Turtle says first, "
-        "naming the new truth.\n"
+        "the quest makes them sing). At least ONE of the three moves must be REPLACED, not reworded — "
+        "put the new truth in its own words, don't just gesture at it. If the new truth is something "
+        "they are keeping secret, the REACH move should be telling one person. Keep the arc: FACE alone "
+        "with a hard truth, STAND as presence at a place, REACH involving another human; keep one "
+        "leave-something-behind. Concrete, doable, with directions, and as detailed as the quest you are "
+        "replacing — this is a rewrite, not a summary. Also write one short acknowledgement line (under "
+        "20 words) the Turtle says first, naming the new truth.\n"
         'Return JSON only: {"say": "...", "adventure": "..."}'
     )
     resp = llm.generate(prompt, system=SYSTEM, as_json=True, timeout=T_LONG)
@@ -394,8 +406,15 @@ def _refine_llm(sess, llm):
     except Exception:
         return None
     if isinstance(out, dict) and out.get("adventure"):
+        adventure = out["adventure"].strip()
+        # A real rewrite doesn't come back dramatically shorter than what it replaced —
+        # that shape is the tell for "paraphrased the old quest" instead of "used the
+        # new truth," which defeats the entire point of asking to go deeper.
+        orig_words = _words(sess["adventure"])
+        if orig_words and _words(adventure) < 0.7 * orig_words:
+            return None
         return {"say": _clean_line(out.get("say"), 30) or random.choice(REFINE_ACKS),
-                "adventure": out["adventure"].strip()}
+                "adventure": adventure}
     return None
 
 
@@ -527,11 +546,13 @@ def hear(sid, body, llm=None):
                  "ask": DECISION_ASK, "expects": "decision"}
         if ref:
             sess["adventure"] = ref["adventure"]
-            event.update(say=ref["say"], adventure=ref["adventure"], reading=sess["reading"])
+            event.update(say=ref["say"], adventure=ref["adventure"], reading=sess["reading"],
+                         modes={"refine": "llm"})
         else:
             fb = _refine_fallback(sess)
             sess["adventure"] = fb["adventure"]
-            event.update(say=fb["say"], adventure=fb["adventure"], reading=fb["reading"])
+            event.update(say=fb["say"], adventure=fb["adventure"], reading=fb["reading"],
+                         modes={"refine": "fallback"})
         picks, located = sess["picks"], sess["located"]
         event["cards"] = {r: card_payload(picks[r], located[r]) for r in ("roots", "trunk", "branches")}
         event["echoes"] = sess["echoes"]
@@ -556,11 +577,13 @@ def _seal_llm(sess, llm):
         "Seal this quest into exactly three moves, in order FACE, STAND, REACH.\n"
         f"The seeker's words:\n" + "\n".join(f"- {s}" for s in sess["shares"])
         + f"\n\nThe accepted quest:\n{sess['adventure']}\n\nThe cards:\n" + "\n".join(lines)
-        + "\n\nFor each move give: task (1-2 concrete sentences drawn from the quest), where (short, "
-        "from the card's where), proof (ONE specific thing to bring back to the shell, personal to "
-        "their words). EXACTLY ONE move also gets leave: one small thing left behind there. "
-        "FACE is done alone with a hard truth; STAND is presence at a place; REACH involves another "
-        "human. Nothing risky, nothing without consent.\n"
+        + "\n\nFor each move give: task (1-2 concrete sentences drawn from the quest; EVERY task must "
+        "pair a physical action with an open interior door — 'stay until…', 'leave when you have…', "
+        "'ask until someone…' — specific on the outside, open on the inside, since that openness is "
+        "where the seeker finds themselves), where (short, from the card's where), proof (ONE specific "
+        "thing to bring back to the shell, personal to their words). EXACTLY ONE move also gets leave: "
+        "one small thing left behind there. FACE is done alone with a hard truth; STAND is presence at "
+        "a place; REACH involves another human. Nothing risky, nothing without consent.\n"
         'Return JSON only: {"moves": [{"task":"","where":"","proof":"","leave":""}, {...}, {...}]}'
     )
     resp = llm.generate(prompt, system=SYSTEM, as_json=True, timeout=T_LONG)
@@ -583,21 +606,29 @@ def accept(sid, llm=None):
         return {"error": "no such séance — touch the shell to begin again", "stage": "gone"}
     if sess["stage"] != "proposed" and not sess["quest"]:
         return {"error": "no quest to accept yet", "stage": sess["stage"]}
+    seal_mode = None
     if not sess["quest"]:
         picks, located = sess["picks"], sess["located"]
         r, t, b = picks["roots"], picks["trunk"], picks["branches"]
         sealed = (_seal_llm(sess, llm) if llm and llm.available() else None)
+        seal_mode = "llm" if sealed else "fallback"
         moves = []
         leave_at = random.randrange(3)
-        for i, realm in enumerate(("roots", "trunk", "branches")):
+        realms = ("roots", "trunk", "branches")
+        for i, realm in enumerate(realms):
             c, loc = picks[realm], located.get(realm, {})
             where = loc.get("directions", "") or "Somewhere out there — ask Playa Info."
             if sealed:
                 m = sealed[i]
+                # Real BRC geo wins over whatever the model invented; its guess only
+                # rides along as a suffix, and only when it actually adds something.
+                m_where = (m.get("where") or "").strip()
+                merged_where = (f"{where} — {m_where}"
+                                 if m_where and m_where.lower() != where.lower() else where)
                 moves.append({
                     "slot": SLOT_TITLES[realm], "card": c["name"],
                     "task": m["task"].strip(),
-                    "where": (m.get("where") or where).strip(),
+                    "where": merged_where,
                     "at": c["real_2026"]["name"],
                     "proof": (m.get("proof") or PROOFS[realm][(c.get("number", 1) - 1) % 4]).strip(),
                     "leave": (m.get("leave") or "").strip(),
@@ -610,6 +641,17 @@ def accept(sid, llm=None):
                     "proof": PROOFS[realm][(c.get("number", 1) - 1) % 4],
                     "leave": LEAVES[c.get("number", 1) % len(LEAVES)] if i == leave_at else "",
                 })
+        # THE SACRIFICE demands exactly one move leave something behind — the model isn't
+        # trustworthy on the count, so enforce it here rather than in the prompt alone.
+        leave_idx = next((i for i, mv in enumerate(moves) if mv.get("leave")), None)
+        if leave_idx is None:
+            leave_idx = leave_at
+            c = picks[realms[leave_idx]]
+            moves[leave_idx]["leave"] = LEAVES[c.get("number", 1) % len(LEAVES)]
+        else:
+            for i, mv in enumerate(moves):
+                if i != leave_idx:
+                    mv["leave"] = ""
         sess["quest"] = {
             "title": f'The Quest of {b["name"]}',
             "for": sess.get("name") or "Traveler",
@@ -625,8 +667,11 @@ def accept(sid, llm=None):
                      "title": sess["quest"]["title"], "shares": sess["shares"],
                      "cards": [picks[r]["id"] for r in ("roots", "trunk", "branches")],
                      "quest": sess["quest"]})
-    return {"session": sid, "stage": "accepted", "say": random.choice(ACCEPT_LINES),
-            "quest": sess["quest"], "expects": "done"}
+    event = {"session": sid, "stage": "accepted", "say": random.choice(ACCEPT_LINES),
+             "quest": sess["quest"], "expects": "done"}
+    if seal_mode:
+        event["modes"] = {"seal": seal_mode}
+    return event
 
 
 def snapshot(sid):
