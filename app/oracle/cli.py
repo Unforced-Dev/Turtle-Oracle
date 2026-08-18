@@ -7,7 +7,7 @@ import sys
 from .deck import load_deck, SLOT_LABEL
 from .select import select_cards
 from .weave import weave
-from .llm import LLM
+from .llm import make_llm
 
 BOLD, DIM, GOLD, RESET = "\033[1m", "\033[2m", "\033[33m", "\033[0m"
 
@@ -32,7 +32,7 @@ def main(argv=None):
     argv = argv if argv is not None else sys.argv[1:]
     question = " ".join(argv).strip() or input("Ask the Turtle: ").strip()
     _, _, by_realm = load_deck()
-    llm = LLM()
+    llm = make_llm()
     picks, sel_mode = select_cards(question, by_realm, llm)
     reading, weave_mode = weave(question, picks, llm)
     render(question, picks, reading, sel_mode, weave_mode)

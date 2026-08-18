@@ -16,7 +16,9 @@ voice (or typed) question
 Everything self-contained on one machine in the camp. No network calls at read-time. Live 2026 event data (if used) is a static snapshot loaded before leaving.
 
 ## Intelligence: graceful degradation (3 tiers)
-1. **Local LLM** (best) — via **Ollama** on localhost. Does resonant card selection + the woven reading. Model set by `ORACLE_MODEL` (e.g. `qwen2.5`, `llama3.1`). The reading is the magic; a real model makes it sing.
+1. **A real LLM** (best) — either backend, same interface, chosen by `ORACLE_LLM_BACKEND=ollama|cloud|auto` (default `auto`: cloud if an API key is in the environment, else Ollama). Does the woven reading, the echoes, the refine and the seal. The reading is the magic; a real model makes it sing.
+   - **Ollama** on localhost — the playa instance. Model set by `ORACLE_MODEL` (e.g. `qwen2.5`, `gemma4:e2b`), host by `OLLAMA_HOST`. No internet, no bill.
+   - **Cloud** — any OpenAI-compatible `/chat/completions` host, for the public instance where there is no GPU to lean on. Key from `ORACLE_CLOUD_KEY` (or `GROQ_API_KEY` / `OPENAI_API_KEY`); `ORACLE_CLOUD_BASE` and `ORACLE_CLOUD_MODEL` default to Groq `openai/gpt-oss-20b`. **No key → `available()` is False and the séance runs on templates**, exactly as a dead Ollama does; the key is only ever read from the environment, never committed.
 2. **Deterministic fallback** (always works) — if no LLM: keyword-resonance card selection + a templated weave stitched from each card's own Reading and Turtle Dare. Less fluid, never fails, no dependencies.
 3. Transcription: local Whisper (`faster-whisper` / `whisper.cpp`) if present; otherwise the UI takes typed input.
 
@@ -24,7 +26,7 @@ Everything self-contained on one machine in the camp. No network calls at read-t
 - `deck.py` — load `data/cards.json`; group by realm; the Tree spread (1 Root / 1 Trunk / 1 Branch; a Shell card may substitute into any slot as "the axis speaks").
 - `select.py` — choose the resonant three (LLM pick → keyword score → random).
 - `weave.py` — build the reading + adventure (LLM → template fallback).
-- `llm.py` — Ollama adapter over stdlib `urllib`; `available()` probes localhost; short timeout; any failure → fallback.
+- `llm.py` — both adapters over stdlib `urllib`, one interface (`available()` / `generate()` / `model`); `make_llm()` picks. `LLM` probes Ollama's `/api/tags`; `CloudLLM` POSTs OpenAI-shaped `/chat/completions`, probes `/models`, strips `<think>` blocks and ``` fences before the caller's `json.loads`, and retries once on 429/5xx (or bare, on a 400 from a reasoning knob the provider doesn't know). Any failure → `None` → fallback.
 - `cli.py` — `python3 app/oracle/cli.py "your question"` → prints the three cards + woven reading + adventure. Testable with zero dependencies.
 
 ## Maps & wayfinding (built)

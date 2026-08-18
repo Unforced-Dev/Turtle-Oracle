@@ -17,7 +17,7 @@ Built on a synchronicity: Burning Man 2026's theme is **Axis Mundi** (the World 
   - **🔮 The Séance (`/kiosk`):** the tablet ritual for playa — a speaking Oracle avatar greets the seeker, asks how their burn is going (voice or keyboard), asks one light LLM-crafted follow-up, theatrically pulls three cards shaped by what they shared, reads them, and offers a **quest**: three moves with real places, a proof to bring back from each, and the vow — *return to the shell, tell the tale, receive a gift.* Accept it or say "hear me further" and the quest is re-woven around your words. Printable on receipt paper.
     - **Live on the internet now (served from the camp Mac mini):** https://parachute.taildf9ce2.ts.net:10000/kiosk (Tailscale Funnel → HTTPS, which is also what lets the mic work in browsers).
     - **Voice input is local:** the browser records audio and the mini transcribes it with **whisper.cpp** (`/api/transcribe`, ~0.6 s) — no cloud speech API, works on playa.
-    - **LLM:** Ollama `gemma4:e2b` (~50 tok/s on the M4 mini), pinned in memory; template fallback if it's down.
+    - **LLM:** two interchangeable backends, set by `ORACLE_LLM_BACKEND=ollama|cloud|auto`. On playa: Ollama `gemma4:e2b` (~50 tok/s on the M4 mini), pinned in memory, no internet. Off playa: any OpenAI-compatible API (default Groq `openai/gpt-oss-20b` — ~$0.001 a séance), key read from `ORACLE_CLOUD_KEY` in the environment and never committed. Template fallback if either is down.
 
 ## Repo map
 - `index.html` / `oracle.html` / `cards.web.json` — the static Pages site (showcase + client-side oracle).
