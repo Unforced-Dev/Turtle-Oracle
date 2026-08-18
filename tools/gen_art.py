@@ -157,12 +157,37 @@ CARTOUCHE = (
 
 # --- the realm glyph ---------------------------------------------------------------
 # It wandered corner to corner and sometimes evaporated. One corner, stated twice.
+#
+# MEDALLION FILL, added after v6: the corner glyph is the one mark meant to double as a
+# suit index — the thing you read when the deck is fanned or shuffled, not studied. Shape
+# alone does not carry that at speed: a turtle-shell texture and a root-knot both render
+# as "gold filigree on a dark disc" often enough to collide (shell-01 and roots-01 did,
+# in the printed deck). Colour is what a glance actually uses, so the medallion's FILL is
+# now pinned to the realm's own second ink — the same ink already governing that realm's
+# ground value below — so the four realms are four disc colours, not four hopes that the
+# model drew the right texture: Shell gold, Roots indigo, Trunk rust, Branches sky-blue.
+# Shell's boss was already specified as a filled gold disc by SHELL_FRAME; shell-01's
+# black-disc rendering was the model drifting off that spec, not a spec gap, so only
+# roots/trunk/branches — the three that said "plain circular medallion" with no fill
+# named at all — get a new clause here.
+MEDALLION_FILL = {
+    "roots": "The medallion disc itself is filled solid deep indigo blue — the realm's "
+             "own second ink, the same blue as the card's underground half — with the "
+             "glyph carved in metallic gold on top of it. Never a black disc, never a "
+             "pale or cream disc.",
+    "trunk": "The medallion disc itself is filled solid burnt rust-orange — the realm's "
+             "own second ink, the same rust as the card's sky band — with the glyph "
+             "carved in black on top of it. Never black, never pale, never blue.",
+    "branches": "The medallion disc itself is filled solid pale sky blue — the realm's "
+                "own second ink, the same blue as the card's sky — with the glyph carved "
+                "in black on top of it. Never black, never dark, never rust.",
+}
 GLYPH = {
     r: ("REALM GLYPH — ALWAYS PRESENT, ALWAYS IN THE TOP-LEFT CORNER OF THE CARD AND "
         "NOWHERE ELSE: a small carved " + mark + ", about 5% of the card width across, "
         "sitting just inside the frame at the top left. It appears on every card without "
         "exception. Never in the top-right, never at the bottom, never in more than one "
-        "corner, never omitted. ")
+        "corner, never omitted. " + MEDALLION_FILL.get(r, ""))
     for r, mark in {
         "shell": "turtle-shell glyph (it rides inside the top-left corner boss)",
         "roots": "root-knot glyph in a plain circular medallion",
