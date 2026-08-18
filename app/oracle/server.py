@@ -14,7 +14,7 @@ from http.server import BaseHTTPRequestHandler, ThreadingHTTPServer
 from .deck import load_deck, REPO, card_payload
 from .select import select_cards
 from .weave import weave
-from .llm import LLM
+from .llm import make_llm
 from .geo import locate, locate_spread, directions_lines, COMPASS_ROSE
 from . import printer
 from . import session
@@ -24,7 +24,7 @@ from . import lore
 WEB = os.path.join(REPO, "app", "web")
 ART = os.path.join(REPO, "cards", "art")
 PORT = int(os.environ.get("ORACLE_PORT", "8777"))
-LLM_SINGLETON = LLM()
+LLM_SINGLETON = make_llm()
 ART_RE = re.compile(r"^(shell|roots|trunk|branches)-\d{2}\.png$")
 WEBIMG_RE = re.compile(r"^((shell|roots|trunk|branches)-\d{2}|back)\.jpg$")
 
@@ -167,6 +167,8 @@ class Handler(BaseHTTPRequestHandler):
             total = tiers["llm"] + tiers["fallback"]
             return self._send(200, {
                 "llm_reachable": LLM_SINGLETON.available(),
+                "backend": type(LLM_SINGLETON).__name__.replace("CloudLLM", "cloud")
+                                                       .replace("LLM", "ollama"),
                 "model": LLM_SINGLETON.model,
                 "ears": ears.available(),
                 "readings": tiers,
