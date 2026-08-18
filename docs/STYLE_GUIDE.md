@@ -146,6 +146,31 @@ bleed added by extending edge pixels outward, so no gold border is ever trimmed.
 6. Carved marks everywhere; no soft rendering, especially on faces and hands.
 7. Axis motif present; subject centred with breathing room; setting is the playa.
 
+## The extras — eleven cards that are not oracle cards
+
+MakePlayingCards charges the same up to 63 cards, so the deck ships with eleven more:
+two jokers, a title card, two reference cards, four realm cards and two blanks
+(`data/extras.json`). They obey this guide with three stated exceptions, and
+`tools/gen_art.py` is the executable copy of those too:
+
+1. **The empty masters drop two clauses.** `PREAMBLE` is split into
+   `PREAMBLE_IDIOM` + `PREAMBLE_COMPOSITION` + `PREAMBLE_SETTING`, and it is still the
+   concatenation, so every oracle card's prompt is byte-identical to before. An empty
+   frame master — the background the nine wordless extras are typeset onto — asks for
+   the idiom only: no subject means no axis motif and no landscape to put in the desert.
+2. **The jokers carry the turtle instead of a realm.** They belong to no realm, so
+   `EXTRA_GLYPH["turtle"]` puts the turtle-shell glyph in the plain circular medallion
+   the Roots/Trunk/Branches cards use, in the same top-left corner. Everything else —
+   frame, banner, three inks, woodcut idiom — is the locked spec, and they were checked
+   the way the Kings were: frame integrity, banner keyline metallic gold, no
+   model-rendered text.
+3. **Nothing else about them is drawn.** Every word on all eleven is typeset by
+   `tools/extracard.py` (title face and Baskerville for running copy), and `JOKER` is
+   cut by `tools/rankmark.py` as a stadium version of the rank medallion — same fill,
+   shadow, grain, keyline, hairline and gold, drawn long enough to hold five letters.
+   The realm cards' big glyphs are **lifted from real cards of that realm**, not
+   redrawn: there is only ever one turtle-shell glyph in this deck.
+
 ## Cover / box
 
 Likely **The World Turtle** or **The Resonant Spire** as the box art (the spire literally
