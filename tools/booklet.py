@@ -353,9 +353,10 @@ for realm in REALMS:
 
 
 # -------------------------------------------------------- how to deal it ---
-# Anything outside the 1..13 grid is a utility card (title, key, blanks) and is
-# dealt out of the pack before a game; if the deck ever grows jokers they land
-# here too and the copy follows the data rather than a hard-coded 52.
+# Anything outside the 1..13 grid comes out of the pack before a game: the nine
+# utility cards (title, the two reference cards, the four realm cards, two blanks)
+# and the two jokers, all of them from data/extras.json. The copy counts them
+# rather than hard-coding a 52, so a deck that drops one still reads true.
 utility, full_suits, playing = K.utility, FULL_SUITS, cards
 
 deal, dr = new_page()
@@ -402,12 +403,17 @@ y += 52
 # --- what to take out ---
 dr.line([80, y, W - 80, y], fill=RULE, width=2); y += 26
 dr.text((80, y), "BEFORE A GAME", font=F_LBL, fill=GOLD); y += 32
-if utility:
-    lead = (f"Deal out the {words(len(utility))} utility "
-            f"card{'s' if len(utility) != 1 else ''} — "
-            + ", ".join(c["name"] for c in utility[:4])
-            + (", and the rest" if len(utility) > 4 else "")
-            + f" — and you are holding a standard {len(full_suits) * len(PLAY_RANKS)}. "
+if utility or K.jokers:
+    bits = []
+    if utility:
+        bits.append(f"the {words(len(utility))} utility "
+                    f"card{'s' if len(utility) != 1 else ''} ("
+                    + ", ".join(c["name"] for c in utility[:4])
+                    + (", and the rest)" if len(utility) > 4 else ")"))
+    if K.jokers:
+        bits.append(f"the {words(len(K.jokers))} jokers, unless the game wants them")
+    lead = ("Deal out " + " and ".join(bits)
+            + f", and you are holding a standard {len(full_suits) * len(PLAY_RANKS)}. "
               "They carry no rank medallion, which is how you spot them: no medallion, "
               "not in the game.")
 else:

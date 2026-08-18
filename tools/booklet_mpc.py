@@ -48,6 +48,7 @@ from bookkit import (REPO, DECK, cards, by_realm, REALMS, lore, jokers,
                      REALM_INTRO, REALM_SUIT, PLAY_RANKS, FULL_SUITS, RANKS,
                      KRAFT, INK, GOLD, DIM, DARK, PALE, RULE, CREAM, BRONZE,
                      tint, realm_head, rank_label, words, keyword_line, art_src,
+                     JOKER_SCENE, JOKER_TINT, second_ink, joker_art, joker_pack_line,
                      wrap, wrap_lines, measure, draw_w, fit, probe, font, G, GB, GI)
 from cardtitle import set_title
 
@@ -402,21 +403,95 @@ def realm_side(realm, n):
     return pg
 
 
+def joker_thumb(c, w, h):
+    """The joker's face as the deck prints it: its own master, its title in the banner.
+
+    `extracard.set_extra` is the extras' typesetting rule and the one export_mpc.py
+    runs, so the picture in the booklet is the picture in the pack. The JOKER plaque
+    is left off for the same reason card_side leaves the rank medallion off: these
+    thumbnails carry the art and the name, and the side says the rest in words.
+    """
+    key = ("X" + c["id"], w, h)
+    if key not in _thumbs:
+        im = Image.open(art_src(c["art"], "extras")).convert("RGB")
+        try:
+            from extracard import set_extra
+            im = set_extra(im, {"title": c.get("title")})
+        except Exception:
+            pass
+        _thumbs[key] = im.resize((w, h), Image.LANCZOS)
+    return _thumbs[key]
+
+
 def joker_side(n, idx, c=None):
-    """A real joker once the deck has one; until then a marked placeholder."""
+    """A real joker once the deck has one; until then a marked placeholder.
+
+    A joker is not an oracle card, so there is no Reading, no shadow and no dare to
+    set — data/extras.json says as much in its own opening note. The side is built
+    from what that file does hold: the card's `title` and `mark`, the ink named in
+    its art entry's `tone`, the scene cut from that entry's `image_prompt`, and the
+    pack arithmetic counted off the file itself.
+    """
     pg, dr = page()
     x0, y0, w, h = box(n)
-    t = GOLD
-    if c is not None:
-        return card_side(c, n)
-    dr.rectangle([x0, y0 + 120, x0 + w, y0 + h - 120], outline=RULE, width=3)
-    cx = x0 + w // 2
-    dr.text((cx, y0 + h // 2 - 90), f"JOKER {idx}", font=F_TITLE, fill=RULE, anchor="mm")
-    dr.text((cx, y0 + h // 2 - 10), "art and words pending", font=F_BODY,
-            fill=DIM, anchor="mm")
-    wrap(dr, "PLACEHOLDER — this side regenerates from data/cards.json the moment the "
-             "joker lands there. Re-run:  python3 tools/booklet_mpc.py",
-         F_SM, x0 + 40, y0 + h // 2 + 40, w - 80, DIM, LH_SM)
+    if c is None:
+        t = GOLD
+        dr.rectangle([x0, y0 + 120, x0 + w, y0 + h - 120], outline=RULE, width=3)
+        cx = x0 + w // 2
+        dr.text((cx, y0 + h // 2 - 90), f"JOKER {idx}", font=F_TITLE, fill=RULE, anchor="mm")
+        dr.text((cx, y0 + h // 2 - 10), "art and words pending", font=F_BODY,
+                fill=DIM, anchor="mm")
+        wrap(dr, "PLACEHOLDER — this side regenerates from data/extras.json the moment "
+                 "the joker lands there. Re-run:  python3 tools/booklet_mpc.py",
+             F_SM, x0 + 40, y0 + h // 2 + 40, w - 80, DIM, LH_SM)
+        return pg
+
+    spec = joker_art(c)
+    t = JOKER_TINT.get(c.get("art"), GOLD)
+    ink = second_ink(spec.get("tone", ""))
+    scene = JOKER_SCENE.get(c.get("art"), "")
+    pack = joker_pack_line()
+
+    # --- measure the words first, then give the art whatever is left over ---
+    th = 46 + 56 + 14                                          # strip, name, rule
+    if ink: th += 32 + 10
+    th += measure(probe, scene, F_BODY, w, LH_BODY) + 16
+    th += 34 + measure(probe, pack, F_SM, w, LH_SM)
+    aw = max(ART_MIN, min(ART_MAX, int((h - th - 60) / 1.5)))
+    ah = int(aw * 1.5)
+    if th + ah + 60 > h:
+        overflow.append((c["id"], th + ah + 60 - h))
+
+    y = y0
+    # The strip an oracle card spends on its realm and rank: a joker has neither,
+    # and saying so is the whole reason it is not in the game.
+    dr.text((x0 + w // 2, y), f"{c.get('mark', 'JOKER')} · NO REALM · NO RANK",
+            font=F_LBL, fill=t, anchor="ma")
+    y += 46
+
+    ax = x0 + (w - aw) // 2
+    try:
+        pg.paste(joker_thumb(c, aw, ah), (ax, y))
+        dr.rectangle([ax - 1, y - 1, ax + aw, y + ah], outline=(150, 130, 96), width=1)
+    except Exception:
+        dr.rectangle([ax, y, ax + aw, y + ah], outline=t, width=2)
+    y += ah + 34
+
+    nm = c.get("title") or c["name"]
+    fnt = F_NAME if draw_w(probe, nm, F_NAME) <= w else font(GB, 38)
+    dr.text((x0 + w // 2, y), fit(nm, fnt, w), font=fnt, fill=GOLD, anchor="ma")
+    y += 56
+    if ink:
+        dr.text((x0 + w // 2, y), f"SECOND INK · {ink.upper()}", font=F_KEY,
+                fill=DIM, anchor="ma")
+        y += 32 + 10
+    dr.line([x0, y, x0 + w, y], fill=GOLD, width=1); y += 14
+    y = wrap(dr, scene, F_BODY, x0, y, w, INK, LH_BODY) + 16
+    dr.text((x0, y), "IN THE PACK", font=F_LBL, fill=t); y += 34
+    y = wrap(dr, pack, F_SM, x0, y, w, DIM, LH_SM)
+
+    if y > y0 + h:
+        overflow.append((c["id"] + "-tail", y - (y0 + h)))
     return pg
 
 
@@ -528,10 +603,12 @@ def build(n_sides, want_pdf=False):
         plan.append((f"realm-{realm}", lambda n, r=realm: realm_side(r, n)))
         for c in by_realm[realm]:
             plan.append((c["id"], lambda n, c=c: card_side(c, n)))
-    # jokers: the real card if the deck has one yet, else a marked placeholder
+    # jokers: the real card if the deck has one yet, else a marked placeholder.
+    # The slug drops extras.json's "extra-" prefix, the way export_mpc.py does.
     for i in range(max(2, len(jokers))):
         jc = jokers[i] if i < len(jokers) else None
-        slug = jc["id"] if jc else f"joker-{i + 1}-PLACEHOLDER"
+        slug = (jc["id"][6:] if jc["id"].startswith("extra-") else jc["id"]) if jc \
+            else f"joker-{i + 1}-PLACEHOLDER"
         plan.append((slug, lambda n, i=i, jc=jc: joker_side(n, i + 1, jc)))
 
     body = len(plan)

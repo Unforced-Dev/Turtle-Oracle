@@ -16,11 +16,11 @@ REPO = os.path.dirname(os.path.dirname(os.path.abspath(__file__)))
 ART = f"{REPO}/cards/art"
 
 
-def art_src(cid):
+def art_src(cid, sub="art"):
     # The committed q95 .jpg archive is the build source, so every clone builds
     # identical bytes; the local-only .png master is the fallback for fresh gens.
-    p = f"{ART}/{cid}.jpg"
-    return p if os.path.exists(p) else f"{ART}/{cid}.png"
+    p = f"{REPO}/cards/{sub}/{cid}.jpg"
+    return p if os.path.exists(p) else f"{REPO}/cards/{sub}/{cid}.png"
 
 
 # ------------------------------------------------------------------ deck ----
@@ -38,13 +38,36 @@ COURT = {1: "A", 11: "J", 12: "Q", 13: "K"}
 PLAY_RANKS = list(range(1, 14))
 
 # A card is an *oracle* card if it sits in a realm on the 1..13 grid. Jokers and
-# utility cards (title, key, blanks) live outside it; they carry no rank
-# medallion, and that is exactly how you spot them in the pack.
+# utility cards (title, key, realm cards, blanks) live outside it; they carry no
+# rank medallion, and that is exactly how you spot them in the pack.
 cards = sorted([c for c in _d["cards"] if c["realm"] in _ord],
                key=lambda c: (_ord[c["realm"]], c["number"]))
-extras = [c for c in _d["cards"] if c["realm"] not in _ord]
-jokers = [c for c in extras if "joker" in (c.get("realm", "") + c.get("id", "")).lower()]
-utility = [c for c in extras if c not in jokers]
+
+# The extras are kept in their own file — data/extras.json — precisely because
+# none of them has a Reading, a shadow or a Turtle Dare, so they cannot be run
+# through card_side. The booklets need three things from it: which of them are
+# jokers (a joker earns a side of its own), how many come out of the pack before
+# a game, and the art spec behind each joker's picture. Older decks kept a
+# handful of extras inside cards.json; those are still picked up, behind.
+_xp = f"{REPO}/data/extras.json"
+_x = json.load(open(_xp)) if os.path.exists(_xp) else {}
+EXTRA_ART = {a["id"]: a for a in _x.get("art", [])}
+EXTRA_NOTE = _x.get("note", "")
+
+
+def _named(e):
+    """extras.json titles its cards; the blanks carry only a kind and a caption."""
+    e = dict(e)
+    e.setdefault("name", e.get("title") or e.get("kind", "extra").capitalize())
+    return e
+
+
+extras = [_named(e) for e in _x.get("cards", [])] + \
+         [_named(c) for c in _d["cards"] if c["realm"] not in _ord]
+jokers = [e for e in extras
+          if e.get("kind") == "joker" or "joker" in str(e.get("id", "")).lower()]
+_jid = {id(j) for j in jokers}
+utility = [e for e in extras if id(e) not in _jid]
 
 by_realm = {}
 for c in cards:
@@ -137,6 +160,65 @@ REALM_INTRO = {
         "reads": "Position: what to reach for. The direction, not the destination.",
     },
 }
+
+
+# ------------------------------------------------------------- the jokers ----
+# A joker has no Reading, no shadow and no dare to print — extras.json says so in
+# its own opening note — so its side has to be built out of what the file DOES
+# hold. Two things, and nothing else is invented here:
+#
+#   * the ink, parsed straight out of `art[].tone` by `second_ink()` below;
+#   * the scene, cut down from that same art entry's `image_prompt` — the deck's
+#     own description of what it asked for and got. Same standing as REALM_INTRO
+#     above: the words are the data file's, the trimming is ours, and it lives in
+#     the open here rather than being wedged back into the card data.
+JOKER_SCENE = {
+    "joker-radiant":
+        "The Terrible Turtle itself, alone and enormous, seen head-on and a little "
+        "from above: the domed shell carved as a mandala of plates, the World Tree "
+        "growing straight up out of its crown. The head is stretched right out and "
+        "lifted, eyes open, jaws parted — patient, ancient, and plainly delighted. "
+        "Carved gold rays burst from behind the shell to every edge of the field, "
+        "and two small figures stand on the cracked playa at its foot with their "
+        "arms raised.",
+    "joker-shadow":
+        "The same Terrible Turtle in its night aspect: the same carved shell, rimmed "
+        "in gold against a black indigo sky, the same World Tree rising bare and "
+        "leafless from its crown. The head is drawn back into the shell as far as "
+        "the eyes, jaws shut hard, plainly about to bite. A dust storm streams past "
+        "in carved horizontal chatter, small carved stars show through it, and the "
+        "playa below is a narrow strip of cracked pale ground.",
+}
+
+# The undertone each joker is printed in, named by its own `tone` line. Gold is
+# the palette's GOLD; the indigo is the one colour in this module that is not
+# already in the deck, and it is here because the shadow joker's tone says
+# "deep indigo blue ... the card must read blue-black, not brown".
+INDIGO = (62, 62, 112)
+JOKER_TINT = {"joker-radiant": GOLD, "joker-shadow": INDIGO}
+
+
+def second_ink(tone):
+    """'JOKER undertone: SECOND INK — metallic gold, used more...' -> 'metallic gold'."""
+    if not tone or "SECOND INK" not in tone:
+        return ""
+    s = tone.split("SECOND INK", 1)[1].lstrip(" —-:")
+    return s.split(",")[0].split(":")[0].split(" — ")[0].strip()
+
+
+def joker_art(c):
+    """The `art[]` entry a joker card points at, by its own `art` field."""
+    return EXTRA_ART.get(c.get("art"), {})
+
+
+def joker_pack_line():
+    """What a joker is, in pack arithmetic — counted, not asserted."""
+    n_extra = len(utility)
+    return (f"{words(len(jokers)).capitalize()} jokers ride with the "
+            f"{words(len(cards))} in one pack of {len(cards) + n_extra + len(jokers)}. "
+            "Nothing out here carries a Reading, a shadow or a Turtle Dare: lift out "
+            f"the {words(n_extra)} cards that are not oracle cards and what is left "
+            "deals as any deck you know.")
 
 
 # --------------------------------------------------- playing-card wording ----
