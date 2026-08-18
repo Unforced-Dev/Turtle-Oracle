@@ -13,6 +13,26 @@ Print-ready assets for the physical deck (~50 copies). **Full-art fronts + one u
 - `back.png` — the single shared card back, bleed included.
 - `proof.pdf` — 50-page flip-through for **review only** (cover + 48 fronts + back, with captions). Not for the printer.
 
+## The companion booklet
+The booklet is built twice, from one deck and one shared module (`tools/bookkit.py`):
+
+- **`python3 tools/booklet.py` → `print/booklet.pdf`** — half-letter (5.5×8.5 in @ 200 DPI), 40 pages, saddle-stitch ready (a multiple of 4). Two cards to a page. This is the **fallback**, for printing outside the deck order at Mixam / FedEx Office / at home.
+- **`python3 tools/booklet_mpc.py` → `print/mpc-booklet/`** (gitignored, ~63 MB) — MPC's **in-order perfect-bound booklet**, packed with every deck. One card to a side, **72 sides**. `--sides 96` for the fallback count, `--pdf` for a proof to flip through.
+
+### MPC booklet template, as measured
+MPC's live `/dl/booklet-template/` links 404 as of Aug 2026; these were measured off the templates recovered from the Wayback Machine and cross-checked against MPC's [booklet spec table](https://www.makeplayingcards.com/pops/booklet-guide.html).
+
+| | upload (full bleed) | trim | safe |
+|---|---|---|---|
+| Inside page | **1125 × 1575** (3.75×5.25 in) | 1050 × 1500 | 897 × 1428 |
+| Cover, 72 sides | **2238 × 1575** (7.46×5.25 in) | 2160 × 1500 | per panel 897 × 1428 |
+
+Bleed is ⅛ in (37.5 px) per edge. **The safe area is not centred:** the inset from the trim is ~117 px on the binding edge and ~37.5 px on the outer edge, and it *mirrors* — recto gutters left, verso gutters right. `booklet_mpc.py` lays every side into a gutter-aware box for exactly this reason.
+
+Upload is **one raster per side** dragged into MPC's page grid — PNG/JPEG/TIFF, RGB, 300 DPI. **MPC does not accept a PDF for booklets** (they'll convert one at $2/page, $30 min — export PNGs instead). Files are named `NN-slug.png` so a filename sort *is* the page order.
+
+**Open question, not settled:** MPC does not publish whether "72 sides" counts the cover faces. Their table lists *"Cover page **for** 72 pages"* as a separate artwork item at its own size and ships no inside-front/inside-back template, so the defensible reading is 72 interior faces **plus** a separate cover. The tool emits both — 72 numbered sides and `cover/cover-spread.png` — so either reading is covered. Worth one email to MPC before ordering.
+
 ## Sending to a printer
 These files suit any printer that accepts a **3.5×5.25 in, 300 DPI, ⅛ in bleed** card with no crop marks (most online/offset card printers and print-on-demand services).
 

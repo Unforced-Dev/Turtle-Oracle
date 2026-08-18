@@ -1,186 +1,22 @@
-"""Companion meanings booklet -> print/booklet.pdf.
-
-Half-letter (5.5x8.5in @ 200dpi), saddle-stitch: cover, intro, a divider and
-paired card pages per realm, an index, a colophon. Page count is padded to a
-multiple of 4 so the signature folds.
-
-Everything is read from data/cards.json — the realms, how many ranks each one
-holds, the totals printed on the cover, the index table. The deck doubles as a
-playing deck (realms = suits, numbers = ranks, 1=A / 11=J / 12=Q / 13=K), so a
-rebuild after the deck grows a rank needs no edit here.
-
-    python3 tools/booklet.py            # write print/booklet.pdf
-    python3 tools/booklet.py --png DIR  # ...and every page as DIR/NN.png
-"""
-from PIL import Image, ImageDraw, ImageFont
-import json, os, sys
+from PIL import Image, ImageDraw
+import os, sys
 
 sys.path.insert(0, os.path.dirname(os.path.abspath(__file__)))
+import bookkit as K
+from bookkit import (REPO, DECK, cards, by_realm, REALMS, lore,
+                     REALM_INTRO, REALM_SUIT, PLAY_RANKS, FULL_SUITS, RANKS,
+                     N_CARDS, N_REALMS, N_RANKS, COURT,
+                     KRAFT, INK, GOLD, DIM, DARK, PALE, RULE, CREAM, BRONZE,
+                     tint, realm_head, rank_label, rank_phrase, words,
+                     keyword_line, art_src, wrap, wrap_lines, measure, draw_w,
+                     font, G, GB, GI)
 from cardtitle import set_title
 
-REPO = os.path.dirname(os.path.dirname(os.path.abspath(__file__)))
-ART = f"{REPO}/cards/art"
-
-
-def art_src(cid):
-    # The committed q95 .jpg archive is the build source, so every clone builds
-    # identical bytes; the local-only .png master is the fallback for fresh gens.
-    p = f"{ART}/{cid}.jpg"
-    return p if os.path.exists(p) else f"{ART}/{cid}.png"
-
-
-d = json.load(open(f"{REPO}/data/cards.json"))
-DECK = d["deck"]
-lore = json.load(open(f"{REPO}/data/card_lore.json"))
-
-# Realm order is the deck's own; anything the deck adds later falls in behind.
-_pref = ["shell", "roots", "trunk", "branches"]
-REALMS = [r for r in _pref if r in DECK["realms"]] + \
-         [r for r in DECK["realms"] if r not in _pref]
-_ord = {r: i for i, r in enumerate(REALMS)}
-cards = sorted(d["cards"], key=lambda c: (_ord[c["realm"]], c["number"]))
-by_realm = {}
-for c in cards:
-    by_realm.setdefault(c["realm"], []).append(c)
-
 W, H = 1100, 1700           # ~5.5x8.5in @ 200dpi
-KRAFT = (233, 220, 192); INK = (38, 30, 16); GOLD = (150, 110, 40); DIM = (110, 96, 64)
-DARK = (20, 17, 12); PALE = (190, 174, 138); RULE = (200, 185, 150)
-CREAM = (245, 240, 230); BRONZE = (92, 70, 30)
-REALM_TINT = {"shell": (150, 110, 40), "roots": (70, 70, 120),
-              "trunk": (150, 95, 45), "branches": (70, 110, 140)}
-REALM_DESC = {
-    "shell": "THE SHELL · the Turtle beneath — the axis speaks",
-    "roots": "ROOTS · the underworld — what to face",
-    "trunk": "TRUNK · the middle world — where you stand",
-    "branches": "BRANCHES · the heavens — what to reach for",
-}
-REALM_SUIT = {"shell": "the wild suit", "roots": "the buried suit",
-              "trunk": "the standing suit", "branches": "the reaching suit"}
 
-# Realm intros. The domain line is lifted from docs/DECK_DESIGN.md's realm table;
-# the prose is the Turtle's voice, written here because nothing in the data holds
-# a realm-length statement — cards.json gives one clause, card_lore.json is
-# per-card only. Kept short: the cards do the talking.
-REALM_INTRO = {
-    "shell": {
-        "domain": "major archetypes · load-bearing life truths",
-        "body": [
-            "Underneath the tree is the thing that carries the tree. The Shell is "
-            "the Turtle itself — the load-bearing truths, the ones that were true "
-            "before you got here and will be true after.",
-            "These are the biggest cards in the deck, and the least specific. A "
-            "Shell card does not tell you what to do on Tuesday. It tells you what "
-            "kind of ground you are standing on.",
-        ],
-        "reads": "Wild. A Shell card can stand in any position, and when one turns "
-                 "up the whole reading swings around it — the axis itself is speaking.",
-    },
-    "roots": {
-        "domain": "shadow · grief · the buried · ancestry · release",
-        "body": [
-            "Everything the tree is made of came up through here first, in the dark, "
-            "through rot. The Roots are the underworld: what you buried, what buried "
-            "you, what you are still quietly paying for.",
-            "None of these cards are punishments. A root is not a wound — it is how "
-            "a living thing holds on in wind. But you have to go down to find it, and "
-            "down is the direction nobody volunteers for.",
-        ],
-        "reads": "Position: what to face. The thing under the question, not the question.",
-    },
-    "trunk": {
-        "domain": "body · presence · endurance · survival · move slow",
-        "body": [
-            "The Trunk is the middle world — the part of the tree you can actually "
-            "put a hand on. Body, breath, water, sleep, the plain daily work of "
-            "staying upright in a place that would rather you didn't.",
-            "This is the realm where 'Move Slow' stops being a joke on a flag and "
-            "becomes a survival instruction. Nothing here is profound. All of it is "
-            "load-bearing.",
-        ],
-        "reads": "Position: where you stand. The honest report on your current footing.",
-    },
-    "branches": {
-        "domain": "connection · ecstasy · aspiration · the sunrise · reaching",
-        "body": [
-            "Up top, where the tree stops being structure and starts being gesture. "
-            "The Branches are the heavens: other people, joy that arrives without "
-            "being scheduled, the sunrise you stayed up for, the reach.",
-            "Reaching is the only thing a tree does that has no immediate use. It is "
-            "also the only reason anything stands under it. Do not mistake these "
-            "cards for decoration.",
-        ],
-        "reads": "Position: what to reach for. The direction, not the destination.",
-    },
-}
-
-
-def tint(realm):
-    return REALM_TINT.get(realm, GOLD)
-
-
-def realm_head(realm):
-    return REALM_DESC.get(realm, realm.upper()).split("·")[0].strip()
-
-
-def realm_tag(realm):
-    txt = REALM_DESC.get(realm)
-    return txt.split("·", 1)[1].strip() if txt and "·" in txt else ""
-
-
-# ------------------------------------------------------- playing-card map ---
-COURT = {1: "A", 11: "J", 12: "Q", 13: "K"}
-
-
-def rank_label(n):
-    return COURT.get(n, str(n))
-
-
-_UNITS = ["zero", "one", "two", "three", "four", "five", "six", "seven", "eight",
-          "nine", "ten", "eleven", "twelve", "thirteen", "fourteen", "fifteen",
-          "sixteen", "seventeen", "eighteen", "nineteen"]
-_TENS = ["", "", "twenty", "thirty", "forty", "fifty", "sixty", "seventy",
-         "eighty", "ninety"]
-
-
-def words(n):
-    if n < 20: return _UNITS[n]
-    if n < 100:
-        t, u = divmod(n, 10)
-        return _TENS[t] + ("-" + _UNITS[u] if u else "")
-    return str(n)
-
-
-def rank_phrase(numbers):
-    """'A, 2 through 10, J, Q and K' — from whatever ranks the deck actually has."""
-    ns = sorted(set(numbers))
-    plain = [n for n in ns if n not in COURT]
-    parts = []
-    if 1 in ns: parts.append("A")
-    if plain:
-        parts.append(str(plain[0]) if len(plain) == 1
-                     else f"{plain[0]} through {plain[-1]}")
-    parts += [COURT[n] for n in ns if n in COURT and n != 1]
-    if len(parts) > 1:
-        return ", ".join(parts[:-1]) + " and " + parts[-1]
-    return parts[0] if parts else ""
-
-
-N_CARDS = len(cards)
-N_REALMS = len(REALMS)
-RANKS = sorted({c["number"] for c in cards})
-N_RANKS = len(RANKS)
-
-G = "/System/Library/Fonts/Supplemental/Georgia.ttf"
-GB = "/System/Library/Fonts/Supplemental/Georgia Bold.ttf"
-GI = "/System/Library/Fonts/Supplemental/Georgia Italic.ttf"
-
-
-def font(path, sz):
-    try: return ImageFont.truetype(path, sz)
-    except Exception: return ImageFont.load_default()
-
-
+# This book's own type scale — 200dpi on a 5.5in page. The MPC booklet sits at
+# 300dpi on a 3.5in page and picks its own, which is why sizes don't live in
+# bookkit.
 F_TITLE = font(GB, 46)      # cover / divider display
 F_NAME = font(GB, 30)       # card name, page headings
 F_SUB = font(GB, 22)        # sub-headings
@@ -194,43 +30,14 @@ F_IDXH = font(GB, 15)       # index column heads
 F_KEY = font(G, 15)         # the keyword string under a card name
 
 
-def wrap_lines(draw, text, fnt, maxw):
-    out, line = [], ""
-    for w in text.split():
-        t = (line + " " + w).strip()
-        if draw.textlength(t, font=fnt) <= maxw:
-            line = t
-        else:
-            if line: out.append(line)
-            line = w
-    if line: out.append(line)
-    return out
-
-
-def wrap(draw, text, fnt, x, y, maxw, fill, lh):
-    for line in wrap_lines(draw, text, fnt, maxw):
-        draw.text((x, y), line, font=fnt, fill=fill); y += lh
-    return y
-
-
-def measure(draw, text, fnt, maxw, lh):
-    return len(wrap_lines(draw, text, fnt, maxw)) * lh
-
-
-def draw_w(draw, text, fnt):
-    return draw.textlength(text, font=fnt)
-
-
 def new_page(bg=KRAFT):
-    pg = Image.new("RGB", (W, H), bg)
-    dr = ImageDraw.Draw(pg); dr._image = pg
-    return pg, dr
+    return K.new_page(W, H, bg)
 
 
 pages = []          # (image, kind) — kind suppresses the folio on plates
 overflow = []
 drawn = []          # every card_block call, so the build can prove coverage
-_probe = ImageDraw.Draw(Image.new("RGB", (10, 10)))
+_probe = K.probe
 
 
 def add(pg, kind="body"):
@@ -342,10 +149,6 @@ TX = AX + AW + 40           # text column
 TW = W - TX - 80
 CAP_H = 46                  # plate caption under the art
 TOP, BOT = 96, 96
-
-
-def keyword_line(c):
-    return " · ".join(k.upper() for k in c.get("keywords", []))
 
 
 def block_height(c):
@@ -553,11 +356,7 @@ for realm in REALMS:
 # Anything outside the 1..13 grid is a utility card (title, key, blanks) and is
 # dealt out of the pack before a game; if the deck ever grows jokers they land
 # here too and the copy follows the data rather than a hard-coded 52.
-PLAY_RANKS = list(range(1, 14))
-playing = [c for c in cards if c["number"] in PLAY_RANKS]
-utility = [c for c in cards if c["number"] not in PLAY_RANKS]
-full_suits = [r for r in REALMS
-              if {c["number"] for c in by_realm[r]} >= set(PLAY_RANKS)]
+utility, full_suits, playing = K.utility, FULL_SUITS, cards
 
 deal, dr = new_page()
 y = 96
