@@ -175,6 +175,25 @@ REALM_INK = {
 }
 
 
+# --- the same mark, drawn long enough to carry a word ----------------------
+# The two jokers have a rank that is not a character: JOKER. Five letters will not go
+# into a disc 60px across and stay readable in a fanned hand — at that size the word
+# comes out 8px tall. So the medallion is drawn as a STADIUM instead of a circle: the
+# same height, the same fill, shadow, grain, keyline, hairline and gold, stretched
+# along the card's left margin until the word fits. Its left edge is flush with the
+# realm roundel's own left edge, so the two sit in one column; the bottom copy is the
+# 180-degree mirror, right-flush, exactly as the rank marks are.
+WORD_CAP = 0.40                # cap height / plaque height
+WORD_PAD = 0.36                # air at each end of the word / plaque height
+WORD_TRACK = 0.16              # letter-spacing, in ems — the title's tracking, and for
+#                                the same reason: small caps want air
+WORD_FONTS = list(TITLE_FONTS)  # the title's face: this is a word, not a figure
+WORD_CLEAR = 0.012             # air the bottom plaque keeps from the title plaque, as a
+#                                fraction of the card width. Unlike the round rank mark,
+#                                a plaque long enough for JOKER reaches back over the
+#                                banner's right end, so this guard always fires.
+
+
 def rank_text(number):
     """1 -> A, 2-10 -> numerals, 11 -> J, 12 -> Q, 13 -> K."""
     return RANKS.get(number, str(number))
@@ -669,6 +688,173 @@ def _fit(text, inner):
             return size
         size -= 1
     return 6
+
+
+def _word_font(size):
+    for path in WORD_FONTS:
+        try:
+            return ImageFont.truetype(path, size)
+        except Exception:
+            continue
+    return ImageFont.load_default()
+
+
+def _tracked(font, text):
+    """(total width, per-character advances) of `text` set with WORD_TRACK."""
+    tmp = ImageDraw.Draw(Image.new("L", (8, 8)))
+    widths = [tmp.textlength(ch, font=font) for ch in text]
+    gap = font.size * WORD_TRACK
+    return sum(widths) + gap * (len(text) - 1), widths, gap
+
+
+def _fit_word(text, cap):
+    """Largest font size whose caps are `cap` tall, and the width that word needs."""
+    size = max(6, int(cap * 2.2))
+    while size > 6:
+        f = _word_font(size)
+        bb = f.getbbox(text)
+        if (bb[3] - bb[1]) <= cap:
+            break
+        size -= 1
+    f = _word_font(size)
+    total, _, _ = _tracked(f, text)
+    return f, total
+
+
+def _plaque(im, cx, cy, w, h, text, fill, ink, rotate, dark=False):
+    """Cut one stadium plaque into `im`, centred at (cx, cy). Same recipe as _medallion.
+
+    Deliberately a sibling of `_medallion` rather than a generalisation of it: the 52
+    oracle fronts are built by that function and must not move by a pixel, so the shape
+    that carries a word is written out separately and the drawing rule — shadow, fill of
+    the ground's own darkened hue, retained paper grain, keyline, inner hairline, mottled
+    gold — is copied clause for clause.
+    """
+    import numpy as np
+    pad = max(3, int(round(h * 0.18)))
+    x0 = int(round(cx - w / 2)) - pad
+    y0 = int(round(cy - h / 2)) - pad
+    tw_, th_ = int(round(w)) + 2 * pad, int(round(h)) + 2 * pad
+    tile = im.crop((x0, y0, x0 + tw_, y0 + th_)).convert("RGB")
+
+    u = np.asarray(tile, dtype=np.float32)
+    ul = 0.299 * u[..., 0] + 0.587 * u[..., 1] + 0.114 * u[..., 2]
+    ground = np.median(u.reshape(-1, 3), axis=0)
+    gl = max(6.0, _lum(ground))
+    ground = ground * (FILL_LUM / gl)
+    flat = (np.array(fill, dtype=np.float32) * (1 - FILL_GROUND)
+            + ground * FILL_GROUND)[None, None, :]
+    grain = np.clip(u * (FILL_LUM / max(6.0, float(np.median(ul)))), 0, 255)
+    body = Image.fromarray(np.clip(flat * (1 - FILL_TEXTURE) + grain * FILL_TEXTURE,
+                                   0, 255).astype("uint8"))
+
+    S = SS
+    box = (pad * S, pad * S, (pad + int(round(w))) * S, (pad + int(round(h))) * S)
+    rad = (box[3] - box[1]) / 2.0
+    mask = Image.new("L", (tw_ * S, th_ * S), 0)
+    ImageDraw.Draw(mask).rounded_rectangle(box, radius=rad, fill=255)
+    mask = mask.resize((tw_, th_), Image.LANCZOS)
+
+    shadow = Image.new("L", (tw_, th_), 0)
+    ImageDraw.Draw(shadow).rounded_rectangle(
+        (pad, pad + h * 0.06, pad + w, pad + h + h * 0.06),
+        radius=h / 2.0, fill=int(255 * SHADOW))
+    shadow = shadow.filter(ImageFilter.GaussianBlur(max(1.0, SHADOW_BLUR * h / 2)))
+    tile = Image.composite(Image.new("RGB", (tw_, th_), (0, 0, 0)), tile, shadow)
+
+    art = Image.new("RGBA", (tw_ * S, th_ * S), (0, 0, 0, 0))
+    ad = ImageDraw.Draw(art)
+    kw = max(1.0, KEYLINE * (h / 2) * (DARK_KEYLINE if dark else 1.0)) * S
+    ad.rounded_rectangle((box[0] + kw / 2, box[1] + kw / 2, box[2] - kw / 2, box[3] - kw / 2),
+                         radius=rad - kw / 2, outline=ink + (255,), width=int(round(kw)))
+    ins = INNER_RULE * (h / 2) * S
+    hw = max(1.0, 0.032 * (h / 2) * S)
+    ad.rounded_rectangle((box[0] + ins, box[1] + ins, box[2] - ins, box[3] - ins),
+                         radius=max(1.0, rad - ins),
+                         outline=ink + (DARK_RULE_ALPHA if dark else 140,),
+                         width=int(round(hw)))
+
+    f, total = _fit_word(text, h * WORD_CAP * S)
+    _, widths, gap = _tracked(f, text)
+    bb = f.getbbox(text)
+    x = (box[0] + box[2]) / 2 - total / 2
+    y = (box[1] + box[3]) / 2 - (bb[1] + bb[3]) / 2
+    d = (DARK_BOLD * (h / 2) * S) if dark else 0.0
+    for ox, oy in (((0, 0), (d, 0), (0, d), (d, d)) if dark else ((0, 0),)):
+        xx = x - d / 2 + ox
+        for ch, cw in zip(text, widths):
+            ad.text((xx, y - d / 2 + oy), ch, font=f, fill=ink + (255,))
+            xx += cw + gap
+    art = art.resize((tw_, th_), Image.LANCZOS)
+    if rotate:
+        art = art.rotate(180)
+
+    a = np.asarray(art, dtype=np.float32)
+    m = DARK_MOTTLE if dark else GOLD_MOTTLE
+    mot = np.clip(ul / max(6.0, float(np.median(ul))), 1.0 if dark else 1 - m, 1 + m)
+    a[..., :3] = np.clip(a[..., :3] * mot[..., None], 0, 255)
+    art = Image.fromarray(a.astype("uint8"), "RGBA")
+
+    tile.paste(body, (0, 0), mask)
+    tile = tile.convert("RGBA")
+    tile.alpha_composite(art)
+    im.paste(tile.convert("RGB"), (x0, y0))
+
+
+def set_word(im, word, variant="gold", realm=None, report=None):
+    """Cut a WORD into this card's frame where the rank medallion would go. New image.
+
+    Same measurement as `set_rank` — the roundel is found, not assumed — and the same
+    two weights. The plaque hangs from the roundel's left edge, and the bottom copy is
+    lifted clear of the title plaque, which a word-length mark always overlaps.
+    """
+    im = im.copy()
+    try:
+        geom = detect_corner(im)
+    except Exception as e:
+        if report is not None:
+            report.update({"ok": False, "why": f"{type(e).__name__}: {e}"})
+        return im
+    if geom is None:
+        if report is not None:
+            report.update({"ok": False, "why": "no roundel found in top-left corner"})
+        return im
+
+    W, H = im.size
+    fill, gold = _palette(im, geom["cx"], geom["cy"], geom["r"])
+    dark = field_lum(im, geom["tl"][0], geom["tl"][1], geom["mark_r"]) <= DARK_FIELD
+    if dark:
+        gold = _scaled(gold, GOLD_LUM[1] / max(1.0, _lum(gold)))
+    ink = _ink(gold, fill, realm, variant, dark)
+
+    h = 2 * geom["mark_r"]
+    _, need = _fit_word(word, h * WORD_CAP)
+    w = max(h, need + 2 * WORD_PAD * h)
+    left = max(EDGE_MARGIN * W, geom["cx"] - geom["r"])          # flush with the roundel
+    left = min(left, W - EDGE_MARGIN * W - w)
+    cx, cy = left + w / 2, geom["tl"][1]
+
+    bx, by = W - cx, H - cy
+    clamped = False
+    try:
+        banner = detect_banner(im)
+    except Exception:
+        banner = None
+    if banner is not None:
+        clear = WORD_CLEAR * W
+        if (bx - w / 2 - clear < banner[2] and bx + w / 2 + clear > banner[0]
+                and by - h / 2 - clear < banner[3] and by + h / 2 + clear > banner[1]):
+            by = banner[1] - clear - h / 2                        # lift it above the plaque
+            clamped = True
+    by = max(by, h / 2 + EDGE_MARGIN * W)
+
+    _plaque(im, cx, cy, w, h, word, fill, ink, False, dark)
+    _plaque(im, bx, by, w, h, word, fill, ink, True, dark)
+    if report is not None:
+        report.update({"ok": True, "fill": fill, "gold": gold, "ink": ink, "text": word,
+                       "dark": dark, "plaque": (w, h), "tl_word": (cx, cy),
+                       "br_word": (bx, by), "word_clamped": clamped, **geom})
+    return im
 
 
 def set_rank(im, number, realm, variant="gold", report=None):
