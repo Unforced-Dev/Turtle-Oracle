@@ -24,10 +24,17 @@ cross-checked against https://www.makeplayingcards.com/pops/booklet-guide.html:
     cover (72pp)  upload 7.46 x 5.25 in = 2238 x 1575 px
                   trim   7.2  x 5    in = 2160 x 1500, spine 0.2088 in
 
-The safe area is NOT centred: the inset from the trim is ~117px on the binding
-edge and ~37.5px on the outer edge, and it mirrors — a recto has its gutter on
-the left, a verso on the right. That asymmetry is the easiest thing to get wrong
-in a perfect-bound book, so every side here is laid out into a gutter-aware box.
+MPC's spec has the safe area NOT centred: ~117px inset on the binding edge,
+~37.5px on the outer edge, mirrored recto/verso. That asymmetry depends on
+knowing which physical side (left/right) each uploaded file lands on — and
+that turned out to be exactly the thing to get wrong: v1 assumed odd sides
+are recto (gutter left), but MPC's own designer preview showed the actual
+upload pairing odd-on-left / even-on-right, the opposite parity, so the wide
+margin sat on the wrong edge of every page and body text ran close to the
+true spine on nearly every side (caught from a screenshot of MPC's preview,
+2026-08-18). Rather than re-guess the parity, every side now gets the wider
+117px inset on BOTH edges — safe regardless of which side is recto, at the
+cost of a narrower text measure.
 
 Upload format is one raster per side (PNG/JPEG/TIFF; MPC does NOT take a PDF for
 booklets), RGB, 300 dpi. The --pdf proof is for us, never for them.
@@ -59,19 +66,19 @@ BLEED = 38                      # 0.125in -> trim box starts here
 TRIM_L, TRIM_T = BLEED, BLEED
 TRIM_R, TRIM_B = W - BLEED, H - BLEED
 GUTTER = 117                    # safe inset on the binding edge, from trim
-OUTER = 38                      # safe inset on the outer edge, from trim
 VPAD = 36                       # safe inset top and bottom, from trim
 
-CW = (TRIM_R - TRIM_L) - GUTTER - OUTER     # 894 — the safe measure
+# Applied to BOTH left and right — see the geometry note above: we don't
+# actually know which parity MPC treats as recto, so both edges get the
+# wider binding-edge inset rather than gambling on which side is the spine.
+CW = (TRIM_R - TRIM_L) - 2 * GUTTER         # 816 — the safe measure
 CY = TRIM_T + VPAD                          # 74
 CH = (TRIM_B - TRIM_T) - 2 * VPAD           # 1427
 
 
 def box(side):
-    """Safe content box for a 1-based side. Odd = recto, gutter on the left."""
-    recto = side % 2 == 1
-    x = TRIM_L + (GUTTER if recto else OUTER)
-    return x, CY, CW, CH
+    """Safe content box for a 1-based side. Symmetric — see geometry note above."""
+    return TRIM_L + GUTTER, CY, CW, CH
 
 
 # ------------------------------------------------------------ typography ----
@@ -307,9 +314,9 @@ def deal_side(n):
     dr.text((x0 + w // 2, y), f"{words(len(FULL_SUITS))} full suits of "
             f"{words(len(PLAY_RANKS))} — {len(FULL_SUITS) * len(PLAY_RANKS)} cards",
             font=F_SM, fill=DIM, anchor="ma")
-    y += 52
+    y += 40
 
-    dr.line([x0, y, x0 + w, y], fill=RULE, width=2); y += 24
+    dr.line([x0, y, x0 + w, y], fill=RULE, width=2); y += 20
     dr.text((x0, y), "BEFORE A GAME", font=F_LBL, fill=GOLD); y += 34
     n_play = len(FULL_SUITS) * len(PLAY_RANKS)
     if K.utility or jokers:
