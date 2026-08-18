@@ -58,6 +58,62 @@ REALM_DESC = {
 REALM_SUIT = {"shell": "the wild suit", "roots": "the buried suit",
               "trunk": "the standing suit", "branches": "the reaching suit"}
 
+# Realm intros. The domain line is lifted from docs/DECK_DESIGN.md's realm table;
+# the prose is the Turtle's voice, written here because nothing in the data holds
+# a realm-length statement — cards.json gives one clause, card_lore.json is
+# per-card only. Kept short: the cards do the talking.
+REALM_INTRO = {
+    "shell": {
+        "domain": "major archetypes · load-bearing life truths",
+        "body": [
+            "Underneath the tree is the thing that carries the tree. The Shell is "
+            "the Turtle itself — the load-bearing truths, the ones that were true "
+            "before you got here and will be true after.",
+            "These are the biggest cards in the deck, and the least specific. A "
+            "Shell card does not tell you what to do on Tuesday. It tells you what "
+            "kind of ground you are standing on.",
+        ],
+        "reads": "Wild. A Shell card can stand in any position, and when one turns "
+                 "up the whole reading swings around it — the axis itself is speaking.",
+    },
+    "roots": {
+        "domain": "shadow · grief · the buried · ancestry · release",
+        "body": [
+            "Everything the tree is made of came up through here first, in the dark, "
+            "through rot. The Roots are the underworld: what you buried, what buried "
+            "you, what you are still quietly paying for.",
+            "None of these cards are punishments. A root is not a wound — it is how "
+            "a living thing holds on in wind. But you have to go down to find it, and "
+            "down is the direction nobody volunteers for.",
+        ],
+        "reads": "Position: what to face. The thing under the question, not the question.",
+    },
+    "trunk": {
+        "domain": "body · presence · endurance · survival · move slow",
+        "body": [
+            "The Trunk is the middle world — the part of the tree you can actually "
+            "put a hand on. Body, breath, water, sleep, the plain daily work of "
+            "staying upright in a place that would rather you didn't.",
+            "This is the realm where 'Move Slow' stops being a joke on a flag and "
+            "becomes a survival instruction. Nothing here is profound. All of it is "
+            "load-bearing.",
+        ],
+        "reads": "Position: where you stand. The honest report on your current footing.",
+    },
+    "branches": {
+        "domain": "connection · ecstasy · aspiration · the sunrise · reaching",
+        "body": [
+            "Up top, where the tree stops being structure and starts being gesture. "
+            "The Branches are the heavens: other people, joy that arrives without "
+            "being scheduled, the sunrise you stayed up for, the reach.",
+            "Reaching is the only thing a tree does that has no immediate use. It is "
+            "also the only reason anything stands under it. Do not mistake these "
+            "cards for decoration.",
+        ],
+        "reads": "Position: what to reach for. The direction, not the destination.",
+    },
+}
+
 
 def tint(realm):
     return REALM_TINT.get(realm, GOLD)
@@ -135,6 +191,7 @@ F_SM = font(G, 15)          # shadow, dare, captions
 F_TINY = font(G, 13)        # folio, index ranks
 F_IDX = font(G, 17)         # index names
 F_IDXH = font(GB, 15)       # index column heads
+F_KEY = font(G, 15)         # the keyword string under a card name
 
 
 def wrap_lines(draw, text, fnt, maxw):
@@ -160,6 +217,10 @@ def measure(draw, text, fnt, maxw, lh):
     return len(wrap_lines(draw, text, fnt, maxw)) * lh
 
 
+def draw_w(draw, text, fnt):
+    return draw.textlength(text, font=fnt)
+
+
 def new_page(bg=KRAFT):
     pg = Image.new("RGB", (W, H), bg)
     dr = ImageDraw.Draw(pg); dr._image = pg
@@ -168,6 +229,7 @@ def new_page(bg=KRAFT):
 
 pages = []          # (image, kind) — kind suppresses the folio on plates
 overflow = []
+drawn = []          # every card_block call, so the build can prove coverage
 _probe = ImageDraw.Draw(Image.new("RGB", (10, 10)))
 
 
@@ -282,8 +344,14 @@ CAP_H = 46                  # plate caption under the art
 TOP, BOT = 96, 96
 
 
+def keyword_line(c):
+    return " · ".join(k.upper() for k in c.get("keywords", []))
+
+
 def block_height(c):
     h = 42 + 16
+    kw = keyword_line(c)
+    if kw: h += measure(_probe, kw, F_KEY, TW, 21) + 12
     ess = lore.get(c["id"], {}).get("essence")
     if ess: h += measure(_probe, ess, F_ESS, TW, 28) + 14
     h += measure(_probe, c["reading"], F_BODY, TW, 27) + 14
@@ -312,6 +380,7 @@ def thumb(c):
 
 def card_block(dr, c, x, y):
     t = tint(c["realm"])
+    drawn.append(c["id"])
     try:
         dr._image.paste(thumb(c), (x, y))
         dr.rectangle([x - 1, y - 1, x + AW, y + AH], outline=(150, 130, 96), width=1)
@@ -332,6 +401,9 @@ def card_block(dr, c, x, y):
     tx, yy = TX, y - 4
     dr.text((tx, yy), c["name"], font=F_NAME, fill=GOLD); yy += 42
     dr.line([tx, yy, tx + TW, yy], fill=GOLD, width=1); yy += 16
+    kw = keyword_line(c)
+    if kw:
+        yy = wrap(dr, kw, F_KEY, tx, yy, TW, DIM, 21) + 12
     ess = lore.get(c["id"], {}).get("essence")
     if ess:
         yy = wrap(dr, ess, F_ESS, tx, yy, TW, t, 28) + 14
@@ -349,7 +421,8 @@ def card_page(pair):
     avail = H - TOP - BOT
     hs = [block_height(c) for c in pair]
     if len(pair) == 1:
-        y1 = TOP + int((avail - hs[0]) * 0.35)
+        # a lone card is the realm's King — give it the page, a shade above centre
+        y1 = TOP + int((avail - hs[0]) * 0.42)
         end = card_block(dr, pair[0], AX, y1)
     else:
         slack = avail - hs[0] - hs[1]
@@ -369,39 +442,211 @@ def card_page(pair):
     return pg
 
 
+# -------------------------------------------------- realm intro page ------
+def realm_intro(realm, rc, t):
+    """Banded display head, then the realm's own prose, then how it reads."""
+    pg, dr = new_page()
+    M = 92
+
+    # --- the band: realm name over the deck's own one-clause description ---
+    clause = DECK["realms"][realm].split("Position:")[0].strip().rstrip(".")
+    band_lines = wrap_lines(_probe, clause, F_BODY, W - 2 * M - 80)
+    band_h = 62 + 26 + len(band_lines) * 30 + 108
+
+    # Measure the whole stack first, then take up whatever slack is left as extra
+    # air between the band and the prose — a short realm shouldn't strand the
+    # bottom third of the page, and a long one shouldn't crowd the foot.
+    info = REALM_INTRO.get(realm, {})
+    reads_lines = wrap_lines(_probe, info["reads"], F_SM, W - 2 * M - 76) \
+        if info.get("reads") else []
+    box_h = (30 + 22 + len(reads_lines) * 22 + 26) if reads_lines else 0
+
+    # the realm's own contents list, two columns, closes the page
+    LCOL = (W - 2 * M) // 2
+    lrows = (len(rc) + 1) // 2
+    list_h = 34 + lrows * 30
+
+    below = 92
+    if info.get("domain"):
+        below += 46
+    for para in info.get("body", []):
+        below += measure(_probe, para, F_BODY, W - 2 * M, 30) + 22
+    if box_h:
+        below += 14 + box_h
+    below += 46 + list_h
+
+    band_t = 150
+    slack = H - 96 - (band_t + band_h + below)
+    air = max(0, min(70, slack // 3))                 # a little, not a chasm
+    band_t += max(0, min(60, slack - air * 2))        # push the band down a touch
+    band_b = band_t + band_h
+    dr.rectangle([0, band_t, W, band_b], fill=t)
+    dr.line([70, band_t + 24, W - 70, band_t + 24], fill=CREAM, width=1)
+    dr.line([70, band_b - 24, W - 70, band_b - 24], fill=CREAM, width=1)
+
+    cy = band_t + 54
+    dr.text((W // 2, cy), realm.upper(), font=F_TITLE, fill=CREAM, anchor="mm"); cy += 46
+    dr.line([W // 2 - 90, cy, W // 2 + 90, cy], fill=(216, 206, 188), width=1); cy += 26
+    for line in band_lines:
+        dr.text((W // 2, cy), line, font=F_BODY, fill=(240, 235, 224), anchor="ma"); cy += 30
+    if cy > band_b - 24:
+        overflow.append(("intro-band-" + realm, cy))
+
+    # the playing-deck coordinates ride outside the band
+    dr.text((W // 2, band_t - 46), f"ranks {rank_label(rc[0]['number'])} – "
+            f"{rank_label(rc[-1]['number'])}", font=F_SM, fill=DIM, anchor="mm")
+    dr.text((W // 2, band_b + 44),
+            f"{words(len(rc))} cards · {REALM_SUIT.get(realm, 'a suit')}",
+            font=F_SM, fill=DIM, anchor="mm")
+
+    y = band_b + 92 + air
+    if info.get("domain"):
+        dr.text((W // 2, y), info["domain"].upper(), font=F_LBL, fill=t, anchor="mm")
+        y += 46
+    for para in info.get("body", []):
+        y = wrap(dr, para, F_BODY, M, y, W - 2 * M, INK, 30) + 22
+
+    # --- how it reads: a tinted keyline box, not another paragraph ---
+    if reads_lines:
+        by = min(y + 14, H - 120 - box_h)
+        dr.rectangle([M, by, W - M, by + box_h], outline=t, width=2)
+        dr.text((M + 26, by + 22), "IN A READING", font=F_LBL, fill=t)
+        yy = by + 22 + 30
+        for line in reads_lines:
+            dr.text((M + 26, yy), line, font=F_SM, fill=INK, anchor="la"); yy += 22
+        y = by + box_h
+
+    # --- the realm's thirteen, so the page doubles as its contents ---
+    y += 46 + air
+    dr.text((M, y), f"THE {words(len(rc)).upper()}", font=F_LBL, fill=t)
+    dr.line([M + draw_w(dr, f"THE {words(len(rc)).upper()}", F_LBL) + 16, y + 9,
+             W - M, y + 9], fill=RULE, width=1)
+    y += 34
+    for i, c in enumerate(rc):
+        col, row = divmod(i, lrows)
+        x = M + col * LCOL
+        yy = y + row * 30
+        dr.text((x + 30, yy), rank_label(c["number"]), font=F_LBL, fill=t, anchor="ra")
+        nm = c["name"]
+        while draw_w(dr, nm, F_IDX) > LCOL - 54 and len(nm) > 4:
+            nm = nm[:-2] + "…"
+        dr.text((x + 44, yy + 1), nm, font=F_IDX, fill=INK)
+    y += lrows * 30
+
+    if y > H - 96:
+        overflow.append(("intro-" + realm, y))
+    return pg
+
+
 # ------------------------------------------------- realm sections ----------
 for realm in REALMS:
     rc = by_realm[realm]
     t = tint(realm)
 
-    dv, dd = new_page()
-    # the band grows to whatever the realm's own description needs
-    body = wrap_lines(_probe, DECK["realms"][realm], F_BODY, W - 260)
-    inner = 62 + 26 + len(body) * 30                 # display line, rule, description
-    band_h = max(320, inner + 150)
-    band_t, band_b = H // 2 - band_h // 2, H // 2 + band_h // 2
-    dd.rectangle([0, band_t, W, band_b], fill=t)
-    dd.line([70, band_t + 24, W - 70, band_t + 24], fill=CREAM, width=1)
-    dd.line([70, band_b - 24, W - 70, band_b - 24], fill=CREAM, width=1)
-
-    cy = H // 2 - inner // 2
-    dd.text((W // 2, cy + 22), realm.upper(), font=F_TITLE, fill=CREAM, anchor="mm")
-    cy += 62
-    dd.line([W // 2 - 90, cy, W // 2 + 90, cy], fill=(216, 206, 188), width=1); cy += 26
-    for line in body:
-        dd.text((W // 2, cy), line, font=F_BODY, fill=(240, 235, 224), anchor="ma"); cy += 30
-    if cy > band_b - 30:
-        overflow.append(("divider-" + realm, cy))
-
-    dd.text((W // 2, band_b + 56),
-            f"{words(len(rc))} cards · {REALM_SUIT.get(realm, 'a suit')}",
-            font=F_SM, fill=DIM, anchor="mm")
-    dd.text((W // 2, band_t - 56), f"ranks {rank_label(rc[0]['number'])} – "
-            f"{rank_label(rc[-1]['number'])}", font=F_SM, fill=DIM, anchor="mm")
-    add(dv, "plate")
+    add(realm_intro(realm, rc, t), "plate")
 
     for i in range(0, len(rc), 2):
         add(card_page(rc[i:i + 2]))
+
+
+# -------------------------------------------------------- how to deal it ---
+# Anything outside the 1..13 grid is a utility card (title, key, blanks) and is
+# dealt out of the pack before a game; if the deck ever grows jokers they land
+# here too and the copy follows the data rather than a hard-coded 52.
+PLAY_RANKS = list(range(1, 14))
+playing = [c for c in cards if c["number"] in PLAY_RANKS]
+utility = [c for c in cards if c["number"] not in PLAY_RANKS]
+full_suits = [r for r in REALMS
+              if {c["number"] for c in by_realm[r]} >= set(PLAY_RANKS)]
+
+deal, dr = new_page()
+y = 96
+dr.text((80, y), "How to Deal It", font=F_NAME, fill=GOLD); y += 46
+dr.line([80, y, W - 80, y], fill=GOLD, width=2); y += 30
+y = wrap(dr, "This is an oracle that deals as a real pack of cards. The realm glyph "
+             "on every card is its suit, and the gold medallion is its rank — so any "
+             "game that wants four suits and thirteen ranks will take it, and the art "
+             "keeps talking while you play.",
+         F_BODY, 80, y, W - 160, INK, 30) + 30
+
+# --- the suits ---
+dr.text((80, y), "THE SUITS", font=F_LBL, fill=GOLD); y += 34
+sw = (W - 160) // max(len(REALMS), 1)
+for i, r in enumerate(REALMS):
+    t = tint(r)
+    x = 80 + i * sw
+    dr.rectangle([x, y, x + sw - 18, y + 54], fill=t)
+    dr.text((x + (sw - 18) // 2, y + 27), realm_head(r), font=F_LBL, fill=CREAM, anchor="mm")
+    dr.text((x + (sw - 18) // 2, y + 74), REALM_SUIT.get(r, "a suit"),
+            font=F_SM, fill=DIM, anchor="ma")
+y += 116
+
+# --- the ranks, drawn as a strip of little cards ---
+dr.text((80, y), "THE RANKS", font=F_LBL, fill=GOLD); y += 34
+rw, rh, rgap = 62, 84, 10
+n_r = len(PLAY_RANKS)
+strip_w = n_r * rw + (n_r - 1) * rgap
+rx = (W - strip_w) // 2
+for i, n in enumerate(PLAY_RANKS):
+    x = rx + i * (rw + rgap)
+    have = n in RANKS
+    fill = (222, 208, 176) if have else KRAFT
+    dr.rectangle([x, y, x + rw, y + rh], fill=fill,
+                 outline=GOLD if have else RULE, width=2)
+    dr.text((x + rw // 2, y + rh // 2), rank_label(n), font=F_SUB,
+            fill=GOLD if have else RULE, anchor="mm")
+y += rh + 22
+dr.text((W // 2, y), f"{words(len(full_suits))} full suits of {words(len(PLAY_RANKS))}"
+        f" — {len(full_suits) * len(PLAY_RANKS)} cards", font=F_SM, fill=DIM, anchor="mm")
+y += 52
+
+# --- what to take out ---
+dr.line([80, y, W - 80, y], fill=RULE, width=2); y += 26
+dr.text((80, y), "BEFORE A GAME", font=F_LBL, fill=GOLD); y += 32
+if utility:
+    lead = (f"Deal out the {words(len(utility))} utility "
+            f"card{'s' if len(utility) != 1 else ''} — "
+            + ", ".join(c["name"] for c in utility[:4])
+            + (", and the rest" if len(utility) > 4 else "")
+            + f" — and you are holding a standard {len(full_suits) * len(PLAY_RANKS)}. "
+              "They carry no rank medallion, which is how you spot them: no medallion, "
+              "not in the game.")
+else:
+    lead = (f"Nothing to remove. The pack is exactly {len(playing)} — "
+            f"{words(len(full_suits))} suits of {words(len(PLAY_RANKS))}, no jokers, no "
+            "spares. Every card in the box has a rank medallion and a place in the game.")
+y = wrap(dr, lead, F_SM, 80, y, W - 160, INK, 24) + 18
+y = wrap(dr, "The Shell is the odd suit out at the table the way it is odd in a reading. "
+             "Call it trumps, call it the bower suit, or set it aside and play three-suit "
+             "games with " + str((len(full_suits) - 1) * len(PLAY_RANKS)) + ".",
+         F_SM, 80, y, W - 160, DIM, 24) + 30
+
+dr.line([80, y, W - 80, y], fill=RULE, width=2); y += 26
+dr.text((80, y), "AT THE TABLE", font=F_LBL, fill=GOLD); y += 34
+for game, how in [
+    ("Poker, hearts, rummy, war",
+     "Play it straight. Shell reads as the fourth suit and nothing changes."),
+    ("Trick-taking (spades, euchre)",
+     "Shell is permanent trumps — the axis outranks the world, as it should."),
+    ("Cribbage",
+     "A is one, J Q K are ten. The medallions are already numbered for you."),
+    ("Solitaire in a dust storm",
+     "The best use of this deck. Nobody wins. That is not the point of it."),
+]:
+    dr.text((80, y), game, font=F_LBL, fill=INK)
+    yy = wrap(dr, how, F_SM, 80, y + 24, W - 160, DIM, 22)
+    y = yy + 16
+
+y += 10
+dr.line([80, y, W - 80, y], fill=RULE, width=2); y += 24
+y = wrap(dr, "And when a hand goes strange — when someone takes a trick they had no "
+             "business taking, or the same card keeps coming back to you — stop the game "
+             "and read it. The deck does not stop being an oracle because you dealt it "
+             "for money.",
+         F_ESS, 80, y, W - 160, GOLD, 28)
+if y > H - 96:
+    overflow.append(("deal", y))
+add(deal)
 
 
 # ---------------------------------------------------------------- index ----
@@ -483,11 +728,22 @@ for line in [
     cy += 30
 add(col, "plate")
 
-# pad to a multiple of 4 for saddle-stitch imposition
-while len(pages) % 4:
-    blank, bd = new_page()
-    bd.text((W // 2, H // 2), "·", font=F_NAME, fill=RULE, anchor="mm")
-    add(blank, "plate")
+# Pad to a multiple of 4 for saddle-stitch imposition. The signature has to fold,
+# so these pages exist regardless — make them ruled "your own pulls" pages rather
+# than dead leaves, and put them before the colophon so the book still ends well.
+tail = pages.pop() if pages and pages[-1][1] == "plate" else None
+while (len(pages) + (1 if tail else 0)) % 4:
+    nb, bd = new_page()
+    bd.text((80, 96), "Your Own Pulls", font=F_NAME, fill=GOLD)
+    bd.line([80, 142, W - 80, 142], fill=GOLD, width=2)
+    bd.text((80, 162), "DATE · ROOT · TRUNK · BRANCH · WHAT YOU DID ABOUT IT",
+            font=F_LBL, fill=DIM)
+    ly = 226
+    while ly < H - 120:
+        bd.line([80, ly, W - 80, ly], fill=RULE, width=1); ly += 46
+    add(nb)
+if tail:
+    pages.append(tail)
 
 # folios
 for n, (pg, kind) in enumerate(pages, start=1):
@@ -501,6 +757,17 @@ imgs[0].save(f"{REPO}/print/booklet.pdf", save_all=True, append_images=imgs[1:],
 print(f"booklet.pdf — {len(imgs)} pages ({len(imgs) // 4} signatures of 4), "
       f"{N_CARDS} cards / {N_REALMS} realms / {N_RANKS} ranks")
 print("OVERFLOW: " + repr(overflow) if overflow else "fit check: clean")
+
+# coverage: every card typeset once and only once, and the fold is a fold
+missed = [c["id"] for c in cards if c["id"] not in drawn]
+twice = sorted({i for i in drawn if drawn.count(i) > 1})
+print(f"coverage: {len(drawn)}/{N_CARDS} blocks"
+      + (f" — MISSING {missed}" if missed else "")
+      + (f" — DUPLICATED {twice}" if twice else "")
+      + ("" if missed or twice else " — every card exactly once"))
+print("signature: " + ("ok" if len(imgs) % 4 == 0 else f"NOT a multiple of 4 ({len(imgs)})"))
+if missed or twice or overflow or len(imgs) % 4:
+    sys.exit(1)
 
 if "--png" in sys.argv:
     outdir = sys.argv[sys.argv.index("--png") + 1]
