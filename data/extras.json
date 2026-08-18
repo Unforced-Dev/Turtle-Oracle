@@ -1,0 +1,414 @@
+{
+  "note": "The 11 EXTRAS — everything in the printed deck that is NOT an oracle card. They are deliberately kept out of cards.json: the oracle is 52 cards, and nothing here has a Reading, a shadow, a Turtle Dare or a live_hook. MakePlayingCards charges the same up to 63 cards a deck, so the spare eleven are spent on two jokers, a title card, two reference cards, one card per realm, and two blanks to draw your own at camp. tools/export_mpc.py prints them after the 52; tools/gen_art.py --extras generates the handful of art masters they share; tools/extracard.py typesets every word on them. No text anywhere in this file is ever drawn by the image model.",
+  "art": [
+    {
+      "id": "joker-radiant",
+      "frame": "tree",
+      "glyph": "turtle",
+      "tone": "JOKER undertone: SECOND INK — metallic gold, used more lavishly than on any other card in the deck: a full sunburst of carved gold rays filling the whole field behind the turtle, gold rims along the shell plates, gold nodes up the World Tree. GROUND VALUE — the field is warm mid-tan kraft paper and the gold sunburst covers the middle two thirds of the image, so the card reads gold-dominant and awake at the same brightness as a Shell card. The field is NEVER flooded with black: no night sky, no dark background.",
+      "image_prompt": "THE TERRIBLE TURTLE ITSELF, alone, enormous and centred, seen head-on and a little from above, filling the card: an ancient desert tortoise whose domed shell is carved as a mandala of plates, with the World Tree growing straight up out of the crown of that shell as the axis of the image. Its head is stretched right out and lifted, eyes open, jaws parted — patient, ancient, and plainly delighted. Carved gold rays burst from behind the shell to every edge of the field. Two small carved figures stand on the cracked playa at the foot of the turtle with their arms raised."
+    },
+    {
+      "id": "joker-shadow",
+      "frame": "tree",
+      "glyph": "turtle",
+      "tone": "JOKER undertone: SECOND INK — deep indigo blue, used heavily and unmistakably: the entire field behind the turtle is printed in dense dark indigo cross-hatching, indigo pooling under the shell. The card must read blue-black, not brown. Gold only as a thin rim-light along the ridges of the shell and a scatter of small carved stars. GROUND VALUE — the field is dark corner to corner at one density, the darkest card in the deck; only a narrow strip of cracked playa under the turtle stays bare kraft. NEVER a bright or open sky.",
+      "image_prompt": "THE SAME TERRIBLE TURTLE in its night aspect, alone, enormous and centred, seen head-on and a little from above, filling the card: the same domed shell carved as a mandala of plates, rimmed in gold against a black indigo sky, with the same World Tree rising bare and leafless from the crown of the shell as the axis of the image. The head is drawn back into the shell as far as the eyes, jaws shut hard, plainly about to bite. A dust storm streams past in carved horizontal chatter and small carved stars show through it. The playa under it is a narrow strip of cracked pale ground."
+    },
+    {
+      "id": "frame-plain",
+      "frame": "tree",
+      "composition": false,
+      "setting": false,
+      "image_prompt": "NOTHING AT ALL. This card is deliberately blank inside its frame: bare warm desert-tan kraft paper, evenly toned across the entire field, with visible paper grain, a faint mottle of age and a light scatter of pale playa dust. NO subject, NO figure, NO animal, NO turtle, NO tree, NO landscape, NO horizon, NO sky, NO sun, NO ornament, NO vignette, NO pattern, NO watermark, NO device of any kind anywhere inside the frame, and nothing whatsoever in the middle of the card. The ONLY marks on the whole card are the gold double-keyline frame and the empty gold-keylined title banner near the bottom; everything they enclose is plain empty paper."
+    },
+    {
+      "id": "frame-aged",
+      "frame": "tree",
+      "composition": false,
+      "setting": false,
+      "image_prompt": "NOTHING AT ALL. This card is deliberately blank inside its frame: bare warm desert-tan kraft paper, evenly toned across the entire field, with visible paper grain and rather more age than a new card — soft foxing, a faint dust bloom drifting in from the corners, the look of a card carried in a pocket through a dusty week. NO subject, NO figure, NO animal, NO turtle, NO tree, NO landscape, NO horizon, NO sky, NO sun, NO ornament, NO vignette, NO pattern, NO watermark, NO device of any kind anywhere inside the frame, and nothing whatsoever in the middle of the card. The ONLY marks on the whole card are the gold double-keyline frame and the empty gold-keylined title banner near the bottom; everything they enclose is plain empty paper."
+    }
+  ],
+  "glyph_source": {
+    "shell": "shell-04",
+    "roots": "roots-04",
+    "trunk": "trunk-07",
+    "branches": "branches-05"
+  },
+  "cards": [
+    {
+      "id": "extra-joker-radiant",
+      "kind": "joker",
+      "art": "joker-radiant",
+      "title": "The Radiant Turtle",
+      "mark": "JOKER"
+    },
+    {
+      "id": "extra-joker-shadow",
+      "kind": "joker",
+      "art": "joker-shadow",
+      "title": "The Shadow Turtle",
+      "mark": "JOKER"
+    },
+    {
+      "id": "extra-title",
+      "kind": "title",
+      "art": "frame-plain",
+      "title": "Black Rock City MMXXVI",
+      "blocks": [
+        {
+          "style": "display",
+          "text": "The Terrible Turtle"
+        },
+        {
+          "style": "display",
+          "text": "Oracle"
+        },
+        {
+          "style": "gap",
+          "size": 0.028
+        },
+        {
+          "style": "rule"
+        },
+        {
+          "style": "gap",
+          "size": 0.028
+        },
+        {
+          "style": "line",
+          "text": "Terrible Turtle Camp · E & 6:15"
+        },
+        {
+          "style": "small",
+          "text": "Move Slow & Bite Things"
+        },
+        {
+          "style": "gap",
+          "size": 0.045
+        },
+        {
+          "style": "small",
+          "text": "Ask the oracle:"
+        },
+        {
+          "style": "line",
+          "text": "oracle.terribleturtle.camp"
+        }
+      ]
+    },
+    {
+      "id": "extra-howto-read",
+      "kind": "reference",
+      "art": "frame-plain",
+      "title": "How to Read the Oracle",
+      "blocks": [
+        {
+          "style": "body",
+          "text": "The World Turtle carries the World Tree. This deck is that tree — fifty-two cards in four realms."
+        },
+        {
+          "style": "gap",
+          "size": 0.022
+        },
+        {
+          "style": "rule"
+        },
+        {
+          "style": "gap",
+          "size": 0.022
+        },
+        {
+          "style": "line",
+          "text": "Draw one ROOTS — what to face."
+        },
+        {
+          "style": "line",
+          "text": "Draw one TRUNK — where you stand."
+        },
+        {
+          "style": "line",
+          "text": "Draw one BRANCHES — what to reach for."
+        },
+        {
+          "style": "gap",
+          "size": 0.022
+        },
+        {
+          "style": "rule"
+        },
+        {
+          "style": "gap",
+          "size": 0.022
+        },
+        {
+          "style": "body",
+          "text": "Read the three as one arc, not three separate fortunes."
+        },
+        {
+          "style": "gap",
+          "size": 0.012
+        },
+        {
+          "style": "body",
+          "text": "A SHELL card is the axis itself: when it turns up, the whole reading turns around it."
+        },
+        {
+          "style": "gap",
+          "size": 0.012
+        },
+        {
+          "style": "body",
+          "text": "Every card carries a Reading, its shadow, and a Turtle Dare — one real adventure on the playa. Do the dare."
+        },
+        {
+          "style": "gap",
+          "size": 0.03
+        },
+        {
+          "style": "gold",
+          "text": "Move slow. Then bite down."
+        }
+      ]
+    },
+    {
+      "id": "extra-howto-deal",
+      "kind": "reference",
+      "art": "frame-plain",
+      "title": "How to Deal the Deck",
+      "blocks": [
+        {
+          "style": "body",
+          "text": "The glyph in the corner is the suit. The medallion under it is the rank."
+        },
+        {
+          "style": "gap",
+          "size": 0.02
+        },
+        {
+          "style": "glyphs"
+        },
+        {
+          "style": "gap",
+          "size": 0.02
+        },
+        {
+          "style": "rule"
+        },
+        {
+          "style": "gap",
+          "size": 0.02
+        },
+        {
+          "style": "rank",
+          "text": "A · 2 · 3 · 4 · 5 · 6 · 7 · 8 · 9 · 10 · J · Q · K"
+        },
+        {
+          "style": "gap",
+          "size": 0.016
+        },
+        {
+          "style": "body",
+          "text": "Thirteen to a realm, four realms — fifty-two cards, plus two Jokers."
+        },
+        {
+          "style": "gap",
+          "size": 0.012
+        },
+        {
+          "style": "body",
+          "text": "Lift out the nine cards that are not oracle cards, this one among them, and what is left deals as any deck you know."
+        }
+      ]
+    },
+    {
+      "id": "extra-realm-shell",
+      "kind": "realm",
+      "art": "frame-plain",
+      "realm": "shell",
+      "title": "The Shell",
+      "blocks": [
+        {
+          "style": "glyph",
+          "realm": "shell"
+        },
+        {
+          "style": "gap",
+          "size": 0.03
+        },
+        {
+          "style": "gold",
+          "text": "The Turtle beneath — the axis speaks"
+        },
+        {
+          "style": "gap",
+          "size": 0.022
+        },
+        {
+          "style": "body",
+          "text": "From the one who carries the world to the turtles under that one: nobody has ever seen the bottom, so what you stand on is chosen, not found."
+        },
+        {
+          "style": "gap",
+          "size": 0.03
+        },
+        {
+          "style": "rule"
+        },
+        {
+          "style": "gap",
+          "size": 0.022
+        },
+        {
+          "style": "small",
+          "text": "Thirteen cards · Ace to King"
+        }
+      ]
+    },
+    {
+      "id": "extra-realm-roots",
+      "kind": "realm",
+      "art": "frame-plain",
+      "realm": "roots",
+      "title": "The Roots",
+      "blocks": [
+        {
+          "style": "glyph",
+          "realm": "roots"
+        },
+        {
+          "style": "gap",
+          "size": 0.03
+        },
+        {
+          "style": "gold",
+          "text": "The underworld — what to face"
+        },
+        {
+          "style": "gap",
+          "size": 0.022
+        },
+        {
+          "style": "body",
+          "text": "Down through grief, release and the long dark, until the root that went deepest is the one still finding water in a drought."
+        },
+        {
+          "style": "gap",
+          "size": 0.03
+        },
+        {
+          "style": "rule"
+        },
+        {
+          "style": "gap",
+          "size": 0.022
+        },
+        {
+          "style": "small",
+          "text": "Thirteen cards · Ace to King"
+        }
+      ]
+    },
+    {
+      "id": "extra-realm-trunk",
+      "kind": "realm",
+      "art": "frame-plain",
+      "realm": "trunk",
+      "title": "The Trunk",
+      "blocks": [
+        {
+          "style": "glyph",
+          "realm": "trunk"
+        },
+        {
+          "style": "gap",
+          "size": 0.03
+        },
+        {
+          "style": "gold",
+          "text": "The middle world — where you stand"
+        },
+        {
+          "style": "gap",
+          "size": 0.022
+        },
+        {
+          "style": "body",
+          "text": "Move slow and bite down, endure to sunrise, keep turning up unseen — until standing still that long has quietly become the heartwood holding the tree up."
+        },
+        {
+          "style": "gap",
+          "size": 0.03
+        },
+        {
+          "style": "rule"
+        },
+        {
+          "style": "gap",
+          "size": 0.022
+        },
+        {
+          "style": "small",
+          "text": "Thirteen cards · Ace to King"
+        }
+      ]
+    },
+    {
+      "id": "extra-realm-branches",
+      "kind": "realm",
+      "art": "frame-plain",
+      "realm": "branches",
+      "title": "The Branches",
+      "blocks": [
+        {
+          "style": "glyph",
+          "realm": "branches"
+        },
+        {
+          "style": "gap",
+          "size": 0.03
+        },
+        {
+          "style": "gold",
+          "text": "The heavens — what to reach for"
+        },
+        {
+          "style": "gap",
+          "size": 0.022
+        },
+        {
+          "style": "body",
+          "text": "Reach out, find your people, give it away — until you are the shade somebody you will never meet is reaching for."
+        },
+        {
+          "style": "gap",
+          "size": 0.03
+        },
+        {
+          "style": "rule"
+        },
+        {
+          "style": "gap",
+          "size": 0.022
+        },
+        {
+          "style": "small",
+          "text": "Thirteen cards · Ace to King"
+        }
+      ]
+    },
+    {
+      "id": "extra-blank-01",
+      "kind": "blank",
+      "art": "frame-plain",
+      "caption": "Draw your own card. Name it below."
+    },
+    {
+      "id": "extra-blank-02",
+      "kind": "blank",
+      "art": "frame-aged",
+      "caption": "Draw your own card. Name it below."
+    }
+  ]
+}

@@ -4,6 +4,7 @@
 |---|---|
 | `cards.json` | **The 48 cards** — canonical source of truth (Reading, shadow, Turtle Dare, keywords, `real_2026`, `live_hook`, `image_file`). Drives both the print deck and the app. Validated against `card.schema.json`. |
 | `card.schema.json` | JSON Schema for one card. |
+| `extras.json` | **The 11 extras** — everything in the printed deck that is *not* an oracle card: two jokers, a title card, two reference cards, four realm cards, two blanks. Deliberately outside `cards.json` (none of them has a Reading, a shadow, a Dare or a `live_hook`); the app and the site never see them. Holds the art masters' prompts, the layout of every line of copy, and which real card each realm glyph is lifted from. Printed by `tools/export_mpc.py`, typeset by `tools/extracard.py`. |
 | `brc_geo.json` | Black Rock City geography: the clock+street address system, 2026 street rings (Ararat…Kundalini), fixed landmarks (Man, Temple, Center Camp, Trash Fence…) and placement zones. Powers the app's map + directions. |
 | `playa_2026.json` | **App-only 2026 overlay.** Maps each card's `live_hook` → real 2026 instances + a location/status. The print deck stays timeless; this layer makes the app 2026-specific. |
 | `brc_2026_snapshot.json` | **Local only — gitignored.** The raw Burning Man API pull (camps, art, events). Rebuild with `python3 tools/fetch_brc.py`; see the embargo below. |

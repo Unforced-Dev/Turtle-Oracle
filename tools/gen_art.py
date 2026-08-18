@@ -16,9 +16,15 @@ Usage:
     python3 tools/gen_art.py --realm shell            # a whole realm
     python3 tools/gen_art.py --all                    # the deck
     python3 tools/gen_art.py --all --out cards/art2   # somewhere else
+    python3 tools/gen_art.py --extras                 # the extras' masters
+    python3 tools/gen_art.py --extras joker-radiant   # one of them
 
 Writes <out>/<id>.png at 1024x1536 (exactly the deck's 2:3), and records the
 prompt actually used in <out>/prompts-used.json so a run is reproducible.
+
+The 11 utility cards (jokers, title, reference, realm, blank) are NOT oracle
+cards and live in data/extras.json; --extras generates only the handful of
+masters they share, out of the same constants below, into cards/extras/.
 """
 import argparse
 import base64
@@ -45,7 +51,14 @@ MODEL = os.environ.get("CODEX_IMAGE_MODEL", "gpt-5.6-sol")
 # those five down. The rule this file now follows everywhere: describe the furniture as
 # a printer would specify it — which ink, exactly where, how much of the card it covers —
 # never as an adjective. Adjectives are what drifted.
-PREAMBLE = (
+#
+# Split in three because the extras need two of the three: an EMPTY card — the frame
+# master the title, reference, realm and blank cards are typeset onto — is the one
+# thing in this deck that must not carry a subject, an axis motif or a landscape. The
+# idiom (ink, stock, three colours) still governs it, so that part alone is reused.
+# PREAMBLE is the concatenation and is byte-identical to what it always was; every
+# oracle card's prompt is therefore unchanged.
+PREAMBLE_IDIOM = (
     # --- the idiom ---------------------------------------------------------------
     "Hand-carved woodblock print / letterpress relief illustration. Bold black ink "
     "linework with visible carving texture; EVERY tone is built from carved marks — "
@@ -65,9 +78,13 @@ PREAMBLE = (
     "Exactly three inks touch this paper — black, metallic gold, and the realm's second "
     "ink named below — with no blends or intermediate colours between them. Printed on "
     "warm desert-tan kraft paper with visible paper grain. "
+)
+PREAMBLE_COMPOSITION = (
     "Mythic and heraldic. Centred, symmetrical, iconic composition with calm breathing "
     "space. A subtle vertical World-Tree axis motif somewhere in the composition — the "
     "spine of the deck. "
+)
+PREAMBLE_SETTING = (
     # Every card is the same place. Without this the model wanders somewhere prettier the
     # moment a subject turns abstract — the first draft of The Gift came back with pine
     # forests and green valleys, which is a lovely card for a different deck.
@@ -77,6 +94,7 @@ PREAMBLE = (
     "rivers or lakes, NO rolling hills — the only tree that may ever appear is the World "
     "Tree itself. If the subject implies a landscape, that landscape is still this desert. "
 )
+PREAMBLE = PREAMBLE_IDIOM + PREAMBLE_COMPOSITION + PREAMBLE_SETTING
 
 # --- the frame ---------------------------------------------------------------------
 # Two frames in the deck, on purpose, and exactly two. The Shell twelve are the axis —
@@ -126,7 +144,10 @@ CARTOUCHE = (
     "plain rectangular banner with square corners, lying flat and horizontal. Its top "
     "edge is 84.5% of the way down the image and its bottom edge is 93% of the way down; "
     "it is exactly 76% of the image width and centred left-to-right. It is drawn as bare "
-    "kraft paper enclosed by a single fine keyline, sitting on top of the artwork, and it "
+    # Colour was left unspecified here and three Branches cards duly drew the keyline in
+    # black, which reads as a different banner object across a fan of cards. Name the ink.
+    "kraft paper enclosed by a single fine METALLIC GOLD keyline (never black), sitting "
+    "on top of the artwork, and it "
     "is COMPLETELY EMPTY — flat blank paper, no lettering, no ornament, no rule, no "
     "flourish, no device inside it. NOT a ribbon, NOT a scroll, NOT a banderole, NO "
     "curled or rolled ends, NO wavy or draped edges, NO swallowtails, NO scalloped or "
@@ -136,12 +157,37 @@ CARTOUCHE = (
 
 # --- the realm glyph ---------------------------------------------------------------
 # It wandered corner to corner and sometimes evaporated. One corner, stated twice.
+#
+# MEDALLION FILL, added after v6: the corner glyph is the one mark meant to double as a
+# suit index — the thing you read when the deck is fanned or shuffled, not studied. Shape
+# alone does not carry that at speed: a turtle-shell texture and a root-knot both render
+# as "gold filigree on a dark disc" often enough to collide (shell-01 and roots-01 did,
+# in the printed deck). Colour is what a glance actually uses, so the medallion's FILL is
+# now pinned to the realm's own second ink — the same ink already governing that realm's
+# ground value below — so the four realms are four disc colours, not four hopes that the
+# model drew the right texture: Shell gold, Roots indigo, Trunk rust, Branches sky-blue.
+# Shell's boss was already specified as a filled gold disc by SHELL_FRAME; shell-01's
+# black-disc rendering was the model drifting off that spec, not a spec gap, so only
+# roots/trunk/branches — the three that said "plain circular medallion" with no fill
+# named at all — get a new clause here.
+MEDALLION_FILL = {
+    "roots": "The medallion disc itself is filled solid deep indigo blue — the realm's "
+             "own second ink, the same blue as the card's underground half — with the "
+             "glyph carved in metallic gold on top of it. Never a black disc, never a "
+             "pale or cream disc.",
+    "trunk": "The medallion disc itself is filled solid burnt rust-orange — the realm's "
+             "own second ink, the same rust as the card's sky band — with the glyph "
+             "carved in black on top of it. Never black, never pale, never blue.",
+    "branches": "The medallion disc itself is filled solid pale sky blue — the realm's "
+                "own second ink, the same blue as the card's sky — with the glyph carved "
+                "in black on top of it. Never black, never dark, never rust.",
+}
 GLYPH = {
     r: ("REALM GLYPH — ALWAYS PRESENT, ALWAYS IN THE TOP-LEFT CORNER OF THE CARD AND "
         "NOWHERE ELSE: a small carved " + mark + ", about 5% of the card width across, "
         "sitting just inside the frame at the top left. It appears on every card without "
         "exception. Never in the top-right, never at the bottom, never in more than one "
-        "corner, never omitted. ")
+        "corner, never omitted. " + MEDALLION_FILL.get(r, ""))
     for r, mark in {
         "shell": "turtle-shell glyph (it rides inside the top-left corner boss)",
         "roots": "root-knot glyph in a plain circular medallion",
@@ -209,6 +255,21 @@ REALM_TONE = {
                  "table."),
 }
 
+# --- the extras' corner ------------------------------------------------------------
+# The two jokers belong to no realm, so there is no realm glyph to draw — but the corner
+# still has to speak the deck's language, because the JOKER mark is hung off exactly the
+# roundel the rank medallions are hung off (tools/rankmark.py finds it by measurement).
+# So they carry the turtle itself in the same plain circular medallion the roots, trunk
+# and branches cards use. The frame masters carry no corner mark at all: nothing is
+# ranked on them and a stray roundel would sit under the typeset copy.
+EXTRA_GLYPH = {
+    "turtle": ("DECK GLYPH — ALWAYS PRESENT, ALWAYS IN THE TOP-LEFT CORNER OF THE CARD AND "
+               "NOWHERE ELSE: a small carved turtle-shell glyph in a plain circular gold "
+               "medallion, about 5% of the card width across, sitting just inside the frame "
+               "at the top left. Never in the top-right, never at the bottom, never in more "
+               "than one corner, never omitted. "),
+}
+
 # No lettering in the generated art: image models misspell, and 48 cards that each
 # misspell differently is the fastest way to lose deck cohesion. The title is composited
 # into the empty banner by tools/print_prep.py, where the typography is exact and
@@ -240,6 +301,28 @@ def build_prompt(card):
             + GLYPH[realm]
             + f"[{realm.upper()} undertone: {REALM_TONE[realm]}] "
             + "Subject: " + card["image_prompt"].strip() + NO_TEXT)
+
+
+def build_extra_prompt(art):
+    """The same furniture-first rule, for one of the extras' masters.
+
+    `art` is an entry from data/extras.json's "art" list: it may switch off the
+    composition and setting clauses (an empty frame master has neither), names its own
+    tone in place of a realm's, and takes a glyph from EXTRA_GLYPH or none at all.
+    """
+    parts = [PREAMBLE_IDIOM]
+    if art.get("composition", True):
+        parts.append(PREAMBLE_COMPOSITION)
+    if art.get("setting", True):
+        parts.append(PREAMBLE_SETTING)
+    parts.append(SHELL_FRAME if art.get("frame") == "shell" else TREE_FRAME)
+    parts.append(CARTOUCHE)
+    if art.get("glyph"):
+        parts.append(EXTRA_GLYPH[art["glyph"]])
+    if art.get("tone"):
+        parts.append(f"[{art['tone']}] ")
+    parts.append("Subject: " + art["image_prompt"].strip() + NO_TEXT)
+    return "".join(parts)
 
 
 def generate(prompt, headers, timeout=600):
@@ -282,27 +365,40 @@ def main():
     ap.add_argument("ids", nargs="*", help="card ids, e.g. shell-01")
     ap.add_argument("--realm", help="generate a whole realm")
     ap.add_argument("--all", action="store_true")
-    ap.add_argument("--out", default="cards/art")
+    ap.add_argument("--extras", nargs="*", default=None, metavar="ART_ID",
+                    help="the extras' masters from data/extras.json (all of them if bare)")
+    ap.add_argument("--out", default=None, help="default cards/art, or cards/extras")
     ap.add_argument("--force", action="store_true", help="regenerate even if the file exists")
     ap.add_argument("--retries", type=int, default=2)
     args = ap.parse_args()
 
-    cards = json.load(open(os.path.join(REPO, "data", "cards.json")))["cards"]
-    by_id = {c["id"]: c for c in cards}
-
-    if args.all:
-        todo = cards
-    elif args.realm:
-        todo = [c for c in cards if c["realm"] == args.realm]
-    else:
-        missing = [i for i in args.ids if i not in by_id]
+    if args.extras is not None:
+        art = json.load(open(os.path.join(REPO, "data", "extras.json")))["art"]
+        by_id = {a["id"]: a for a in art}
+        missing = [i for i in args.extras if i not in by_id]
         if missing:
-            sys.exit(f"unknown card ids: {missing}")
-        todo = [by_id[i] for i in args.ids]
+            sys.exit(f"unknown extras art ids: {missing}")
+        todo = [by_id[i] for i in args.extras] if args.extras else art
+        prompt_of = build_extra_prompt
+        default_out = "cards/extras"
+    else:
+        cards = json.load(open(os.path.join(REPO, "data", "cards.json")))["cards"]
+        by_id = {c["id"]: c for c in cards}
+        if args.all:
+            todo = cards
+        elif args.realm:
+            todo = [c for c in cards if c["realm"] == args.realm]
+        else:
+            missing = [i for i in args.ids if i not in by_id]
+            if missing:
+                sys.exit(f"unknown card ids: {missing}")
+            todo = [by_id[i] for i in args.ids]
+        prompt_of = build_prompt
+        default_out = "cards/art"
     if not todo:
         sys.exit("nothing to generate")
 
-    outdir = os.path.join(REPO, args.out)
+    outdir = os.path.join(REPO, args.out or default_out)
     os.makedirs(outdir, exist_ok=True)
     headers = auth_headers()
     used_path = os.path.join(outdir, "prompts-used.json")
@@ -315,7 +411,7 @@ def main():
             print(f"[{n}/{len(todo)}] {card['id']}: exists, skipping")
             skip += 1
             continue
-        prompt = build_prompt(card)
+        prompt = prompt_of(card)
         for attempt in range(1, args.retries + 2):
             t = time.time()
             try:
@@ -332,7 +428,7 @@ def main():
                 with open(used_path, "w") as f:
                     json.dump(used, f, indent=2)
                 print(f"[{n}/{len(todo)}] {card['id']}: {len(png)//1024} KB in "
-                      f"{time.time()-t:.0f}s  ({card['name']})")
+                      f"{time.time()-t:.0f}s  ({card.get('name', card['id'])})")
                 ok += 1
                 break
             except Exception as e:
