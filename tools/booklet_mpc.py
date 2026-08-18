@@ -200,7 +200,12 @@ def cover_side(n):
     dr.line([cx - 200, y0 + 400, cx + 200, y0 + 400], fill=BRONZE, width=2)
     try:
         back = Image.open(f"{REPO}/cards/back.png").convert("RGB")
+        # The panel is fitted by WIDTH but bounded by HEIGHT: the subtitle line at
+        # y0 + h - 130 is set in PALE, and PALE on the kraft of the card back is
+        # invisible — the art must stop above it, not run under it.
         bw = min(w, 560); bh = int(bw * back.size[1] / back.size[0])
+        if bh > h - 660:
+            bh = h - 660; bw = int(bh * back.size[0] / back.size[1])
         bx, by = cx - bw // 2, y0 + 470
         dr.rectangle([bx - 6, by - 6, bx + bw + 5, by + bh + 5], fill=BRONZE)
         pg.paste(back.resize((bw, bh)), (bx, by))
@@ -631,10 +636,12 @@ def build(n_sides, want_pdf=False):
     imgs = []
     for i, (slug, fn) in enumerate(plan, start=1):
         im = fn(i)
-        # folio in the outer bottom corner, clear of the gutter
+        # folio centred at the foot — at TRIM_B - 60 it stays inside MPC's 1/8"
+        # safe inset (TRIM_B - 24 left its descenders 10px outside it), and on
+        # the notes sides it clears their footer rule instead of touching it
         x0, y0, w, h = box(i)
         if slug not in ("cover", "back") and not slug.startswith("realm-"):
-            K.ImageDraw.Draw(im).text((x0 + w // 2, TRIM_B - 24), str(i),
+            K.ImageDraw.Draw(im).text((x0 + w // 2, TRIM_B - 60), str(i),
                                       font=F_TINY, fill=DIM, anchor="md")
         im.save(f"{sd}/{i:02d}-{slug}.png", dpi=(DPI, DPI))
         imgs.append(im)
