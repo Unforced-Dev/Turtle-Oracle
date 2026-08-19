@@ -14,7 +14,10 @@ native margin any given card's own design happens to leave, which varies a lot
 between the Shell realm's ornate frame and the thinner Roots/Trunk/Branches line.
 An earlier version fit to the bare trim height and padded only the leftover width,
 which left the vertical margin under the safety threshold and is what MakePlayingCards'
-preflight check caught (2026-08-19, order on hold pending a fix). Titles are
+preflight check caught (2026-08-19, order on hold pending a fix). That fix cleared the
+minimum but left horizontal margin visibly larger than vertical (art is 2:3, box is
+0.684) — a thin equal crop off the top/bottom before fitting closes that gap so all
+four sides land at the same margin (2026-08-19, second pass). Titles are
 composited with the identical typography rules as the house 3.5x5.25 export.
 
 63 cards go up, not 52: MPC charges the same for anything up to 63 in a deck, so the
@@ -76,9 +79,22 @@ def mpc_ready(src, name=None, rank=None, realm=None, variant=RANK_VARIANT, repor
     # guarantees any content, even a border drawn right to the source art's own edge, ends up
     # >= SAFETY inside the trim line once the leftover space to FULL is filled by the same
     # edge-stretch bleed technique — safe regardless of how tight any given card's own border
-    # sits, so it doesn't matter that the deck's realms don't share one border style. Our art
-    # is a true 2:3, narrower than the inset box, so this fits by HEIGHT with no cropping.
+    # sits, so it doesn't matter that the deck's realms don't share one border style.
     box = (TRIM[0] - 2 * SAFETY, TRIM[1] - 2 * SAFETY)
+    # Our art is a true 2:3, narrower than the box (0.684), so fitting by height alone leaves
+    # unused width inside the safety box — margin ends up bigger left/right than top/bottom
+    # (confirmed against MPC's own preflight numbers: ~50px vs ~37px beyond trim). Cropping a
+    # thin, EQUAL sliver off the top and bottom first — enough to match the art's aspect to the
+    # box's — uses that slack instead of wasting it, so all four sides land at the same margin.
+    # This does eat into source art that has less native cushion than the crop (down to 0px on
+    # the tightest card, "The Oracle at the Edge") — checked by eye against corner crops before
+    # shipping (2026-08-19) and it does not read as a mutilated border on the worst case.
+    box_aspect = box[0] / box[1]
+    target_h = int(round(im.size[0] / box_aspect))
+    if target_h < im.size[1]:
+        crop = im.size[1] - target_h
+        top = crop // 2
+        im = im.crop((0, top, im.size[0], top + target_h))
     fit_w = int(box[1] * im.size[0] / im.size[1])
     im = im.resize((fit_w, box[1]), Image.LANCZOS)
     if extra:
