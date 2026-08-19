@@ -1,11 +1,21 @@
 """Export vendor-ready files for MakePlayingCards' 3.5x5" jumbo game cards.
 
 MPC's template: 300 DPI, trim 1050x1500, 1/8" bleed each side -> upload 1125x1575.
-Our art is exact 2:3 (taller than MPC's 0.70), so each card is fitted by HEIGHT
-(1000x1500), then the side edges are extended outward with their own edge pixels
-to reach the 1050 trim width — the same trick print_prep.py uses for bleed, and
-invisible against the art's kraft-paper margins. Titles are composited with the
-identical typography rules as the house 3.5x5.25 export.
+MPC also requires a SECOND 1/8" safety margin inside the trim line, beyond bleed —
+easy to miss since it isn't the number printed on the trim/bleed box.
+
+Our art is exact 2:3, narrower than MPC's 0.70 trim, so it's fitted by HEIGHT into a
+box already inset by that safety margin on all sides (not fit-to-trim), then the
+leftover space out to the full 1125x1575 upload canvas is filled the same way
+print_prep.py adds bleed: by stretching the outermost edge pixels outward. Filling
+from a safety-inset box rather than the bare trim means the fix holds even for a
+border drawn right to the source art's own edge — it doesn't depend on how much
+native margin any given card's own design happens to leave, which varies a lot
+between the Shell realm's ornate frame and the thinner Roots/Trunk/Branches line.
+An earlier version fit to the bare trim height and padded only the leftover width,
+which left the vertical margin under the safety threshold and is what MakePlayingCards'
+preflight check caught (2026-08-19, order on hold pending a fix). Titles are
+composited with the identical typography rules as the house 3.5x5.25 export.
 
 63 cards go up, not 52: MPC charges the same for anything up to 63 in a deck, so the
 spare eleven are the extras in data/extras.json — two jokers, a title card, two
@@ -32,7 +42,12 @@ os.makedirs(f"{OUT}/fronts", exist_ok=True)
 
 DPI = 300
 TRIM = (int(3.5 * DPI), int(5 * DPI))      # 1050 x 1500
-FULL = (TRIM[0] + 75, TRIM[1] + 75)        # 1125 x 1575 — 1/8" bleed each side
+FULL = (TRIM[0] + 75, TRIM[1] + 75)        # 1125 x 1575 — MPC's exact required upload size,
+                                            # 1/8" bleed each side (fixed vendor spec, not derived)
+SAFETY = 37                                # MPC's OWN documented 1/8" safety margin, a SECOND
+                                            # allowance inside the trim line beyond bleed —
+                                            # content closer than this to trim risks exactly the
+                                            # "uneven border" warning that started this
 RANK_VARIANT = "gold"                      # "gold" (uniform antique) | "realm" (tinted)
 REALMS = ("shell", "roots", "trunk", "branches")   # the deck's own order, from cards.json
 
@@ -57,8 +72,15 @@ def extend(im, left, right, top, bottom):
 def mpc_ready(src, name=None, rank=None, realm=None, variant=RANK_VARIANT, report=None,
               extra=None):
     im = Image.open(src).convert("RGB")
-    fit_w = int(TRIM[1] * im.size[0] / im.size[1])          # height-fit: 1000 wide
-    im = im.resize((fit_w, TRIM[1]), Image.LANCZOS)
+    # Fit within a box inset SAFETY px inside the trim on every side (not just fit-to-trim):
+    # guarantees any content, even a border drawn right to the source art's own edge, ends up
+    # >= SAFETY inside the trim line once the leftover space to FULL is filled by the same
+    # edge-stretch bleed technique — safe regardless of how tight any given card's own border
+    # sits, so it doesn't matter that the deck's realms don't share one border style. Our art
+    # is a true 2:3, narrower than the inset box, so this fits by HEIGHT with no cropping.
+    box = (TRIM[0] - 2 * SAFETY, TRIM[1] - 2 * SAFETY)
+    fit_w = int(box[1] * im.size[0] / im.size[1])
+    im = im.resize((fit_w, box[1]), Image.LANCZOS)
     if extra:
         # An extra's mark goes on first for the same reason a rank does — the plaque
         # has to still be flat when it is probed — and its title is set inside
@@ -74,13 +96,14 @@ def mpc_ready(src, name=None, rank=None, realm=None, variant=RANK_VARIANT, repor
         # round the check silently returns None on every card and stops guarding.
         im = set_rank(im, rank, realm, variant=variant, report=report)
     if name:
-        # Typeset BEFORE the side extension: cardtitle's fractions assume the
-        # art fills the canvas, and on the padded 1050 trim the 0.66 width cap
-        # lets long names overrun the banner drawn in the 1000px-wide art.
+        # Typeset BEFORE the extension: cardtitle's fractions are computed from im.size
+        # directly (resolution-agnostic — confirmed against tools/cardtitle.py), so the
+        # smaller safety-inset canvas needs no special-casing here.
         im = set_title(im, name)
-    pad = TRIM[0] - fit_w
-    im = extend(im, pad // 2, pad - pad // 2, 0, 0)          # -> exact trim
-    bw, bh = FULL[0] - TRIM[0], FULL[1] - TRIM[1]
+    # -> FULL in one step: the whole SAFETY inset (both the aspect-ratio shortfall and the
+    # print bleed) is filled by the same edge-stretch trick print_prep.py uses, now applied
+    # evenly on all four sides instead of horizontal-pad-then-bleed.
+    bw, bh = FULL[0] - im.size[0], FULL[1] - im.size[1]
     return extend(im, bw // 2, bw - bw // 2, bh // 2, bh - bh // 2)
 
 
