@@ -54,13 +54,17 @@ const CSP = [
 
 const REALM_ORDER = { shell: 0, roots: 1, trunk: 2, branches: 3 };
 
+/* T_SHORT/T_LONG are patience before dropping to the offline template. One request can
+ * chain two stages — the draw runs weave then echoes — and each stage may also spend half
+ * as long again on the fallback model, so the worst case is 1.5 * (38 + 20) = 87s against
+ * a ~100s edge timeout. Raising either number buys a 524 instead of a reading. */
 function makeCtx(env) {
   return {
     kv: env.SESSIONS,
     llm: new WorkersAILLM(env),
     shellChance: parseFloat(env.SHELL_CHANCE || "0.10"),
-    tShort: parseFloat(env.T_SHORT || "45"),
-    tLong: parseFloat(env.T_LONG || "60"),
+    tShort: parseFloat(env.T_SHORT || "20"),
+    tLong: parseFloat(env.T_LONG || "38"),
   };
 }
 

@@ -121,7 +121,7 @@ export class WorkersAILLM {
    */
   async generate(prompt, opts = {}) {
     if (!this.ai) return null;
-    const { system, asJson = false, timeout = 60, stage = "" } = opts;
+    const { system, asJson = false, timeout = 38, stage = "" } = opts;
     const mayThink = this.thinkStages.has(stage);
 
     const models = [this.model];
@@ -129,6 +129,11 @@ export class WorkersAILLM {
 
     for (let attempt = 0; attempt < models.length; attempt++) {
       const model = models[attempt];
+      /* The understudy gets half the patience the primary had. A hung primary has
+       * already spent the stage's whole budget, and a request can chain two stages, so
+       * primary + full fallback twice over would blow through Cloudflare's edge timeout
+       * and hand the seeker a 524 instead of the template the fallback exists to reach. */
+      const budget = attempt === 0 ? timeout : timeout / 2;
       let sys = system || "";
       if (!mayThink && wantsNoThink(model)) {
         sys = (sys ? sys : "Answer directly.") + NO_THINK_MARKER;
@@ -151,10 +156,10 @@ export class WorkersAILLM {
 
       this.calls++;
       try {
-        const out = await this._race(this.ai.run(model, inputs), timeout);
+        const out = await this._race(this.ai.run(model, inputs), budget);
         if (out === undefined) {
           this.errors++;
-          this.lastError = `timeout after ${timeout}s on ${model}`;
+          this.lastError = `timeout after ${budget}s on ${model}`;
           continue; // a hung model: try the understudy, then give up to the template
         }
         const text = extractText(out);
