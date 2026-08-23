@@ -1,0 +1,9 @@
+# Card art staged by prepare-assets.sh — the originals are committed in cards/web/.
+assets/med/
+assets/thumb/
+assets/tiles/
+assets/avatar.jpg
+
+node_modules/
+.wrangler/
+package-lock.json
