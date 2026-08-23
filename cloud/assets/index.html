@@ -4,9 +4,11 @@
 <meta charset="utf-8">
 <meta name="viewport" content="width=device-width, initial-scale=1, maximum-scale=1, user-scalable=no, viewport-fit=cover">
 <title>The Terrible Turtle Oracle — Séance</title>
-<!-- CLOUD TURTLE. This file is a copy of app/web/kiosk.html with exactly two changes,
-     both marked "cloud:" below. Keep it that way — the playa kiosk is the original and
-     any real UI work belongs there first, then gets copied down. -->
+<!-- CLOUD TURTLE. This file is a copy of app/web/kiosk.html with a handful of changes,
+     each marked "cloud:" below: two for the cloud API, and the escaping of everything
+     the model or the seeker puts on the parchment, which a kiosk in a tent could skip
+     and a public URL cannot. Keep it to that — the playa kiosk is the original and any
+     real UI work belongs there first, then gets copied down. -->
 <meta name="robots" content="noindex">
 <style>
   :root{
@@ -454,7 +456,7 @@ async function loadLore(){
     const d=await fetch("/api/lore").then(r=>r.json());
     if(!d.sealed){ $('lore').innerHTML=""; return; }
     const recent=d.recent_titles&&d.recent_titles[0]
-      ? `<br><span style="font-style:italic">someone is out there on “${d.recent_titles[0]}”</span>`:"";
+      ? `<br><span style="font-style:italic">someone is out there on “${esc(d.recent_titles[0])}”</span>`:"";
     $('lore').innerHTML=`${d.sealed} quest${d.sealed>1?"s":""} sealed · ${d.tales} tale${d.tales===1?"":"s"} told${recent}`;
   }catch(e){}
 }
@@ -664,27 +666,33 @@ $('more').addEventListener('click', ()=>{
 });
 
 /* ---------- the quest parchment ---------- */
+/* cloud: the parchment is the one place model text and the seeker's own name reach
+   innerHTML. On the playa that text came from a machine in the tent; here it comes off
+   the open internet, so every hole in this template is escaped. */
+function esc(v){ return String(v==null?"":v)
+  .replace(/&/g,"&amp;").replace(/</g,"&lt;").replace(/>/g,"&gt;")
+  .replace(/"/g,"&quot;").replace(/'/g,"&#39;"); }
 function renderQuest(e){
   const q=e.quest;
   $('parch').innerHTML=`
     <div class="rune" style="text-align:center">the tree has spoken · the quest is sealed</div>
-    <h1>${q.title}</h1>
-    ${q.for?`<div class="sealedfor">sealed for ${q.for}</div>`:""}
-    <div class="charge">${q.charge}</div>
+    <h1>${esc(q.title)}</h1>
+    ${q.for?`<div class="sealedfor">sealed for ${esc(q.for)}</div>`:""}
+    <div class="charge">${esc(q.charge)}</div>
     ${q.moves.map((m,i)=>`
       <div class="move">
         <div class="n">${["I","II","III"][i]}</div>
         <div>
-          <div class="mslot">${m.slot} — ${m.card}</div>
-          <div class="mtask">${m.task}</div>
-          <div class="mwhere">📍 ${m.where}</div>
-          <div class="mproof">⌘ bring back: ${m.proof}</div>
-          ${m.leave?`<div class="mleave">✕ leave behind: ${m.leave}</div>`:""}
+          <div class="mslot">${esc(m.slot)} — ${esc(m.card)}</div>
+          <div class="mtask">${esc(m.task)}</div>
+          <div class="mwhere">📍 ${esc(m.where)}</div>
+          <div class="mproof">⌘ bring back: ${esc(m.proof)}</div>
+          ${m.leave?`<div class="mleave">✕ leave behind: ${esc(m.leave)}</div>`:""}
         </div>
       </div>`).join("")}
-    <div class="vow"><b>THE VOW</b><br>${q.vow}<div class="vwhere">${q.vow_where}</div></div>
-    <div class="qmap">${q.map}</div>
-    ${q.chosen?`<div class="chosen">${q.chosen}</div>`:""}`;
+    <div class="vow"><b>THE VOW</b><br>${esc(q.vow)}<div class="vwhere">${esc(q.vow_where)}</div></div>
+    <div class="qmap">${esc(q.map)}</div>
+    ${q.chosen?`<div class="chosen">${esc(q.chosen)}</div>`:""}`;
   show("quest");
   setTimeout(()=>$('parch').classList.add("on"),80);
   speak(e.say);
