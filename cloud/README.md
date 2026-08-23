@@ -18,7 +18,7 @@ byte. If you change a prompt in one place, that test fails until you change it i
 
 ```sh
 export CLOUDFLARE_API_TOKEN=...        # never in a file in this repo, never in a URL
-export CLOUDFLARE_ACCOUNT_ID=8f2a7eb9d5e21ffa902a76cf62975c82
+export CLOUDFLARE_ACCOUNT_ID=<account-id>          # `npx wrangler whoami` prints it
 
 cd cloud
 npm test                    # port parity — needs node 22+ and python3, no network
@@ -38,7 +38,7 @@ both real séances, and the Tale-Book should remember either.
 cloud/
   wrangler.toml        bindings, models, timeouts — every knob is a [vars] entry
   prepare-assets.sh    wrangler's [build] step: copies cards/web/* into assets/
-  assets/index.html    app/web/kiosk.html, with two marked changes
+  assets/index.html    app/web/kiosk.html, with a few marked changes
   src/index.js         the router — app/oracle/server.py
   src/session.js       the séance state machine — app/oracle/session.py
   src/weave.js         reading + quest — app/oracle/weave.py
@@ -57,7 +57,7 @@ time and `assets/{med,thumb,tiles,avatar.jpg}` are gitignored.
 | | playa (`app/`) | cloud (`cloud/`) |
 |---|---|---|
 | séance state | module-level `SESSIONS` dict + `_gc()` | KV `sess:<id>`, 2h TTL |
-| Tale-Book | `app/state/talebook.jsonl`, rescanned per lookup | KV `lore:name:<norm>` + `lore:counts` |
+| Tale-Book | `app/state/talebook.jsonl`, rescanned per lookup | KV `lore:name:<norm>` (30d TTL) + `lore:counts` |
 | model | Ollama `qwen3:30b-a3b` on the LAN | Workers AI `@cf/qwen/qwen3-30b-a3b-fp8` |
 | ears | whisper.cpp + ffmpeg | `@cf/openai/whisper-large-v3-turbo`, no transcode |
 | voice | Kokoro `bm_george` @ 0.86 speed, WAV | `@cf/deepgram/aura-1`, MP3 |
@@ -92,7 +92,7 @@ All of it is `[vars]`, so a change is a redeploy, not a code edit.
 | `MODEL_FALLBACK` | `@cf/meta/llama-3.3-70b-instruct-fp8-fast` | tried once if the primary errors or hangs |
 | `THINK_STAGES` | `weave,tale` | `""` = never think, `weave,refine,echoes,seal,tale` = always |
 | `MAX_TOKENS` | `4096` | a ceiling, not a target; too low truncates a reasoning model mid-JSON |
-| `T_SHORT` / `T_LONG` | `25` / `40` | seconds before a stage gives up and uses the template |
+| `T_SHORT` / `T_LONG` | `20` / `38` | seconds before a stage gives up and uses the template; the fallback model gets half as long again, and the draw chains two stages, so the worst case is 87s of a ~100s edge timeout |
 | `SHELL_CHANCE` | `0.10` | how often the Tree's own spine speaks into a Tree slot |
 | `WHISPER_MODEL` | `@cf/openai/whisper-large-v3-turbo` | takes webm/opus and mp4/aac straight from MediaRecorder |
 | `TTS_MODEL` | `@cf/deepgram/aura-1` | **`"off"` drops the kiosk to its browser voice** |
@@ -102,10 +102,31 @@ All of it is `[vars]`, so a change is a redeploy, not a code edit.
 watch. If it climbs, the Turtle has gone dumb and is hiding it behind a very convincing
 template.
 
+## A public URL, not a tent
+
+The playa server trusts everyone who can reach it, because reaching it means standing in
+camp. This one is on the open internet with Workers AI billing behind it, so:
+
+- **30 POST `/api/*` a minute per IP** (the `RL` ratelimit binding in `wrangler.toml`).
+  A whole séance is about a dozen calls. Over the limit the shell says so, with a 429.
+  A missing binding means no limit, not no séance — deleting the block is safe.
+- **1.5MB of audio** per `/api/transcribe`. The kiosk's own recorder caps at 60s, which
+  is ~240KB of webm/opus or ~1MB of iOS mp4/aac.
+- **1000 characters a share, 12 shares a séance, 3 refinements a quest.** Past the third
+  the Turtle says the Tree has settled and spends nothing more.
+- **`accept` is a replay, not a reseal** — the sealed quest and its spoken line are stored
+  on the session, so a double-tap or a retried POST cannot bill a second sealing.
+- **The Tale-Book forgets.** Per-name records expire after 30 days and hold the quest
+  title, the three card ids and a timestamp — never what the seeker said.
+- The kiosk is served with `nosniff` and a CSP (`src/index.js`); it needs `unsafe-inline`
+  for its one inline script and style, `data:` for the grain texture and `blob:` for the
+  Turtle's voice.
+
 ## The kiosk copy
 
-`assets/index.html` is `app/web/kiosk.html` with two changes, both marked `cloud:`:
-a `noindex` meta tag, and the Print button hidden (there is no printer out here).
+`assets/index.html` is `app/web/kiosk.html` with a handful of changes, each marked
+`cloud:`: a `noindex` meta tag, the Print button hidden (there is no printer out here),
+and `esc()` around everything the model or the seeker puts on the quest parchment.
 Everything else — the mic, the browser-TTS fallback, the localStorage session restore,
 the `?kiosk=1` station param — is untouched. **The playa kiosk is the original.** Real UI
 work belongs in `app/web/kiosk.html` first, then gets copied down.
