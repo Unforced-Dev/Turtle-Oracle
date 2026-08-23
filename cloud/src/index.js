@@ -27,9 +27,30 @@ const DEFAULT_TTS_SPEAKER = "angus";
  * roof that still lets an abandoned session fall off the shelf the same evening. */
 const SESSION_TTL = 7200;
 
-/* Whisper is billed by audio; the kiosk's own recorder caps at 60s. Anything much
- * bigger than that is not a seeker, it is a mistake or an attack. */
-const MAX_AUDIO_BYTES = 12 * 1024 * 1024;
+/* Whisper is billed by audio; the kiosk's own recorder caps at 60s, which is ~240KB of
+ * webm/opus on Android and ~1MB of mp4/aac on iOS. Anything past 1.5MB is not a seeker,
+ * it is a mistake or an attack. */
+const MAX_AUDIO_BYTES = 1.5 * 1024 * 1024;
+
+/* Every POST /api/* route spends money — whisper, the voice, and the séance itself —
+ * so they are all limited together, per client IP. See the binding in wrangler.toml. */
+const RATE_LIMITED = "the shell needs a moment — too many seekers at once";
+
+/* The kiosk is one HTML file with an inline <style>, an inline <script> and one inline
+ * onerror handler, its grain texture is a data: SVG, and the Turtle's spoken lines play
+ * from a blob: URL — hence unsafe-inline, data: and blob:. Everything else is same-origin.
+ * Tightening this means changing assets/index.html first, which is a copy of the playa
+ * kiosk and is meant to stay one. */
+const CSP = [
+  "default-src 'self'",
+  "script-src 'self' 'unsafe-inline'",
+  "style-src 'self' 'unsafe-inline'",
+  "img-src 'self' data:",
+  "media-src 'self' blob:",
+  "connect-src 'self'",
+  "base-uri 'self'",
+  "frame-ancestors 'none'",
+].join("; ");
 
 const REALM_ORDER = { shell: 0, roots: 1, trunk: 2, branches: 3 };
 
@@ -41,6 +62,28 @@ function makeCtx(env) {
     tShort: parseFloat(env.T_SHORT || "45"),
     tLong: parseFloat(env.T_LONG || "60"),
   };
+}
+
+/** True when this IP has had its share of the shell for the minute. */
+async function overLimit(env, request) {
+  /* No binding — local `wrangler dev`, or a deploy the account would not take it on —
+   * means no limit rather than no séance. */
+  if (!env.RL || typeof env.RL.limit !== "function") return false;
+  try {
+    const { success } = await env.RL.limit({ key: request.headers.get("cf-connecting-ip") || "no-ip" });
+    return !success;
+  } catch (e) {
+    return false;
+  }
+}
+
+/** The kiosk and the card art, with the headers a public deployment wants. */
+async function serveAsset(request, env) {
+  const res = await env.ASSETS.fetch(request);
+  const out = new Response(res.body, res);
+  out.headers.set("content-security-policy", CSP);
+  out.headers.set("x-content-type-options", "nosniff");
+  return out;
 }
 
 /* server.py's TIERS counter: if fallback_pct is climbing, the Turtle has gone dumb and
@@ -246,7 +289,8 @@ export default {
       }
     }
 
-    if (request.method === "POST") {
+    if (request.method === "POST" && path.startsWith("/api/")) {
+      if (await overLimit(env, request)) return json({ error: RATE_LIMITED }, 429);
       if (path === "/api/transcribe") return await transcribe(request, env);
       if (path === "/api/speak") return await speak(request, env);
       if (path === "/api/print") return await print(request, env);
@@ -261,7 +305,7 @@ export default {
     }
 
     if (path.startsWith("/api/")) return json({ error: "not found" }, 404);
-    if (env.ASSETS) return env.ASSETS.fetch(request);
+    if (env.ASSETS) return await serveAsset(request, env);
     return json({ error: "not found" }, 404);
   },
 };

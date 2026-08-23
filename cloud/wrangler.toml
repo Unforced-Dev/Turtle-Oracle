@@ -35,6 +35,16 @@ binding = "AI"
 binding = "SESSIONS"
 id = "37010e57750c4c989c563ff76e829c0e"
 
+# 30 POST /api/* calls a minute per IP — a whole séance is about a dozen, so this is a
+# roof over a scraper, not over a seeker. src/index.js treats a missing RL binding as
+# "no limit", so deleting this block degrades to the pre-limit behaviour rather than
+# breaking the Worker.
+[[unsafe.bindings]]
+name = "RL"
+type = "ratelimit"
+namespace_id = "1001"
+simple = { limit = 30, period = 60 }
+
 [vars]
 # Same family as the playa Spark's qwen3:30b-a3b. Verified on this account 2026-08-23.
 MODEL = "@cf/qwen/qwen3-30b-a3b-fp8"
@@ -80,6 +90,12 @@ binding = "AI"
 [[env.staging.kv_namespaces]]
 binding = "SESSIONS"
 id = "37010e57750c4c989c563ff76e829c0e"
+
+[[env.staging.unsafe.bindings]]
+name = "RL"
+type = "ratelimit"
+namespace_id = "1001"
+simple = { limit = 30, period = 60 }
 
 [env.staging.vars]
 MODEL = "@cf/qwen/qwen3-30b-a3b-fp8"
