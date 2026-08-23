@@ -125,6 +125,16 @@ const CHOSEN = "Meaning is not found. It is chosen. Bite down.";
 
 const SLOT_TITLES = { roots: "FACE", trunk: "STAND", branches: "REACH" };
 
+/* Bounds the playa server never needed, because there the seeker was standing in front of
+ * a turtle and the GPU was ours. Here every share is re-sent to a metered model. */
+const MAX_TEXT = 1000; // one spoken confession; nobody says more into a shell
+const MAX_SHARES = 12; // the seal prompt quotes them all back
+const MAX_REFINES = 3; // each refinement is a fresh LLM call on an already-good quest
+
+const SETTLED_LINE =
+  "The Turtle has heard enough. The Tree has settled — it will not turn again tonight. " +
+  "Accept this quest as it stands, or walk away and leave it in the dust.";
+
 export { STONES, WEATHER };
 
 /* ---- session storage ------------------------------------------------------------- */
@@ -147,6 +157,12 @@ export async function loadSession(kv, sid) {
 export async function saveSession(kv, sess, ttl) {
   if (!kv || !sess) return;
   await kv.put(`sess:${sess.id}`, JSON.stringify(sess), { expirationTtl: ttl });
+}
+
+/** Keep the seeker's words, but only the last few and only so long. */
+function pushShare(sess, text) {
+  sess.shares.push(text);
+  if (sess.shares.length > MAX_SHARES) sess.shares = sess.shares.slice(-MAX_SHARES);
 }
 
 /* ---- text helpers (ports of the module-level Python helpers) ---------------------- */
@@ -301,6 +317,7 @@ export function start(mode = "seek") {
     axis_slot: null,
     quest: null,
     echoes: null,
+    refines: 0,
     created: Date.now() / 1000,
   };
   const say = choice(tale ? TALE_NAME_ASKS : NAME_ASKS);
@@ -642,7 +659,9 @@ export async function hear(sess, body, ctx) {
     return { error: "no such séance — touch the shell to begin again", stage: "gone" };
   }
   body = body && typeof body === "object" ? body : { text: body };
-  const text = String(body.text || "").trim();
+  // truncate rather than refuse: a real seeker never notices, and a séance should not
+  // fail on the one thing the seeker was brave enough to say
+  const text = String(body.text || "").trim().slice(0, MAX_TEXT);
   const meta = body.meta || {};
   const sid = sess.id;
 
@@ -674,9 +693,10 @@ export async function hear(sess, body, ctx) {
   }
   if (sess.stage === "stones") {
     const valid = new Set(STONES.map((x) => x.id));
-    sess.stones = (body.stones || []).filter((s) => valid.has(s));
+    sess.stones = (Array.isArray(body.stones) ? body.stones : []).filter((s) => valid.has(s));
     const names = STONES.filter((x) => sess.stones.includes(x.id)).map((x) => x.name);
-    sess.shares.push(
+    pushShare(
+      sess,
       "I am carrying: " + (names.length ? names.join(", ") : "nothing I can name") + ".",
     );
     return await draw(sess, ctx);
@@ -704,7 +724,7 @@ export async function hear(sess, body, ctx) {
   if (sess.stage === "stem") {
     groundSignals(sess, text, meta);
     const stem = (WEATHERS[sess.weather] || {}).stem || "";
-    sess.shares.push(stem ? `${stem} ${text}` : text);
+    pushShare(sess, stem ? `${stem} ${text}` : text);
     // thin answer → the stones rescue: recognition when words won't come
     if (((text.match(/\S+/g) || []).length) < 4 && !sess.stem_tried) {
       sess.stem_tried = true;
@@ -714,8 +734,7 @@ export async function hear(sess, body, ctx) {
     return await draw(sess, ctx);
   }
   if (sess.stage === "proposed") {
-    sess.shares.push(text);
-    const ref = ctx.llm && ctx.llm.available() ? await refineLlm(sess, ctx.llm, ctx.tLong) : null;
+    pushShare(sess, text);
     const event = {
       session: sid,
       stage: "proposed",
@@ -723,6 +742,24 @@ export async function hear(sess, body, ctx) {
       ask: DECISION_ASK,
       expects: "decision",
     };
+    // A quest can be tuned a few times and then it is the quest. Past that the Turtle
+    // says so and spends nothing — the seeker's choice is now accept or walk away.
+    if ((sess.refines || 0) >= MAX_REFINES) {
+      Object.assign(event, {
+        say: SETTLED_LINE,
+        adventure: sess.adventure,
+        reading: sess.reading,
+        modes: { refine: "settled" },
+      });
+      event.cards = Object.fromEntries(
+        SPREAD_REALMS.map((r) => [r, cardPayload(sess.picks[r], sess.located[r])]),
+      );
+      event.echoes = sess.echoes;
+      event.directions = directionsLines(sess.picks, sess.located);
+      return event;
+    }
+    sess.refines = (sess.refines || 0) + 1;
+    const ref = ctx.llm && ctx.llm.available() ? await refineLlm(sess, ctx.llm, ctx.tLong) : null;
     if (ref) {
       sess.adventure = ref.adventure;
       Object.assign(event, {
@@ -814,97 +851,109 @@ export async function accept(sess, ctx) {
   if (!sess) {
     return { error: "no such séance — touch the shell to begin again", stage: "gone" };
   }
-  if (sess.stage !== "proposed" && !sess.quest) {
+  /* Replay, never reseal. A double-tap on the kiosk, a retried POST or two isolates
+   * racing each other must all get back the quest that was sealed — same words, same
+   * moves, no second LLM call. KV is not atomic so a true race can still run the seal
+   * twice, but the loser's write is overwritten and every later request replays the one
+   * stored answer, which is what makes the race harmless rather than merely rare. */
+  if (sess.quest) {
+    return {
+      session: sess.id,
+      stage: "accepted",
+      say: sess.accept_say || choice(ACCEPT_LINES),
+      quest: sess.quest,
+      expects: "done",
+    };
+  }
+  if (sess.stage !== "proposed") {
     return { error: "no quest to accept yet", stage: sess.stage };
   }
-  let sealMode = null;
-  if (!sess.quest) {
-    const picks = sess.picks;
-    const located = sess.located;
-    const r = picks.roots;
-    const t = picks.trunk;
-    const b = picks.branches;
-    const sealed = ctx.llm && ctx.llm.available() ? await sealLlm(sess, ctx.llm, ctx.tLong) : null;
-    sealMode = sealed ? "llm" : "fallback";
-    const moves = [];
-    const leaveAt = randRange(3);
-    const realms = ["roots", "trunk", "branches"];
-    realms.forEach((realm, i) => {
-      const c = picks[realm];
-      const loc = located[realm] || {};
-      const where = loc.directions || "Somewhere out there — ask Playa Info.";
-      if (sealed) {
-        const m = sealed[i];
-        // Real BRC geo wins over whatever the model invented; its guess only
-        // rides along as a suffix, and only when it actually adds something.
-        const mWhere = String(m.where || "").trim();
-        const mergedWhere =
-          mWhere && mWhere.toLowerCase() !== where.toLowerCase() ? `${where} — ${mWhere}` : where;
-        moves.push({
-          slot: SLOT_TITLES[realm],
-          card: c.name,
-          task: String(m.task).trim(),
-          where: mergedWhere,
-          at: c.real_2026.name,
-          proof: String(m.proof || PROOFS[realm][((c.number || 1) - 1) % 4]).trim(),
-          leave: String(m.leave || "").trim(),
-        });
-      } else {
-        moves.push({
-          slot: SLOT_TITLES[realm],
-          card: c.name,
-          task: c.turtle_dare,
-          where,
-          at: c.real_2026.name,
-          proof: PROOFS[realm][((c.number || 1) - 1) % 4],
-          leave: i === leaveAt ? LEAVES[(c.number || 1) % LEAVES.length] : "",
-        });
-      }
-    });
-    // THE SACRIFICE demands exactly one move leave something behind — the model isn't
-    // trustworthy on the count, so enforce it here rather than in the prompt alone.
-    let leaveIdx = moves.findIndex((mv) => mv.leave);
-    if (leaveIdx === -1) {
-      leaveIdx = leaveAt;
-      const c = picks[realms[leaveIdx]];
-      moves[leaveIdx].leave = LEAVES[(c.number || 1) % LEAVES.length];
+  const picks = sess.picks;
+  const located = sess.located;
+  const r = picks.roots;
+  const t = picks.trunk;
+  const b = picks.branches;
+  const sealed = ctx.llm && ctx.llm.available() ? await sealLlm(sess, ctx.llm, ctx.tLong) : null;
+  const sealMode = sealed ? "llm" : "fallback";
+  const moves = [];
+  const leaveAt = randRange(3);
+  const realms = ["roots", "trunk", "branches"];
+  realms.forEach((realm, i) => {
+    const c = picks[realm];
+    const loc = located[realm] || {};
+    const where = loc.directions || "Somewhere out there — ask Playa Info.";
+    if (sealed) {
+      const m = sealed[i];
+      // Real BRC geo wins over whatever the model invented; its guess only
+      // rides along as a suffix, and only when it actually adds something.
+      const mWhere = String(m.where || "").trim();
+      const mergedWhere =
+        mWhere && mWhere.toLowerCase() !== where.toLowerCase() ? `${where} — ${mWhere}` : where;
+      moves.push({
+        slot: SLOT_TITLES[realm],
+        card: c.name,
+        task: String(m.task).trim(),
+        where: mergedWhere,
+        at: c.real_2026.name,
+        proof: String(m.proof || PROOFS[realm][((c.number || 1) - 1) % 4]).trim(),
+        leave: String(m.leave || "").trim(),
+      });
     } else {
-      moves.forEach((mv, i) => {
-        if (i !== leaveIdx) mv.leave = "";
+      moves.push({
+        slot: SLOT_TITLES[realm],
+        card: c.name,
+        task: c.turtle_dare,
+        where,
+        at: c.real_2026.name,
+        proof: PROOFS[realm][((c.number || 1) - 1) % 4],
+        leave: i === leaveAt ? LEAVES[(c.number || 1) % LEAVES.length] : "",
       });
     }
-    sess.quest = {
-      title: `The Quest of ${b.name}`,
-      for: sess.name || "Traveler",
-      charge:
-        `Face “${r.name}.” Stand in “${t.name}.” Reach for “${b.name}.” ` +
-        "Three moves, made slow — then home to the shell.",
-      adventure: sess.adventure,
-      moves,
-      vow: VOW,
-      vow_where: VOW_WHERE,
-      chosen: CHOSEN,
-      map: COMPASS_ROSE,
-    };
-    sess.stage = "accepted";
-    await lore.append(ctx.kv, {
-      type: "quest",
-      name: sess.quest.for,
-      title: sess.quest.title,
-      shares: sess.shares,
-      cards: SPREAD_REALMS.map((x) => picks[x].id),
-      quest: sess.quest,
+  });
+  // THE SACRIFICE demands exactly one move leave something behind — the model isn't
+  // trustworthy on the count, so enforce it here rather than in the prompt alone.
+  let leaveIdx = moves.findIndex((mv) => mv.leave);
+  if (leaveIdx === -1) {
+    leaveIdx = leaveAt;
+    const c = picks[realms[leaveIdx]];
+    moves[leaveIdx].leave = LEAVES[(c.number || 1) % LEAVES.length];
+  } else {
+    moves.forEach((mv, i) => {
+      if (i !== leaveIdx) mv.leave = "";
     });
   }
-  const event = {
+  sess.quest = {
+    title: `The Quest of ${b.name}`,
+    for: sess.name || "Traveler",
+    charge:
+      `Face “${r.name}.” Stand in “${t.name}.” Reach for “${b.name}.” ` +
+      "Three moves, made slow — then home to the shell.",
+    adventure: sess.adventure,
+    moves,
+    vow: VOW,
+    vow_where: VOW_WHERE,
+    chosen: CHOSEN,
+    map: COMPASS_ROSE,
+  };
+  sess.stage = "accepted";
+  // The spoken line is stored, not re-rolled, so a replayed accept is the same event.
+  sess.accept_say = choice(ACCEPT_LINES);
+  await lore.append(ctx.kv, {
+    type: "quest",
+    name: sess.quest.for,
+    title: sess.quest.title,
+    shares: sess.shares,
+    cards: SPREAD_REALMS.map((x) => picks[x].id),
+    quest: sess.quest,
+  });
+  return {
     session: sess.id,
     stage: "accepted",
-    say: choice(ACCEPT_LINES),
+    say: sess.accept_say,
     quest: sess.quest,
     expects: "done",
+    modes: { seal: sealMode },
   };
-  if (sealMode) event.modes = { seal: sealMode };
-  return event;
 }
 
 /* Exported only for cloud/test/parity.mjs, which builds each prompt on both sides of
