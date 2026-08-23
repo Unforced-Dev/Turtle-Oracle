@@ -41,6 +41,27 @@ ollama pull qwen3:32b
 ollama pull gemma3:27b
 ```
 
+`qwen3.8:27b` is **already on the box** (38–40s, best voice). That is
+the middle-ground candidate Aaron asked about. Caps cannot raise tok/s;
+they only cut think-preamble and runaway `num_predict`. If 38s is
+dense-decode, squeeze will not make 20s. If 38s is think tokens, it
+might. Measure:
+
+```
+PYTHONPATH=app python3 tools/bench_models.py \
+  --host http://127.0.0.1:11434 \
+  --models qwen3:30b-a3b,qwen3.8:27b
+PYTHONPATH=app python3 tools/bench_models.py --prod-options \
+  --host http://127.0.0.1:11434 \
+  --models qwen3.8:27b
+```
+
+Default harness already sends `think=false` for any `qwen3*` name
+(covers `qwen3.8:27b`) plus the `num_predict` caps. `--prod-options`
+is the 38s baseline (temperature 0.75, no cap). Compare weave wall:
+if squeezed 27b lands near 20s it *is* the middle ground; if it stays
+~38s, keep 30b-a3b and take the voice win as too expensive.
+
 Two concurrent séances: only rank 0 has a measured safety margin under
 `T_LONG=60`. Anything dense has to beat 30b-a3b on *voice* by enough
 to pay for the extra wait, or it loses.

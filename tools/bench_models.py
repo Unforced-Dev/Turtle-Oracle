@@ -3,7 +3,10 @@
 
     PYTHONPATH=app python3 tools/bench_models.py --self-test
     PYTHONPATH=app python3 tools/bench_models.py --host http://127.0.0.1:11434 \
-        --models qwen3:30b-a3b,mistral-small:24b,qwen3:32b,gemma3:27b
+        --models qwen3:30b-a3b,qwen3.8:27b,mistral-small:24b
+    # squeezed vs production options on the 27b middle-ground candidate:
+    PYTHONPATH=app python3 tools/bench_models.py --prod-options \
+        --host http://127.0.0.1:11434 --models qwen3.8:27b
 
 Does not change production. Default request options are the recommended
 set in tools/MODEL_PASS.md; --prod-options replays llm.py as it ships.
