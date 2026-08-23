@@ -30,7 +30,7 @@ not_found_handling = "none"
 binding = "AI"
 
 # Séance state. Sessions live under sess:<id> with a 2h TTL; the Tale-Book lives in the
-# same namespace under lore:* with no expiry.
+# same namespace, under lore:name:* for 30 days and lore:counts forever.
 [[kv_namespaces]]
 binding = "SESSIONS"
 id = "37010e57750c4c989c563ff76e829c0e"

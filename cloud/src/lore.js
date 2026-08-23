@@ -1,8 +1,11 @@
 /* Port of app/oracle/lore.py — the Tale-Book, the shell's memory of returning seekers.
  *
- * The playa version is an append-only JSONL file. A Worker has no filesystem, so the
- * book lives in the same KV namespace as the séances, under a `lore:` prefix and with
- * NO expiry — sessions are ephemeral, the Tale-Book is the point.
+ * The playa version is an append-only JSONL file that lives and dies with one week in a
+ * tent. A Worker has no filesystem, so the book lives in the same KV namespace as the
+ * séances under a `lore:` prefix — but on a public deployment "the shell remembers you"
+ * is also "anyone who guesses your name reads your record". The per-name records
+ * therefore expire after thirty days, which is longer than a burn and shorter than
+ * forever; only the anonymous tallies behind the attract screen are kept.
  *
  * Deliberate shape change: the Python re-reads and re-scans the whole log on every
  * lookup. KV has no scan, so the book is kept two ways —
@@ -15,6 +18,7 @@
 
 const PER_NAME_KEEP = 8;
 const RECENT_TITLES = 5;
+const NAME_TTL = 30 * 24 * 60 * 60;
 
 function norm(name) {
   return (name || "").toLowerCase().replace(/[^a-z0-9]+/g, "");
@@ -63,7 +67,9 @@ export async function append(kv, rec) {
       const key = `lore:name:${n}`;
       const list = await readJson(kv, key, []);
       list.push(full);
-      await kv.put(key, JSON.stringify(list.slice(-PER_NAME_KEEP)));
+      // the TTL rides on every write, so an active seeker's record keeps sliding
+      // forward and a one-night seeker's record falls off the shelf
+      await kv.put(key, JSON.stringify(list.slice(-PER_NAME_KEEP)), { expirationTtl: NAME_TTL });
     }
     const counts = await readJson(kv, "lore:counts", {
       sealed: 0,

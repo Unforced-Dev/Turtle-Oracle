@@ -938,13 +938,15 @@ export async function accept(sess, ctx) {
   sess.stage = "accepted";
   // The spoken line is stored, not re-rolled, so a replayed accept is the same event.
   sess.accept_say = choice(ACCEPT_LINES);
+  /* The Tale-Book is read back by NAME, by whoever next gives that name — that is the
+   * point of it, and it is also its whole blast radius. So it keeps the title and the
+   * three cards and nothing the seeker said: a quest title is a card name, but a share
+   * is a confession. lore.append stamps the time. */
   await lore.append(ctx.kv, {
     type: "quest",
     name: sess.quest.for,
     title: sess.quest.title,
-    shares: sess.shares,
     cards: SPREAD_REALMS.map((x) => picks[x].id),
-    quest: sess.quest,
   });
   return {
     session: sess.id,
