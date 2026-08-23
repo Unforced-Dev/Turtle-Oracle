@@ -10,13 +10,13 @@ const end=script.indexOf("/* ---------- word-by-word incantation",start);
 assert.ok(start>0&&end>start,"voice block not found");
 const voiceBlock=script.slice(start,end);
 
-function harness(serverOK){
+function harness(serverOK,audioEnds=true){
   const requests=[], browser=[], revoked=[];
   const snd={listeners:{},textContent:"🔊",addEventListener(name,fn){this.listeners[name]=fn;}};
   class Utterance { constructor(text){this.text=text;} }
   class Audio {
     constructor(url){this.url=url;this.src=url;this.paused=false;}
-    play(){queueMicrotask(()=>this.onended&&this.onended());return Promise.resolve();}
+    play(){if(audioEnds)queueMicrotask(()=>this.onended&&this.onended());return Promise.resolve();}
     pause(){this.paused=true;}
   }
   const speech={cancel(){},getVoices(){return[];},speak(u){browser.push(u.text);if(u.onend)queueMicrotask(u.onend);}};
@@ -27,7 +27,7 @@ function harness(serverOK){
     URL:{createObjectURL:()=>"blob:test",revokeObjectURL:url=>revoked.push(url)},
     fetch:async(_url,opts)=>{requests.push(JSON.parse(opts.body).text);return{
       ok:serverOK,blob:async()=>new Blob(["wav"],{type:"audio/wav"})};},
-    Blob,setTimeout:()=>1,clearTimeout(){},
+    Blob,setTimeout:(fn,delay)=>{if(!audioEnds&&delay>=20000)queueMicrotask(fn);return 1;},clearTimeout(){},
   });
   vm.runInContext(voiceBlock,context);
   return {context,requests,browser,revoked,snd};
@@ -44,4 +44,8 @@ await vm.runInContext('new Promise(resolve=>speak("Still speaks. Still works.",r
 assert.deepEqual(fallback.requests,["Still speaks."],"stop server attempts after the first failure");
 assert.deepEqual(fallback.browser,["Still speaks.","Still works."],"browser voice covers every remaining line");
 
-console.log("kiosk voice: line chunking, neural playback, cleanup, and browser fallback passed");
+const hung=harness(true,false);
+await vm.runInContext('new Promise(resolve=>speak("An audio engine can hang.",resolve))',hung.context);
+assert.deepEqual(hung.browser,["An audio engine can hang."],"playback watchdog must fall back instead of stalling");
+
+console.log("kiosk voice: line chunking, neural playback, watchdog, cleanup, and browser fallback passed");

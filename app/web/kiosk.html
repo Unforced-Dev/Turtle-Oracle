@@ -362,7 +362,8 @@ async function playServerLine(line,token){
     SERVER_AUDIO=new Audio(SERVER_AUDIO_URL);
     const played=await new Promise(resolve=>{
       let settled=false;
-      const end=ok=>{ if(settled)return; settled=true; resolve(ok); };
+      const guard=setTimeout(()=>end(false),Math.max(20000,line.split(/\s+/).length*800+5000));
+      const end=ok=>{ if(settled)return; settled=true; clearTimeout(guard); resolve(ok); };
       SERVER_AUDIO.onended=()=>end(true); SERVER_AUDIO.onerror=()=>end(false);
       const started=SERVER_AUDIO.play();
       if(started&&started.catch) started.catch(()=>end(false));
