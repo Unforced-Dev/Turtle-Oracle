@@ -485,11 +485,11 @@
    ],
    "reading": "You have to get lost on purpose to find the parts of you that only show up when no one's watching. Out past the last light there's no one to perform for — which is exactly why you should go. You'll find your own way back. You always have.",
    "shadow": "Getting lost on purpose becomes escape when you never intend to come back.",
-   "turtle_dare": "Walk alone into the deep playa with no plan and no phone, until you're not sure of the way back. Then find your way home.",
+   "turtle_dare": "Walk with one trusted companion into the deep playa, carrying water, lights, navigation, and a clear return landmark. Stop where the city's noise falls away; spend ten quiet minutes apart but within sight, then return together.",
    "real_2026": {
     "type": "deep-playa",
     "name": "The Deep Playa Wander",
-    "note": "walking alone into the dark open expanse beyond the art and lights",
+    "note": "a prepared companion walk into the dark open expanse beyond the art and lights",
     "confidence": "high"
    },
    "live_hook": "deep-playa",
