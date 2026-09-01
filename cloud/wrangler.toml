@@ -1,0 +1,121 @@
+# The cloud turtle — turtle-oracle.unforced.dev
+#
+# Deploy staging (workers.dev only, no custom domain):
+#   npm run deploy:staging
+# Production is the worker named `turtle-oracle`, which owns the custom domain and is
+# deployed by hand after review:
+#   npm run deploy
+#
+# Auth comes from the environment, never from this file:
+#   export CLOUDFLARE_API_TOKEN=...   export CLOUDFLARE_ACCOUNT_ID=...
+
+name = "turtle-oracle"
+main = "src/index.js"
+compatibility_date = "2026-05-01"
+workers_dev = false
+
+# Card art is not duplicated into the repo: prepare-assets.sh copies cards/web/* into
+# assets/ before every build, and assets/{med,thumb,tiles,avatar.jpg} are gitignored.
+[build]
+command = "bash prepare-assets.sh"
+
+[assets]
+directory = "assets"
+binding = "ASSETS"
+# a missing /tiles/*.jpg must 404 so the kiosk's onerror handler hides the tile,
+# rather than being handed index.html and rendering it as a broken image
+not_found_handling = "none"
+# without this, asset requests are answered at the edge without running the Worker,
+# and serveAsset's CSP/nosniff headers never reach the kiosk
+run_worker_first = true
+
+[ai]
+binding = "AI"
+
+# Séance state. Sessions live under sess:<id> with a 2h TTL; the Tale-Book lives in the
+# same namespace, under lore:name:* for 30 days and lore:counts forever.
+[[kv_namespaces]]
+binding = "SESSIONS"
+id = "37010e57750c4c989c563ff76e829c0e"
+
+# 30 POST /api/* calls a minute per IP — a whole séance is about a dozen, so this is a
+# roof over a scraper, not over a seeker. src/index.js treats a missing RL binding as
+# "no limit", so deleting this block degrades to the pre-limit behaviour rather than
+# breaking the Worker.
+[[unsafe.bindings]]
+name = "RL"
+type = "ratelimit"
+namespace_id = "1001"
+simple = { limit = 30, period = 60 }
+
+[vars]
+# Same family as the playa Spark's qwen3:30b-a3b. Verified on this account 2026-08-23.
+MODEL = "@cf/qwen/qwen3-30b-a3b-fp8"
+# Tried once if the primary errors or hangs. Verified, ~480ms, no scratchpad at all.
+MODEL_FALLBACK = "@cf/meta/llama-3.3-70b-instruct-fp8-fast"
+MAX_TOKENS = "4096"
+TEMPERATURE = "0.75"
+# One séance in ten lets a Shell card — the Tree's own spine — into a Tree slot.
+SHELL_CHANCE = "0.10"
+# Which séance stages get a reasoning scratchpad. Measured, not guessed — see the
+# header of src/llm.js. Empty string = never think; "weave,refine,echoes,seal,tale" = always.
+THINK_STAGES = "weave,tale"
+# Patience before dropping to the offline template. The playa numbers (45/60) were set
+# against a single serialised GPU; Workers AI answers a séance stage in 0.4-6s, so these
+# are guards against a genuinely hung model, not pacing controls. The draw chains two
+# stages in one request and each may also spend half as long again on the fallback model,
+# so the worst case is 1.5 * (38 + 20) = 87s against a ~100s edge timeout.
+T_SHORT = "20"
+T_LONG = "38"
+WHISPER_MODEL = "@cf/openai/whisper-large-v3-turbo"
+# Set TTS_MODEL = "off" to fall the kiosk back to the tablet's own browser voice.
+TTS_MODEL = "@cf/deepgram/aura-1"
+TTS_SPEAKER = "angus"
+
+[observability]
+enabled = true
+
+# --- staging: same code, workers.dev URL, no custom domain --------------------------
+[env.staging]
+name = "turtle-oracle-staging"
+workers_dev = true
+
+[env.staging.build]
+command = "bash prepare-assets.sh"
+
+[env.staging.assets]
+directory = "assets"
+binding = "ASSETS"
+not_found_handling = "none"
+run_worker_first = true
+
+[env.staging.ai]
+binding = "AI"
+
+[[env.staging.kv_namespaces]]
+binding = "SESSIONS"
+id = "37010e57750c4c989c563ff76e829c0e"
+
+[[env.staging.unsafe.bindings]]
+name = "RL"
+type = "ratelimit"
+namespace_id = "1001"
+simple = { limit = 30, period = 60 }
+
+[env.staging.vars]
+MODEL = "@cf/qwen/qwen3-30b-a3b-fp8"
+MODEL_FALLBACK = "@cf/meta/llama-3.3-70b-instruct-fp8-fast"
+MAX_TOKENS = "4096"
+TEMPERATURE = "0.75"
+SHELL_CHANCE = "0.10"
+# Which séance stages get a reasoning scratchpad. Measured, not guessed — see the
+# header of src/llm.js. Empty string = never think; "weave,refine,echoes,seal,tale" = always.
+THINK_STAGES = "weave,tale"
+T_SHORT = "20"
+T_LONG = "38"
+WHISPER_MODEL = "@cf/openai/whisper-large-v3-turbo"
+TTS_MODEL = "@cf/deepgram/aura-1"
+TTS_SPEAKER = "angus"
+
+[env.staging.observability]
+enabled = true
