@@ -413,10 +413,28 @@ function incant(el,text,msPerWord=120){
 }
 
 /* ---------- server séance ---------- */
+/* cloud: on the playa the only thing between the tablet and the tent server was a cable,
+   so any JSON that came back was a stage event. On a public URL a 429 or a 5xx also
+   comes back as JSON — and the old code handed those to handle(), which toasts the
+   error AFTER offer() has already emptied the seeker's textarea. So a bad status is a
+   throw, never an event, and the caller decides what to keep. */
 async function post(action,body){
   const r=await fetch("/api/session/"+action,{method:"POST",
     headers:{"Content-Type":"application/json"},body:JSON.stringify(body||{})});
-  return r.json();
+  let d=null;
+  try{ d=await r.json(); }catch(err){}
+  if(!r.ok){
+    const e=new Error((d&&d.error)||(r.status===429
+      ? "The shell needs a moment — too many seekers at once."
+      : "The Turtle lost the thread — try once more."));
+    e.status=r.status; throw e;
+  }
+  return d||{};
+}
+/* The server said why; a dropped connection did not. Only speak for the server. */
+function whyLost(err,fallback){
+  return (err&&err.status&&err.message) ? err.message
+    : (fallback||"The Turtle lost the thread — try once more.");
 }
 
 /* ---------- scenes ---------- */
@@ -433,7 +451,8 @@ async function wake(mode){
     rememberStep(e);
     const dur=incant($('says'),e.say,110); speak(e.say);
     setTimeout(()=>$('askpanel').classList.add("on"), Math.min(dur,2600));
-  }catch(err){ incant($('says'),"The Turtle is asleep — the camp server isn't answering. Find a turtle."); }
+  }catch(err){ incant($('says'),
+    whyLost(err,"The Turtle is asleep — the camp server isn't answering. Find a turtle.")); }
 }
 
 function resetSeance(){
@@ -501,7 +520,7 @@ function renderWeather(e){
     if(tapped) return; tapped=true;
     document.body.classList.add("speaking");
     try{ const ev=await post("say",{session:SID,weather:t.dataset.id,meta:metaNow()}); await handle(ev); }
-    catch(err){ tapped=false; toast("The Turtle lost the thread — touch it again."); }
+    catch(err){ tapped=false; toast(whyLost(err,"The Turtle lost the thread — touch it again.")); }
     document.body.classList.remove("speaking");
   }));
 }
@@ -533,7 +552,7 @@ function renderStones(e){
     $('stonesdone').disabled=true;
     document.body.classList.add("speaking");
     try{ const ev=await post("say",{session:SID,stones:[...sel],meta:metaNow()}); await handle(ev); }
-    catch(err){ $('stonesdone').disabled=false; toast("Once more, slowly."); }
+    catch(err){ $('stonesdone').disabled=false; toast(whyLost(err,"Once more, slowly.")); }
     document.body.classList.remove("speaking");
   });
 }
@@ -547,9 +566,12 @@ async function offer(){
   try{
     const e=await post("say",{session:SID,text,meta:metaNow()});
     document.body.classList.remove("speaking");
-    $('q').value=""; $('q').placeholder="speak, or write it here…";
+    /* cloud: the box is emptied only once the server has actually taken the turn. It
+       used to be cleared before handle(), so a 429 or a refused turn swallowed words
+       the seeker may have spent a minute finding. */
+    if(!e.error){ $('q').value=""; $('q').placeholder="speak, or write it here…"; }
     await handle(e);
-  }catch(err){ toast("The Turtle lost the thread — try once more."); }
+  }catch(err){ toast(whyLost(err)); }
   document.body.classList.remove("speaking");
   $('offer').disabled=false; $('mic').disabled=false;
 }
@@ -652,7 +674,7 @@ $('accept').addEventListener('click', async ()=>{
     const e=await post("accept",{session:SID});
     if(e.quest){ rememberStep(e); renderQuest(e); }
     else toast(e.error||"The Tree hesitates — try again.");
-  }catch(err){ toast("The Turtle lost the thread — try once more."); }
+  }catch(err){ toast(whyLost(err)); }
   $('accept').disabled=false;
   $('accept').textContent="⚔  I accept this quest";
 });
