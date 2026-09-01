@@ -640,7 +640,12 @@ function dealSpread(e){
       cell.innerHTML=`
         <div class="flip${isAxis?" axis":""}" id="flip-${slot}">
           <div class="face back"><img src="/med/back.jpg" alt=""></div>
-          <div class="face front"><img src="${c.image}" alt="${c.name}"></div>
+          <!-- cloud: thumb, not image. The card box is ~118px on a phone and the /med/
+               file is ~430KB against the thumb's ~47KB, so the spread was pulling well
+               over a megabyte of art nobody can see the resolution of. Nothing in this
+               kiosk ever shows a card larger than the spread; if that changes, the
+               large view wants c.image. -->
+          <div class="face front"><img src="${c.thumb}" alt="${c.name}"></div>
         </div>
         <div class="cardcap${isAxis?" axis":""}" id="cap-${slot}">
           <div class="cslot">${isAxis?"◆ The Axis Speaks":`${SLOTCAP[slot]} · ${c.slot}`}</div>
