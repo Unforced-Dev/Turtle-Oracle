@@ -108,9 +108,13 @@ template.
 The playa server trusts everyone who can reach it, because reaching it means standing in
 camp. This one is on the open internet with Workers AI billing behind it, so:
 
-- **30 POST `/api/*` a minute per IP** (the `RL` ratelimit binding in `wrangler.toml`).
-  A whole séance is about a dozen calls. Over the limit the shell says so, with a 429.
-  A missing binding means no limit, not no séance — deleting the block is safe.
+- **30 POST `/api/*` a minute per IP** (the `RL` ratelimit binding in `wrangler.toml`),
+  and **120 a minute for `/api/speak`** on its own `RL_SPEAK` binding. A minimal séance
+  is ~7 séance POSTs, but with the Turtle's voice on it is ~41 more, because `/api/speak`
+  is one POST per *sentence* — about 48 in all. On one shared counter that meant two
+  phones behind a single carrier NAT could 429 each other out of a reading, so the voice
+  spends from its own budget. Over the limit the shell says so, with a 429. A missing
+  binding means no limit, not no séance — deleting either block is safe.
 - **1.5MB of audio** per `/api/transcribe`. The kiosk's own recorder caps at 60s, which
   is ~240KB of webm/opus or ~1MB of iOS mp4/aac.
 - **1000 characters a share, 12 shares a séance, 3 refinements a quest.** Past the third

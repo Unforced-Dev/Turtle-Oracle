@@ -51,7 +51,7 @@ new_sqlite_classes = ["SessionDO"]
 binding = "SESSIONS"
 id = "37010e57750c4c989c563ff76e829c0e"
 
-# 30 POST /api/* calls a minute per IP — a whole séance is about a dozen, so this is a
+# 30 POST /api/* calls a minute per IP — a minimal séance is about seven, so this is a
 # roof over a scraper, not over a seeker. src/index.js treats a missing RL binding as
 # "no limit", so deleting this block degrades to the pre-limit behaviour rather than
 # breaking the Worker.
@@ -60,6 +60,16 @@ name = "RL"
 type = "ratelimit"
 namespace_id = "1001"
 simple = { limit = 30, period = 60 }
+
+# The voice, on its own budget. /api/speak is one POST per SENTENCE — a séance with the
+# Turtle's voice on is ~41 of them — so on the shared 30/min counter two phones behind one
+# carrier NAT could 429 each other out of a reading. Same "missing binding = no limit"
+# rule; only /api/speak spends from this one.
+[[unsafe.bindings]]
+name = "RL_SPEAK"
+type = "ratelimit"
+namespace_id = "1002"
+simple = { limit = 120, period = 60 }
 
 [vars]
 # Same family as the playa Spark's qwen3:30b-a3b. Verified on this account 2026-08-23.
@@ -122,6 +132,12 @@ name = "RL"
 type = "ratelimit"
 namespace_id = "1001"
 simple = { limit = 30, period = 60 }
+
+[[env.staging.unsafe.bindings]]
+name = "RL_SPEAK"
+type = "ratelimit"
+namespace_id = "1002"
+simple = { limit = 120, period = 60 }
 
 [env.staging.vars]
 MODEL = "@cf/qwen/qwen3-30b-a3b-fp8"

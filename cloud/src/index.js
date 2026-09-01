@@ -36,8 +36,10 @@ const SESSION_TTL = 7200;
  * it is a mistake or an attack. */
 const MAX_AUDIO_BYTES = 1.5 * 1024 * 1024;
 
-/* Every POST /api/* route spends money — whisper, the voice, and the séance itself —
- * so they are all limited together, per client IP. See the binding in wrangler.toml. */
+/* Every POST /api/* route spends money — whisper, the voice, and the séance itself — so
+ * they are limited per client IP. The voice gets its OWN budget: /api/speak is one POST
+ * per sentence, ~41 of them in a séance, so sharing the séance's 30/min meant two phones
+ * behind one carrier NAT could 429 each other out of a reading. See wrangler.toml. */
 const RATE_LIMITED = "the shell needs a moment — too many seekers at once";
 
 /* The kiosk is one HTML file with an inline <style>, an inline <script> and one inline
@@ -75,16 +77,23 @@ function makeCtx(env) {
 }
 
 /** True when this IP has had its share of the shell for the minute. */
-async function overLimit(env, request) {
+async function overLimit(binding, request) {
   /* No binding — local `wrangler dev`, or a deploy the account would not take it on —
    * means no limit rather than no séance. */
-  if (!env.RL || typeof env.RL.limit !== "function") return false;
+  if (!binding || typeof binding.limit !== "function") return false;
   try {
-    const { success } = await env.RL.limit({ key: request.headers.get("cf-connecting-ip") || "no-ip" });
+    const { success } = await binding.limit({
+      key: request.headers.get("cf-connecting-ip") || "no-ip",
+    });
     return !success;
   } catch (e) {
     return false;
   }
+}
+
+/** Which budget a route spends from: the voice has its own, everything else shares RL. */
+function limiterFor(env, path) {
+  return path === "/api/speak" ? env.RL_SPEAK : env.RL;
 }
 
 /** The kiosk and the card art, with the headers a public deployment wants. */
@@ -300,7 +309,7 @@ export default {
     }
 
     if (request.method === "POST" && path.startsWith("/api/")) {
-      if (await overLimit(env, request)) return json({ error: RATE_LIMITED }, 429);
+      if (await overLimit(limiterFor(env, path), request)) return json({ error: RATE_LIMITED }, 429);
       if (path === "/api/transcribe") return await transcribe(request, env);
       if (path === "/api/speak") return await speak(request, env);
       if (path === "/api/print") return await print(request, env);
