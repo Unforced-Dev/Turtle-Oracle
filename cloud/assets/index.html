@@ -827,7 +827,12 @@ for(let i=0;i<9;i++){ const m=document.createElement("div"); m.className="mote";
 function resetAll(){ stopVoice(); discardRecording();
   SESSION_GEN++; SID=null; forgetStep(); resetSeance();
   $('parch').classList.remove("on"); show("attract"); loadLore(); }
+/* cloud: the idle wipe exists because a kiosk in a tent is shared — the next seeker
+   must not walk up to the last one's confession. A personal phone is the opposite: it
+   is one person's, and a quest that erases itself because they went to find their friend
+   is a bug. So the timers run only for a station, marked by ?kiosk=. */
 function pokeIdle(){ clearTimeout(IDLE);
+  if(!KIOSK) return;
   const wait=$('quest').classList.contains("on")?240000:600000;
   IDLE=setTimeout(()=>{ if(SID) resetAll(); },wait); }
 ["click","touchstart","keydown"].forEach(ev=>document.addEventListener(ev,pokeIdle,{passive:true}));
