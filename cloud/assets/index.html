@@ -186,6 +186,10 @@
   .move .mwhere{font-size:.9rem;color:#5c4a26}
   .move .mproof{font-size:.9rem;color:#7a5218;font-style:italic;margin-top:4px}
   .move .mleave{font-size:.9rem;color:#8a3b18;font-style:italic;margin-top:2px}
+  /* cloud: body sets user-select:none, which is right for a tablet on a table and wrong
+     for a phone — a sealed quest that cannot be selected cannot leave the device. */
+  #quest .parchment,#quest .parchment *{user-select:text;-webkit-user-select:text;
+    -webkit-touch-callout:default}
   .sealedfor{text-align:center;font-size:.8rem;letter-spacing:.24em;text-transform:uppercase;color:#8a6f34;margin-bottom:10px}
   .chosen{text-align:center;letter-spacing:.2em;text-transform:uppercase;font-size:.78rem;color:#6b5426;margin-top:16px}
   .vow{border-top:3px double #8a6f34;margin-top:8px;padding-top:14px;font-size:1rem}
@@ -265,6 +269,9 @@
          this stays a two-line diff from app/web/kiosk.html; /api/print still returns the
          formatted receipt for a camp turtle to fetch by hand. -->
     <button id="print" style="display:none">🖨&nbsp; Print my quest</button>
+    <!-- cloud: on the playa the quest left on a paper receipt. Here it leaves by the
+         phone's own share sheet, or by the clipboard when there isn't one. -->
+    <button id="share">⇪&nbsp; Share my quest</button>
     <button class="ghost" id="again">↺&nbsp; The Oracle sleeps — wake it again</button>
   </div>
   <footer>return · tell the tale · receive the gift</footer>
@@ -303,7 +310,9 @@ function restoreStep(){
   }
   SID=saved.sid; SESSION_GEN++;
   show("seance"); resetSeance();
-  if(saved.step.stage==="accepted"&&saved.step.quest) renderQuest(saved.step);
+  // cloud: a reload after the seal shows the parchment again, but does not perform the
+  // reveal a second time — no spoken line, no fanfare, just the quest, still there.
+  if(saved.step.stage==="accepted"&&saved.step.quest) renderQuest(saved.step,true);
   else {
     handle(saved.step);
     if(["naming","tale_naming","tale_listening"].includes(saved.step.stage))
@@ -705,8 +714,29 @@ $('more').addEventListener('click', ()=>{
 function esc(v){ return String(v==null?"":v)
   .replace(/&/g,"&amp;").replace(/</g,"&lt;").replace(/>/g,"&gt;")
   .replace(/"/g,"&quot;").replace(/'/g,"&#39;"); }
-function renderQuest(e){
+let LAST_QUEST=null;
+/* cloud: the same fields the parchment draws, as plain text a share sheet or a clipboard
+   can carry. Kept next to renderQuest on purpose — they must read the same quest. */
+function questText(e){
+  const q=(e&&e.quest)||{};
+  const L=[q.title||"A quest from the Terrible Turtle Oracle"];
+  if(q.for) L.push("sealed for "+q.for);
+  if(q.charge) L.push("",q.charge);
+  (q.moves||[]).forEach((m,i)=>{
+    L.push("",(["I","II","III"][i]||(i+1)+".")+"  "+[m.slot,m.card].filter(Boolean).join(" — "));
+    if(m.task) L.push(m.task);
+    if(m.where) L.push("where: "+m.where);
+    if(m.proof) L.push("bring back: "+m.proof);
+    if(m.leave) L.push("leave behind: "+m.leave);
+  });
+  if(q.vow) L.push("","THE VOW",q.vow);
+  if(q.vow_where) L.push(q.vow_where);
+  if(q.chosen) L.push("",q.chosen);
+  return L.join("\n");
+}
+function renderQuest(e,restored){
   const q=e.quest;
+  LAST_QUEST=e;
   $('parch').innerHTML=`
     <div class="rune" style="text-align:center">the tree has spoken · the quest is sealed</div>
     <h1>${esc(q.title)}</h1>
@@ -728,7 +758,7 @@ function renderQuest(e){
     ${q.chosen?`<div class="chosen">${esc(q.chosen)}</div>`:""}`;
   show("quest");
   setTimeout(()=>$('parch').classList.add("on"),80);
-  speak(e.say);
+  if(!restored) speak(e.say);
   pokeIdle();  // a seal gets its own four-minute handoff window, even after a slow LLM call
 }
 $('print').addEventListener('click', async ()=>{
@@ -741,6 +771,21 @@ $('print').addEventListener('click', async ()=>{
       "No printer attached — your quest was saved at the shell.");
   }catch(err){ toast("The printer spirit is unreachable."); }
   $('print').disabled=false;
+});
+/* cloud: the quest off the phone. The share sheet if there is one, the clipboard if not;
+   the parchment itself is selectable either way, so there is always a third path. */
+$('share').addEventListener('click', async ev=>{
+  ev.stopPropagation();
+  if(!LAST_QUEST){ toast("There is no sealed quest yet."); return; }
+  const text=questText(LAST_QUEST);
+  const title=(LAST_QUEST.quest&&LAST_QUEST.quest.title)||"The Terrible Turtle Oracle";
+  const url=location.origin+location.pathname;
+  if(navigator.share){
+    try{ await navigator.share({title,text,url}); return; }
+    catch(err){ if(err&&err.name==="AbortError") return; }   // they closed the sheet
+  }
+  try{ await navigator.clipboard.writeText(text+"\n\n"+url); toast("copied"); }
+  catch(err){ toast("Hold the parchment to select it — this device will not copy for us."); }
 });
 $('again').addEventListener('click', resetAll);
 
@@ -825,7 +870,7 @@ for(let i=0;i<9;i++){ const m=document.createElement("div"); m.className="mote";
 
 /* idle: the oracle goes back to sleep */
 function resetAll(){ stopVoice(); discardRecording();
-  SESSION_GEN++; SID=null; forgetStep(); resetSeance();
+  SESSION_GEN++; SID=null; LAST_QUEST=null; forgetStep(); resetSeance();
   $('parch').classList.remove("on"); show("attract"); loadLore(); }
 /* cloud: the idle wipe exists because a kiosk in a tent is shared — the next seeker
    must not walk up to the last one's confession. A personal phone is the opposite: it
