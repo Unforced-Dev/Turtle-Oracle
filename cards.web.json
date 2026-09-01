@@ -1,5 +1,5 @@
 {
- "count": 48,
+ "count": 52,
  "compass": "      12  Temple / deep playa\n            \\   |   /\n  10 --------(MAN)-------- 2\n            /   |   \\\n       7   Center Camp   5\n               6",
  "cards": [
   {
@@ -18,8 +18,8 @@
    "turtle_dare": "Find the slowest-moving art car on the playa and ride it nowhere in particular for a full hour. Notice everything you only see at that speed.",
    "real_2026": "Terrible Turtle Camp",
    "location": {
-    "directions": "Home. Your own shell — you know where camp is. (Placement drops via the BM API in August.)",
-    "status": "pending_api",
+    "directions": "E & 6:15 (mid-block facing man). Home. Your own shell — you know where camp is.",
+    "status": "fixed",
     "clock": null
    },
    "image": "cards/web/med/shell-01.jpg",
@@ -156,8 +156,8 @@
    "turtle_dare": "Invite someone who thinks they don't belong. Make room in your shell before you feel ready.",
    "real_2026": "Terrible Turtle Camp",
    "location": {
-    "directions": "Home. Your own shell — you know where camp is. (Placement drops via the BM API in August.)",
-    "status": "pending_api",
+    "directions": "E & 6:15 (mid-block facing man). Home. Your own shell — you know where camp is.",
+    "status": "fixed",
     "clock": null
    },
    "image": "cards/web/med/shell-07.jpg",
@@ -179,8 +179,8 @@
    "turtle_dare": "Ask the oracle the one real question you've been avoiding. Before you read the cards, write down your own honest answer.",
    "real_2026": "The Terrible Turtle Oracle",
    "location": {
-    "directions": "Home. Your own shell — you know where camp is. (Placement drops via the BM API in August.)",
-    "status": "pending_api",
+    "directions": "E & 6:15 (mid-block facing man). Home. Your own shell — you know where camp is.",
+    "status": "fixed",
     "clock": null
    },
    "image": "cards/web/med/shell-08.jpg",
@@ -277,6 +277,29 @@
    },
    "image": "cards/web/med/shell-12.jpg",
    "thumb": "cards/web/thumb/shell-12.jpg"
+  },
+  {
+   "id": "shell-13",
+   "name": "Turtles All the Way Down",
+   "realm": "shell",
+   "slot": "the axis speaks",
+   "keywords": [
+    "mystery",
+    "the unknowable",
+    "humility",
+    "choice"
+   ],
+   "reading": "Ask what holds up the turtle and the answer is another turtle, and another under that. Nobody has ever seen the bottom, and everyone out here is pretending otherwise with tremendous confidence. Meaning isn't buried down there waiting to be dug up — you choose it, up here. Choose something worth standing on.",
+   "shadow": "Naming the mystery can become a way to never commit to anything inside it.",
+   "turtle_dare": "At your own camp, ask out loud what holds up the last turtle, and let nobody answer it. Then name one thing you've chosen to stand on anyway, where someone can hear it.",
+   "real_2026": "Terrible Turtle Camp",
+   "location": {
+    "directions": "E & 6:15 (mid-block facing man). Home. Your own shell — you know where camp is.",
+    "status": "fixed",
+    "clock": null
+   },
+   "image": "cards/web/med/shell-13.jpg",
+   "thumb": "cards/web/thumb/shell-13.jpg"
   },
   {
    "id": "roots-01",
@@ -501,8 +524,8 @@
    "turtle_dare": "Tend one thing you've let go dry — a friendship, a plant, a practice — and water it this week without expecting fast results.",
    "real_2026": "Phoenix Gulch (Terrible Turtle land project)",
    "location": {
-    "directions": "Home. Your own shell — you know where camp is. (Placement drops via the BM API in August.)",
-    "status": "pending_api",
+    "directions": "E & 6:15 (mid-block facing man). Home. Your own shell — you know where camp is.",
+    "status": "fixed",
     "clock": null
    },
    "image": "cards/web/med/roots-10.jpg",
@@ -547,12 +570,35 @@
    "turtle_dare": "Name the 'desert' in your life right now — the barren, hard, empty part. Bring one small creative act into it before you leave the playa.",
    "real_2026": "Terrible Turtle Camp",
    "location": {
-    "directions": "Home. Your own shell — you know where camp is. (Placement drops via the BM API in August.)",
-    "status": "pending_api",
+    "directions": "E & 6:15 (mid-block facing man). Home. Your own shell — you know where camp is.",
+    "status": "fixed",
     "clock": null
    },
    "image": "cards/web/med/roots-12.jpg",
    "thumb": "cards/web/thumb/roots-12.jpg"
+  },
+  {
+   "id": "roots-13",
+   "name": "The Taproot",
+   "realm": "roots",
+   "slot": "what to face",
+   "keywords": [
+    "depth",
+    "the buried years",
+    "source",
+    "endurance"
+   ],
+   "reading": "The worst years went down instead of away, and they went down further than anything else in you. That's why you can find water in a season that dries everyone else out — you have already been to that depth. Stop apologizing for the dark you came out of. Drink from it.",
+   "shadow": "Depth earned in the dark hardens into a credential fast; nobody owes you anything for how far down you've been.",
+   "turtle_dare": "Press both palms into the open playa — the floor of a sea that dried up before anyone was here. Name the year you'd never live again, then what it made you good at.",
+   "real_2026": "The Playa Floor (the bed of ancient Lake Lahontan)",
+   "location": {
+    "directions": "Anywhere the playa is open under you — lie down and let it mark you.",
+    "status": "citywide",
+    "clock": null
+   },
+   "image": "cards/web/med/roots-13.jpg",
+   "thumb": "cards/web/thumb/roots-13.jpg"
   },
   {
    "id": "trunk-01",
@@ -570,8 +616,8 @@
    "turtle_dare": "Pick the one thing you've been circling for weeks. Stop circling — bite it today, all the way down.",
    "real_2026": "Terrible Turtle Camp",
    "location": {
-    "directions": "Home. Your own shell — you know where camp is. (Placement drops via the BM API in August.)",
-    "status": "pending_api",
+    "directions": "E & 6:15 (mid-block facing man). Home. Your own shell — you know where camp is.",
+    "status": "fixed",
     "clock": null
    },
    "image": "cards/web/med/trunk-01.jpg",
@@ -831,6 +877,29 @@
    "thumb": "cards/web/thumb/trunk-12.jpg"
   },
   {
+   "id": "trunk-13",
+   "name": "The Heartwood",
+   "realm": "trunk",
+   "slot": "where you stand",
+   "keywords": [
+    "load-bearing",
+    "steadiness",
+    "the unglamorous",
+    "staying"
+   ],
+   "reading": "Heartwood is dead wood, and it is the only reason the tree is still standing. The part of you that carries the weight is the part that stopped needing to be noticed — nobody appoints you to this, you just fail to leave. Stay through the part with no music.",
+   "shadow": "Immovable isn't the same as strong; heartwood that never adds a new ring is just an old post.",
+   "turtle_dare": "Take one full shift of the work that happens after the fun is over — strike, the last sweep, the 4am ice run — for people already driving home.",
+   "real_2026": "Civic Responsibility",
+   "location": {
+    "directions": "Wherever you stand — pick up the matter out of place around you.",
+    "status": "citywide",
+    "clock": null
+   },
+   "image": "cards/web/med/trunk-13.jpg",
+   "thumb": "cards/web/thumb/trunk-13.jpg"
+  },
+  {
    "id": "branches-01",
    "name": "Above and Below",
    "realm": "branches",
@@ -1053,8 +1122,8 @@
    "turtle_dare": "Take a tool you normally use for work and make something completely useless and beautiful with it. Give it away.",
    "real_2026": "Terrible Turtle Camp",
    "location": {
-    "directions": "Home. Your own shell — you know where camp is. (Placement drops via the BM API in August.)",
-    "status": "pending_api",
+    "directions": "E & 6:15 (mid-block facing man). Home. Your own shell — you know where camp is.",
+    "status": "fixed",
     "clock": null
    },
    "image": "cards/web/med/branches-10.jpg",
@@ -1076,8 +1145,8 @@
    "turtle_dare": "Build the weird thing you've been too self-conscious to attempt. Show exactly one person. Watch what it draws.",
    "real_2026": "Terrible Turtle Camp",
    "location": {
-    "directions": "Home. Your own shell — you know where camp is. (Placement drops via the BM API in August.)",
-    "status": "pending_api",
+    "directions": "E & 6:15 (mid-block facing man). Home. Your own shell — you know where camp is.",
+    "status": "fixed",
     "clock": null
    },
    "image": "cards/web/med/branches-11.jpg",
@@ -1105,6 +1174,29 @@
    },
    "image": "cards/web/med/branches-12.jpg",
    "thumb": "cards/web/thumb/branches-12.jpg"
+  },
+  {
+   "id": "branches-13",
+   "name": "The Crown",
+   "realm": "branches",
+   "slot": "what to reach for",
+   "keywords": [
+    "legacy",
+    "shade",
+    "elderhood",
+    "reaching"
+   ],
+   "reading": "Sooner or later the reaching turns outward: you stop climbing toward the light and start being the shade. Most of the people who will sit under you haven't arrived yet, and you'll never meet them. Grow wide anyway, and don't wait around to be thanked.",
+   "shadow": "A canopy grown too wide too fast shades out every small thing trying to come up underneath it.",
+   "turtle_dare": "Build shade you'll never sit under — a sail over a shared bench, a corner staked for a camp that hasn't arrived, a stranger's bike patched and passed on. Leave no name.",
+   "real_2026": "Communal Effort",
+   "location": {
+    "directions": "Anywhere, to anyone — the whole city runs on it.",
+    "status": "citywide",
+    "clock": null
+   },
+   "image": "cards/web/med/branches-13.jpg",
+   "thumb": "cards/web/thumb/branches-13.jpg"
   }
  ]
 }
