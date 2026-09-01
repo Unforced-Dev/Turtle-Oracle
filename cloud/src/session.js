@@ -5,9 +5,11 @@
  *
  *   1. State. Python keeps a module-level SESSIONS dict and garbage-collects it. Every
  *      Worker request may land in a different isolate in a different city, so the
- *      session is loaded from KV at the top of a request and written back at the end,
- *      with a TTL instead of _gc(). The session OBJECT is identical — same keys, same
- *      values — so the ported logic mutates `sess` exactly as the Python does.
+ *      session is loaded at the top of a request and written back at the end, with an
+ *      expiry instead of _gc(). It lives in a Durable Object — one per séance, see
+ *      sessiondo.js for why KV could not hold it. The session OBJECT is identical —
+ *      same keys, same values — so the ported logic mutates `sess` exactly as the
+ *      Python does.
  *   2. Async. Every LLM touch is awaited, so hear/accept/_draw and friends are async.
  *   3. The Tale-Book is KV rather than a JSONL file (see lore.js).
  *
@@ -145,18 +147,21 @@ function newId() {
   return [...b].map((x) => x.toString(16).padStart(2, "0")).join("");
 }
 
-export async function loadSession(kv, sid) {
-  if (!kv || !sid) return null;
+/* `store` is the SESSION_DO namespace binding, not KV. The séance id IS the object's
+ * name, so there is no lookup: the same id always reaches the same object, in one
+ * place, and a save is visible to the very next request. See sessiondo.js. */
+export async function loadSession(store, sid) {
+  if (!store || !sid) return null;
   try {
-    return await kv.get(`sess:${sid}`, "json");
+    return await store.get(store.idFromName(sid)).load();
   } catch (e) {
     return null;
   }
 }
 
-export async function saveSession(kv, sess, ttl) {
-  if (!kv || !sess) return;
-  await kv.put(`sess:${sess.id}`, JSON.stringify(sess), { expirationTtl: ttl });
+export async function saveSession(store, sess, ttl) {
+  if (!store || !sess) return;
+  await store.get(store.idFromName(sess.id)).save(sess, ttl);
 }
 
 /** Keep the seeker's words, but only the last few and only so long. */
@@ -853,9 +858,10 @@ export async function accept(sess, ctx) {
   }
   /* Replay, never reseal. A double-tap on the kiosk, a retried POST or two isolates
    * racing each other must all get back the quest that was sealed — same words, same
-   * moves, no second LLM call. KV is not atomic so a true race can still run the seal
-   * twice, but the loser's write is overwritten and every later request replays the one
-   * stored answer, which is what makes the race harmless rather than merely rare. */
+   * moves, no second LLM call. Two overlapping accepts can still both find no quest and
+   * both run the seal (the object serialises the reads and writes, not the LLM call
+   * between them); the loser's write is overwritten and every later request replays the
+   * one stored answer, which is what makes the race harmless rather than merely rare. */
   if (sess.quest) {
     return {
       session: sess.id,

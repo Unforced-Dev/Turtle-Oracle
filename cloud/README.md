@@ -41,6 +41,7 @@ cloud/
   assets/index.html    app/web/kiosk.html, with a few marked changes
   src/index.js         the router — app/oracle/server.py
   src/session.js       the séance state machine — app/oracle/session.py
+  src/sessiondo.js     one Durable Object per séance — the state KV could not hold
   src/weave.js         reading + quest — app/oracle/weave.py
   src/llm.js           Workers AI — app/oracle/llm.py
   src/deck.js  select.js  geo.js  lore.js  printer.js  util.js
@@ -56,7 +57,7 @@ time and `assets/{med,thumb,tiles,avatar.jpg}` are gitignored.
 
 | | playa (`app/`) | cloud (`cloud/`) |
 |---|---|---|
-| séance state | module-level `SESSIONS` dict + `_gc()` | KV `sess:<id>`, 2h TTL |
+| séance state | module-level `SESSIONS` dict + `_gc()` | a Durable Object per séance, 2h expiry |
 | Tale-Book | `app/state/talebook.jsonl`, rescanned per lookup | KV `lore:name:<norm>` (30d TTL) + `lore:counts` |
 | model | Ollama `qwen3:30b-a3b` on the LAN | Workers AI `@cf/qwen/qwen3-30b-a3b-fp8` |
 | ears | whisper.cpp + ffmpeg | `@cf/openai/whisper-large-v3-turbo`, no transcode |

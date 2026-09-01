@@ -19,6 +19,10 @@ import { formatReceipt } from "./printer.js";
 import * as session from "./session.js";
 import { json } from "./util.js";
 
+/* wrangler needs the Durable Object class exported from the entry module. The séance
+ * state lives here now rather than in KV — sessiondo.js says why. */
+export { SessionDO } from "./sessiondo.js";
+
 const DEFAULT_WHISPER = "@cf/openai/whisper-large-v3-turbo";
 const DEFAULT_TTS = "@cf/deepgram/aura-1";
 const DEFAULT_TTS_SPEAKER = "angus";
@@ -60,7 +64,9 @@ const REALM_ORDER = { shell: 0, roots: 1, trunk: 2, branches: 3 };
  * a ~100s edge timeout. Raising either number buys a 524 instead of a reading. */
 function makeCtx(env) {
   return {
+    // the Tale-Book and the tiers counter; the séance itself is in ctx.sessions
     kv: env.SESSIONS,
+    sessions: env.SESSION_DO,
     llm: new WorkersAILLM(env),
     shellChance: parseFloat(env.SHELL_CHANCE || "0.10"),
     tShort: parseFloat(env.T_SHORT || "20"),
@@ -197,23 +203,23 @@ async function seance(action, req, env, exec) {
   if (action === "start") {
     const mode = String(body.mode || "seek").trim();
     const { sess, event } = session.start(mode);
-    await session.saveSession(ctx.kv, sess, SESSION_TTL);
+    await session.saveSession(ctx.sessions, sess, SESSION_TTL);
     return json(event);
   }
 
   const sid = String(body.session || "").trim();
-  const sess = await session.loadSession(ctx.kv, sid);
+  const sess = await session.loadSession(ctx.sessions, sid);
 
   if (action === "say") {
     const event = await session.hear(sess, body, ctx);
-    if (sess) await session.saveSession(ctx.kv, sess, SESSION_TTL);
+    if (sess) await session.saveSession(ctx.sessions, sess, SESSION_TTL);
     exec(noteTiers(ctx.kv, event.modes));
     return json(event);
   }
   if (action === "accept") {
     // The sealed quest stays on the session; /api/print reads it back by session id.
     const event = await session.accept(sess, ctx);
-    if (sess) await session.saveSession(ctx.kv, sess, SESSION_TTL);
+    if (sess) await session.saveSession(ctx.sessions, sess, SESSION_TTL);
     exec(noteTiers(ctx.kv, event.modes));
     return json(event);
   }
@@ -225,7 +231,7 @@ async function print(req, env) {
   const body = await readJsonBody(req);
   const sid = String(body.session || "").trim();
   if (!sid) return json({ error: "no reading to print yet" }, 400);
-  const sess = await session.loadSession(env.SESSIONS, sid);
+  const sess = await session.loadSession(env.SESSION_DO, sid);
   if (!sess || !sess.picks) return json({ error: "no such séance to print" }, 400);
   const receipt = formatReceipt(
     {
@@ -287,7 +293,7 @@ export default {
           readings: tiers,
           // the number to look at: if this is climbing, the Turtle has gone dumb
           fallback_pct: total ? Math.round((1000.0 * tiers.fallback) / total) / 10 : null,
-          sessions: "kv",
+          sessions: "durable-object",
           printer: "none — cloud turtle",
         });
       }

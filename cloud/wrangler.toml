@@ -32,8 +32,21 @@ run_worker_first = true
 [ai]
 binding = "AI"
 
-# Séance state. Sessions live under sess:<id> with a 2h TTL; the Tale-Book lives in the
-# same namespace, under lore:name:* for 30 days and lore:counts forever.
+# Séance state: one Durable Object per séance, addressed by the séance id. KV cannot hold
+# this — it caches a read at the location that served it for ~60s and a write does not
+# invalidate that cache, so two turns seconds apart could roll the state machine backwards.
+# See src/sessiondo.js. SQLite storage because it is the only DO storage on the free plan.
+[[durable_objects.bindings]]
+name = "SESSION_DO"
+class_name = "SessionDO"
+
+[[migrations]]
+tag = "v1"
+new_sqlite_classes = ["SessionDO"]
+
+# The Tale-Book and the tiers counter, which are best-effort counters read minutes or days
+# after they are written and are happy being eventually consistent: lore:name:* for 30
+# days, lore:counts and tiers forever.
 [[kv_namespaces]]
 binding = "SESSIONS"
 id = "37010e57750c4c989c563ff76e829c0e"
@@ -91,6 +104,14 @@ run_worker_first = true
 
 [env.staging.ai]
 binding = "AI"
+
+[[env.staging.durable_objects.bindings]]
+name = "SESSION_DO"
+class_name = "SessionDO"
+
+[[env.staging.migrations]]
+tag = "v1"
+new_sqlite_classes = ["SessionDO"]
 
 [[env.staging.kv_namespaces]]
 binding = "SESSIONS"
