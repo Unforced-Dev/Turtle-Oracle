@@ -482,6 +482,10 @@ async function loadLore(){
 
 const PONDER=["The Turtle chews on your words. Slowly…","Mm. The shell hums while it thinks…",
   "Slowly, slowly… the Tree is listening…","The Turtle closes its eyes to see you better…"];
+/* cloud: every place the Turtle thinks should say so. offer() always did; the weather
+   tap and the stones tap did not, and the stones tap fires the slowest call in the app
+   — weave and echoes, two model stages in one request — showing nothing at all. */
+function ponder(){ incant($('says'),PONDER[Math.floor(Math.random()*PONDER.length)],130); }
 let T_ASK=Date.now(), AUDIO_SECS=0, USED_MIC=false;
 function metaNow(){
   const m={ms:Date.now()-T_ASK, input:USED_MIC?"voice":"text", audio_secs:AUDIO_SECS};
@@ -518,6 +522,7 @@ function renderWeather(e){
   let tapped=false;
   $('wgrid').querySelectorAll('.wtile').forEach(t=>t.addEventListener('click',async()=>{
     if(tapped) return; tapped=true;
+    ponder();
     document.body.classList.add("speaking");
     try{ const ev=await post("say",{session:SID,weather:t.dataset.id,meta:metaNow()}); await handle(ev); }
     catch(err){ tapped=false; toast(whyLost(err,"The Turtle lost the thread — touch it again.")); }
@@ -550,6 +555,7 @@ function renderStones(e){
   }));
   $('stonesdone').addEventListener('click',async()=>{
     $('stonesdone').disabled=true;
+    ponder();
     document.body.classList.add("speaking");
     try{ const ev=await post("say",{session:SID,stones:[...sel],meta:metaNow()}); await handle(ev); }
     catch(err){ $('stonesdone').disabled=false; toast(whyLost(err,"Once more, slowly.")); }
@@ -561,7 +567,7 @@ async function offer(){
   const text=$('q').value.trim(); if(!text){ $('q').focus(); return; }
   $('offer').disabled=true; $('mic').disabled=true;
   // no dead air: the Turtle visibly ponders while the camp brain works
-  incant($('says'),PONDER[Math.floor(Math.random()*PONDER.length)],130);
+  ponder();
   document.body.classList.add("speaking");
   try{
     const e=await post("say",{session:SID,text,meta:metaNow()});
