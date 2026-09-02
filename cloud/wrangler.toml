@@ -99,9 +99,12 @@ SHELL_CHANCE = "0.10"
 THINK_STAGES = "weave,tale,ask"
 # Patience before dropping to the offline template. The playa numbers (45/60) were set
 # against a single serialised GPU; Workers AI answers a séance stage in 0.4-6s, so these
-# are guards against a genuinely hung model, not pacing controls. The draw chains two
-# stages in one request and each may also spend half as long again on the fallback model,
-# so the worst case is 1.5 * (38 + 20) = 87s against a ~100s edge timeout.
+# are guards against a genuinely hung model, not pacing controls. The draw runs two
+# stages in one request, side by side since 2026-09-02, and each may also spend half as
+# long again on the fallback model; the weave may roll a second time, but only while half
+# its budget is unspent and with half the timeout. Worst case is max(1.5 * 38,
+# 1.5 * 20) = 57s, or 19 + 1.5 * 19 = 48s on the two-roll path, against a ~100s edge
+# timeout (it was 1.5 * (38 + 20) = 87s when the two stages ran one after the other).
 T_SHORT = "20"
 T_LONG = "38"
 WHISPER_MODEL = "@cf/openai/whisper-large-v3-turbo"

@@ -61,9 +61,11 @@ const CSP = [
 const REALM_ORDER = { shell: 0, roots: 1, trunk: 2, branches: 3 };
 
 /* T_SHORT/T_LONG are patience before dropping to the offline template. One request can
- * chain two stages — the draw runs weave then echoes — and each stage may also spend half
- * as long again on the fallback model, so the worst case is 1.5 * (38 + 20) = 87s against
- * a ~100s edge timeout. Raising either number buys a 524 instead of a reading. */
+ * run two stages — the draw runs weave and echoes side by side — and each stage may also
+ * spend half as long again on the fallback model; the weave may roll twice, the second
+ * roll only while half its budget is unspent and with half the timeout. Worst case is
+ * max(1.5 * 38, 1.5 * 20) = 57s, or 19 + 1.5 * 19 = 48s on the two-roll path, against a
+ * ~100s edge timeout. Raising either number buys a 524 instead of a reading. */
 function makeCtx(env) {
   return {
     // the Tale-Book and the tiers counter; the séance itself is in ctx.sessions
