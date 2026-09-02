@@ -259,6 +259,14 @@ class Handler(BaseHTTPRequestHandler):
                 text = ""
             if not text:
                 return self._send(400, {"error": "no text"})
+            # The kiosk speaks one sentence per request, so a written interjection —
+            # "Mm.", "Ah." — arrives as a line of its own and any TTS reads it as a bare
+            # grunt between two pauses. Strip it here rather than in the copy: the screen
+            # keeps the Turtle's breath, the voice does not have to say it. 204 means
+            # "nothing to say, move to the next line"; the kiosk treats it as spoken.
+            text = voice.strip_interjections(text)
+            if not text:
+                return self._send(204, b"", "audio/wav", cache="no-store")
             try:
                 wav = VOICE_SINGLETON.synthesize(text)
             except ValueError as exc:

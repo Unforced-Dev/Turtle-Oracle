@@ -5,7 +5,7 @@ import json
 from oracle.deck import load_deck
 from oracle.session import (_echoes_fallback, _echoes_llm, _refine_llm,
                             _seeker_words, _valid_echo)
-from oracle.weave import SYSTEM, weave_fallback, weave_llm
+from oracle.weave import SYSTEM, weave_fallback, weave_llm, names_an_address
 
 
 def check(label, condition):
@@ -41,7 +41,8 @@ class RefineLLM:
 
     def generate(self, prompt, **kwargs):
         self.prompt = prompt
-        return json.dumps({"say": "That changes it.", "adventure": "word " * self.words})
+        return json.dumps({"say": "That changes it.", "adventure": " ".join(
+            f"word{i}" for i in range(self.words))})
 
 
 def main():
@@ -83,22 +84,46 @@ def main():
     reading_words = len(out["reading"].split())
     quest_words = len(out["adventure"].split())
     fails += check("fallback reading fits a spoken-length budget", 70 <= reading_words <= 125)
-    fails += check("fallback quest is compact and orally sequenced",
-                   quest_words <= 135 and all(x in out["adventure"] for x in ("First.", "Second.", "Third.")))
+    # THE ONE BITE: one act, one bearing, one proof — never First/Second/Third again.
+    fails += check("fallback quest is one bite, not an errand list",
+                   quest_words <= 90
+                   and not any(x in out["adventure"] for x in ("First.", "Second.", "Third."))
+                   and "Bring back" in out["adventure"])
+    fails += check("fallback quest never puts an address in the seeker's ear",
+                   not names_an_address(out["adventure"].split("One bite.")[-1]))
 
     llm = WeaveLLM()
     weave_llm("I am afraid to ask for help", picks, llm, located, "night")
     fails += check("runtime prompt carries spoken word budgets",
-                   "90-120 words" in llm.prompt and "75-110 words" in llm.prompt)
+                   "90-120 words" in llm.prompt and "20-40 words" in llm.prompt
+                   and "ONE BITE" in llm.prompt)
+    pulled = WeaveLLM()
+    weave_llm("", picks, pulled, located, "night", pulled=True,
+              look="The Turtle already said this once.")
+    fails += check("a séance with no words is told so, and never quoted back at",
+                   "let the cards speak" in pulled.prompt
+                   and "could not put it into words" not in pulled.prompt
+                   and "60-120 words" in pulled.prompt)
+    fails += check("the weave continues the look it already spoke",
+                   "The Turtle already said this once." in pulled.prompt
+                   and "CONTINUES that one" in pulled.prompt)
     fails += check("system voice bans prose that reads poorly aloud",
                    "spoken aloud" in SYSTEM and "no semicolons" in SYSTEM)
 
     refine_sess = dict(sess, shares=sess["shares"] + ["I secretly want to sing"],
                        located=located, adventure=out["adventure"])
-    short_refine = RefineLLM(20)
+    short_refine = RefineLLM(8)
     fails += check("refine rejects a stub quest", _refine_llm(refine_sess, short_refine) is None)
-    fails += check("refine prompt preserves the spoken three-move shape",
-                   "75-110 words" in short_refine.prompt and "First, Second, Third" in short_refine.prompt)
+    # a "rewrite" that hands the old quest back word for word is a visible lie from the
+    # Turtle: the seeker hears "that changes the shape of it" and then the same quest
+    same = RefineLLM(0)
+    same.generate = (lambda prompt, **kw: json.dumps(
+        {"say": "Mm.", "adventure": refine_sess["adventure"]}))
+    fails += check("refine rejects the old quest handed back unchanged",
+                   _refine_llm(refine_sess, same) is None)
+    fails += check("refine prompt rewrites the one bite, not three moves",
+                   "ONE BITE" in short_refine.prompt and "20-40 words" in short_refine.prompt
+                   and "First, Second, Third" not in short_refine.prompt)
     fails += check("refine prompt excludes UI stems and synthetic stone labels",
                    "I want to keep…" not in short_refine.prompt and "I am carrying:" not in short_refine.prompt)
 
