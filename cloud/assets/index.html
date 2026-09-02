@@ -782,10 +782,13 @@ function renderWanting(e,restored){
 function renderWeather(e,restored){
   $('askpanel').classList.remove("on"); hideAux();
   sayIt(e.say,restored);
+  /* cloud: on the playa these six came off a machine in the tent; here they come off the
+     open internet like everything else the model touches, so the tile art, its id and its
+     name are escaped the same way the parchment is. */
   $('wgrid').innerHTML=(e.weathers||[]).map(w=>`
-    <div class="wtile" data-id="${w.id}">
-      <img src="${w.tile}" alt="" onerror="this.style.display='none'">
-      <div class="wname">${w.name}</div>
+    <div class="wtile" data-id="${esc(w.id)}">
+      <img src="${esc(w.tile)}" alt="" onerror="this.style.display='none'">
+      <div class="wname">${esc(w.name)}</div>
     </div>`).join("");
   $('wgrid').classList.add("on");
   let tapped=false;
@@ -800,7 +803,7 @@ function renderStones(e,restored){
   sayIt(e.say,restored);
   const sel=new Set();
   $('stonesrow').innerHTML=(e.stones||[]).map(s=>
-    `<button class="stonechip" data-id="${s.id}">${s.name}</button>`).join("")
+    `<button class="stonechip" data-id="${esc(s.id)}">${esc(s.name)}</button>`).join("")
     +`<button id="stonesdone">⬢&nbsp; That is all</button>`;
   $('stonesrow').classList.add("on");
   $('stonesrow').querySelectorAll('.stonechip').forEach(c=>c.addEventListener('click',()=>{
@@ -966,7 +969,7 @@ function dealSpread(e,opts){
                over a megabyte of art nobody can see the resolution of. Nothing in this
                kiosk ever shows a card larger than the spread; if that changes, the
                large view wants c.image. -->
-          <div class="face front"><img src="${c.thumb}" alt="${esc(c.name)}"></div>
+          <div class="face front"><img src="${esc(c.thumb)}" alt="${esc(c.name)}"></div>
         </div>
         <div class="cardcap${isAxis?" axis":""}" id="cap-${slot}">
           <div class="cslot">${isAxis?"◆ The Axis Speaks":`${SLOTCAP[slot]} · ${esc(c.slot)}`}</div>

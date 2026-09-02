@@ -232,6 +232,17 @@ async function print(req, env) {
   if (!sid) return json({ error: "no reading to print yet" }, 400);
   const sess = await session.loadSession(env.SESSION_DO, sid);
   if (!sess || !sess.picks) return json({ error: "no such séance to print" }, 400);
+  /* The receipt is the paper the shell would have cut, and app/oracle/printer.py opens it
+   * with YOU TOLD THE TURTLE and the seeker's own shares — a confession, on the paper, by
+   * design, because on the playa the paper goes straight into the hand of the person who
+   * said it. Here it comes back over the open internet to whoever posts the id, so it is
+   * gated on a SEALED séance: an accepted quest is a thing the seeker asked for and can
+   * hand on, and everything before it is a session mid-confession. The shares stay in the
+   * receipt because removing them would leave the playa's own format with a heading and
+   * nothing under it, and this text has to stay the paper. */
+  if (sess.stage !== "accepted" || !sess.quest) {
+    return json({ error: "there is no sealed quest on this séance yet" }, 400);
+  }
   const receipt = formatReceipt(
     {
       question: sess.shares.join(" / "),
