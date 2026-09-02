@@ -37,6 +37,11 @@ const SESSION_TTL = 7200;
  * behind one carrier NAT could 429 each other out of a reading. See wrangler.toml. */
 const RATE_LIMITED = "the shell needs a moment — too many seekers at once";
 
+/* What a stranger hears when the Worker throws. Never String(err.message): the seeker is
+ * standing in the dust looking at a toast, and an internal message tells them nothing and
+ * tells everyone else how this is built. The real one goes to console.error. */
+const LOST_THREAD = "the Turtle lost the thread — touch it again";
+
 /* The kiosk is one HTML file with an inline <style>, an inline <script> and one inline
  * onerror handler, its grain texture is a data: SVG, and the Turtle's spoken lines play
  * from a blob: URL — hence unsafe-inline, data: and blob:. Everything else is same-origin.
@@ -182,23 +187,42 @@ async function seance(action, req, env, exec) {
     return json(event);
   }
 
+  if (action !== "say" && action !== "accept") {
+    return json({ error: "unknown séance action" }, 404);
+  }
+
   const sid = String(body.session || "").trim();
   const sess = await session.loadSession(ctx.sessions, sid);
+  const stageIn = sess ? sess.stage : null;
 
-  if (action === "say") {
-    const event = await session.hear(sess, body, ctx);
-    if (sess) await session.saveSession(ctx.sessions, sess, SESSION_TTL);
-    exec(noteTiers(ctx.kv, event.modes));
-    return json(event);
-  }
-  if (action === "accept") {
+  let event;
+  try {
     // The sealed quest stays on the session; /api/print reads it back by session id.
-    const event = await session.accept(sess, ctx);
-    if (sess) await session.saveSession(ctx.sessions, sess, SESSION_TTL);
-    exec(noteTiers(ctx.kv, event.modes));
-    return json(event);
+    event = action === "say" ? await session.hear(sess, body, ctx) : await session.accept(sess, ctx);
+  } catch (err) {
+    /* The seeker gets a line in the Turtle's voice and a 200, because the kiosk toasts
+     * `error` and keeps their screen; the real message goes to the log, where it belongs.
+     * It used to be handed to the phone as a 500 with String(err.message) in it. */
+    console.error(`séance ${action} failed at ${stageIn}:`, (err && err.stack) || String(err));
+    /* hear() mutates `sess` and THEN awaits the model, and saveSession only ran when the
+     * request finished — so a throw anywhere after the draw threw the spread away and the
+     * seeker's retry paid for a second one. Save it, but only when the stage both moved
+     * and finished arriving: replayable() is false for a stage that was entered and never
+     * filled in (an `asking` with no question yet), and saving one of those would land
+     * the retry in a stage whose reveal the seeker never saw. An unfinished stage is
+     * cheaper to redo than a broken séance is to sit in. */
+    if (sess && sess.stage !== stageIn && session.replayable(sess)) {
+      try {
+        await session.saveSession(ctx.sessions, sess, SESSION_TTL);
+      } catch (e) {
+        /* the séance is already lost; do not lose the reply too */
+      }
+    }
+    return json({ error: LOST_THREAD, stage: (sess && sess.stage) || "gone" });
   }
-  return json({ error: "unknown séance action" }, 404);
+  if (sess) await session.saveSession(ctx.sessions, sess, SESSION_TTL);
+  exec(noteTiers(ctx.kv, event.modes));
+  return json(event);
 }
 
 /* ---- the printer that is not there ----------------------------------------------- */
@@ -284,7 +308,11 @@ export default {
         try {
           return await seance(action, request, env, exec);
         } catch (err) {
-          return json({ error: String((err && err.message) || err) }, 500);
+          /* seance() catches everything the séance itself can throw and answers in the
+           * Turtle's voice; this is the outer net for the rest — a body that would not
+           * parse, a Durable Object that would not answer. Same shape, same silence. */
+          console.error(`/api/session/${action} failed:`, (err && err.stack) || String(err));
+          return json({ error: LOST_THREAD, stage: null });
         }
       }
     }

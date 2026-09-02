@@ -620,9 +620,12 @@ async function post(action,body){
   }
   return d||{};
 }
-/* The server said why; a dropped connection did not. Only speak for the server. */
+/* The server said why; a dropped connection did not. Only speak for the server — and
+   only for a 4xx, which is the Turtle refusing something on purpose (a 429, a body it
+   will not take). A 5xx is the machine falling over, and whatever it says about itself
+   is for the log, not for a seeker standing in the dust. */
 function whyLost(err,fallback){
-  return (err&&err.status&&err.message) ? err.message
+  return (err&&err.status>=400&&err.status<500&&err.message) ? err.message
     : (fallback||"The Turtle lost the thread — try once more.");
 }
 
