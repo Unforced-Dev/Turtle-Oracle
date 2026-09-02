@@ -93,18 +93,27 @@ TEMPERATURE = "0.75"
 SHELL_CHANCE = "0.10"
 # Which séance stages get a reasoning scratchpad. Measured, not guessed — see the
 # header of src/llm.js. Empty string = never think; "weave,refine,echoes,seal,tale" = always.
-THINK_STAGES = "weave,tale"
+# `ask` thinks too (added 2026-09-02): without the scratchpad the look at the table came
+# back as three six-word captions ("Titanic says… Pulse says… Crown says…"), none of them
+# in the seeker's words. The draw already runs under the veil, so the seconds are covered.
+THINK_STAGES = "weave,tale,ask"
 # Patience before dropping to the offline template. The playa numbers (45/60) were set
 # against a single serialised GPU; Workers AI answers a séance stage in 0.4-6s, so these
-# are guards against a genuinely hung model, not pacing controls. The draw chains two
-# stages in one request and each may also spend half as long again on the fallback model,
-# so the worst case is 1.5 * (38 + 20) = 87s against a ~100s edge timeout.
+# are guards against a genuinely hung model, not pacing controls. The draw runs two
+# stages in one request, side by side since 2026-09-02, and each may also spend half as
+# long again on the fallback model; the weave may roll a second time, but only while half
+# its budget is unspent and with half the timeout. Worst case is max(1.5 * 38,
+# 1.5 * 20) = 57s, or 19 + 1.5 * 19 = 48s on the two-roll path, against a ~100s edge
+# timeout (it was 1.5 * (38 + 20) = 87s when the two stages ran one after the other).
 T_SHORT = "20"
 T_LONG = "38"
 WHISPER_MODEL = "@cf/openai/whisper-large-v3-turbo"
 # Set TTS_MODEL = "off" to fall the kiosk back to the tablet's own browser voice.
-TTS_MODEL = "@cf/deepgram/aura-1"
-TTS_SPEAKER = "angus"
+# Aura-2 speaking as Draco, picked by ear off staging 2026-09-02 (Aaron). Set here so the
+# next PRODUCTION deploy carries the voice; that deploy is a human's to make, not this
+# branch's — nothing on feat/pull-first has been deployed to production.
+TTS_MODEL = "@cf/deepgram/aura-2-en"
+TTS_SPEAKER = "draco"
 
 [observability]
 enabled = true
@@ -169,12 +178,19 @@ TEMPERATURE = "0.75"
 SHELL_CHANCE = "0.10"
 # Which séance stages get a reasoning scratchpad. Measured, not guessed — see the
 # header of src/llm.js. Empty string = never think; "weave,refine,echoes,seal,tale" = always.
-THINK_STAGES = "weave,tale"
+THINK_STAGES = "weave,tale,ask"
 T_SHORT = "20"
 T_LONG = "38"
 WHISPER_MODEL = "@cf/openai/whisper-large-v3-turbo"
-TTS_MODEL = "@cf/deepgram/aura-1"
-TTS_SPEAKER = "angus"
+# Aura-2 speaking as Draco, the voice Aaron picked by ear off this staging worker on
+# 2026-09-02. Same {text, speaker} input and the same MPEG stream out as aura-1, so the
+# route is unchanged. Production carries the same pair now, for its next hand-made deploy.
+TTS_MODEL = "@cf/deepgram/aura-2-en"
+TTS_SPEAKER = "draco"
+# STAGING ONLY: /api/speak will take an allowlisted `speaker` and `model` off the body,
+# so a few sample lines can be curled in several voices without a redeploy between them.
+# Unset everywhere else, and unset means the environment's own voice, always.
+VOICE_TRYOUTS = "1"
 
 [env.staging.observability]
 enabled = true

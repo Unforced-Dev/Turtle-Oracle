@@ -19,6 +19,7 @@ import * as lore from "./lore.js";
 import { formatReceipt } from "./printer.js";
 import * as session from "./session.js";
 import { json } from "./util.js";
+import { TRYOUT_SPEAKERS, voiceChoice, voiceText } from "./voice.js";
 
 /* wrangler needs the Durable Object class exported from the entry module. The séance
  * state lives here now rather than in KV — sessiondo.js says why. */
@@ -61,9 +62,11 @@ const CSP = [
 const REALM_ORDER = { shell: 0, roots: 1, trunk: 2, branches: 3 };
 
 /* T_SHORT/T_LONG are patience before dropping to the offline template. One request can
- * chain two stages — the draw runs weave then echoes — and each stage may also spend half
- * as long again on the fallback model, so the worst case is 1.5 * (38 + 20) = 87s against
- * a ~100s edge timeout. Raising either number buys a 524 instead of a reading. */
+ * run two stages — the draw runs weave and echoes side by side — and each stage may also
+ * spend half as long again on the fallback model; the weave may roll twice, the second
+ * roll only while half its budget is unspent and with half the timeout. Worst case is
+ * max(1.5 * 38, 1.5 * 20) = 57s, or 19 + 1.5 * 19 = 48s on the two-roll path, against a
+ * ~100s edge timeout. Raising either number buys a 524 instead of a reading. */
 function makeCtx(env) {
   return {
     // the Tale-Book and the tiers counter; the séance itself is in ctx.sessions
@@ -146,21 +149,27 @@ async function readJsonBody(req) {
 /* ---- voice: app/oracle/voice.py, kokoro -> Workers AI TTS ------------------------- */
 async function speak(req, env) {
   const body = await readJsonBody(req);
-  const text = String(body.text || "")
+  const line = String(body.text || "")
     .split(/\s+/)
     .filter(Boolean)
     .join(" ");
-  if (!text) return json({ error: "no text" }, 400);
-  if (text.length > 600) return json({ error: "speech line is too long" }, 400);
-  const model = (env.TTS_MODEL || DEFAULT_TTS).trim();
+  if (!line) return json({ error: "no text" }, 400);
+  if (line.length > 600) return json({ error: "speech line is too long" }, 400);
+  /* The kiosk posts one SENTENCE per request, so the Turtle's "Mm." arrives here alone
+   * and comes back as a groan. Strip the throat-clearing before spending the call; if
+   * that is all the line was, answer 204 and let the kiosk move to the next part. The
+   * screen still shows every word — this is the voice, not the text. */
+  const text = voiceText(line);
+  if (!text) return new Response(null, { status: 204 });
+  const { model, speaker } = voiceChoice(env, body, {
+    model: DEFAULT_TTS,
+    speaker: DEFAULT_TTS_SPEAKER,
+  });
   if (!model || model === "off") {
     return json({ error: "the Turtle's deeper voice is unavailable" }, 503);
   }
   try {
-    const out = await env.AI.run(model, {
-      text,
-      speaker: env.TTS_SPEAKER || DEFAULT_TTS_SPEAKER,
-    });
+    const out = await env.AI.run(model, { text, speaker });
     const stream = out instanceof ReadableStream ? out : out && out.audio ? out.audio : null;
     if (!stream) return json({ error: "the Turtle's deeper voice is unavailable" }, 503);
     return new Response(stream, {
@@ -299,6 +308,8 @@ export default {
             backend: (env.TTS_MODEL || DEFAULT_TTS) === "off" ? "browser" : "workers-ai",
             model: env.TTS_MODEL || DEFAULT_TTS,
             speaker: env.TTS_SPEAKER || DEFAULT_TTS_SPEAKER,
+            // staging only: /api/speak will take a speaker and a model off the body
+            tryouts: String(env.VOICE_TRYOUTS || "") === "1" ? TRYOUT_SPEAKERS : null,
           },
           readings: tiers,
           // the number to look at: if this is climbing, the Turtle has gone dumb
