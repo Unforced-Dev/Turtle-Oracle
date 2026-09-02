@@ -104,12 +104,13 @@
   .panel{width:100%;max-width:680px;background:linear-gradient(180deg,var(--ink2),#0e0a05);
     border:1px solid var(--edge);border-radius:16px;padding:16px;margin-top:10px;
     box-shadow:0 18px 50px rgba(0,0,0,.55);opacity:0;transform:translateY(16px);
-    transition:opacity .6s,transform .6s;pointer-events:none}
+    max-height:80vh;transition:opacity .6s,transform .6s,max-height .45s ease,padding .45s,margin .45s;
+    pointer-events:none}
   .panel.on{opacity:1;transform:none;pointer-events:auto}
   /* An off panel leaves the layout. Faded out but still in flow, the talk panel kept its
      full height between the Turtle's line and the cards: on a phone the seeker saw the
      look, then a blank screen, and had to scroll to find the spread and the question. */
-  .panel:not(.on){height:0;min-height:0;padding:0;margin:0;border:0;overflow:hidden}
+  .panel:not(.on){max-height:0;min-height:0;padding:0;margin:0;border:0;overflow:hidden}
   textarea{width:100%;min-height:76px;resize:none;background:#0d0a05;color:var(--parch);
     border:1px solid var(--edge);border-radius:10px;padding:12px 14px;font:inherit;font-size:1.12rem;
     user-select:text;-webkit-user-select:text}
@@ -623,13 +624,15 @@ $('snd').addEventListener('click',()=>{
    watched 76 words appear at speech speed and then sat through the silence budgeted for
    the Turtle's voice: ~25 s between tapping an answer and seeing the quest. */
 const SILENT_WORD_MS=45, SILENT_WAIT_MS=1800;
+let LAST_REVEAL_MS=0;
 function incant(el,text,msPerWord=120){
   if(!SPOKEN) msPerWord=Math.min(msPerWord,SILENT_WORD_MS);
   el.innerHTML="";
   const words=(text||"").split(/\s+/);
   words.forEach((w,i)=>{ const s=document.createElement("span"); s.className="w";
     s.style.animationDelay=(i*msPerWord)+"ms"; s.textContent=w+" "; el.appendChild(s); });
-  return words.length*msPerWord+400;
+  LAST_REVEAL_MS=words.length*msPerWord+400;
+  return LAST_REVEAL_MS;
 }
 
 /* cloud: one line said once. A RESTORE re-renders a screen the seeker has already heard
@@ -908,7 +911,9 @@ async function offer(){
    where playback started and then died without an onended. */
 function speakOr(text,fallbackMs){
   return new Promise(res=>{
-    if(!SPOKEN){ setTimeout(res,Math.min(fallbackMs,SILENT_WAIT_MS)); return; }
+    /* silent: never shorter than the last reveal, so the words are all there before the
+       séance moves on; never longer than the voice budget the caller gave. */
+    if(!SPOKEN){ setTimeout(res,Math.min(fallbackMs,Math.max(LAST_REVEAL_MS,SILENT_WAIT_MS))); return; }
     let done=false;
     const fin=()=>{ if(done)return; done=true; res(); };
     SPEAK_STARTED=false;

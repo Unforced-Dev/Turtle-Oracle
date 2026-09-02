@@ -135,14 +135,24 @@ export async function weaveLlm(question, cards, llm, located, context, timeout) 
     "a bearing, not an address.\n\n" +
     'Return JSON only: {"reading": "...", "adventure": "..."}';
 
-  /* Two tries: a reading that was the example and nothing else (1 in 5 on staging,
-   * 2026-09-02) is worth one more roll of the model before the template takes over. */
+  /* Two rolls, one budget. A reading that was the example and nothing else (1 in 5 on
+   * staging, 2026-09-02), or JSON that max_tokens cut mid-word (llm.js's most common
+   * weave failure), is worth one more roll of the model before the template — but only
+   * while half the stage budget is still unspent, and the second roll gets half the
+   * timeout, so the draw stays inside the edge timeout the budget in wrangler.toml was
+   * sized against (first roll up to timeout + timeout/2 on the model fallback; the second
+   * only starts before timeout/2 has passed and gets timeout/2). */
+  const started = Date.now();
   for (let attempt = 0; attempt < 2; attempt++) {
-    const resp = await llm.generate(prompt, { system: SYSTEM, asJson: true, timeout, stage: "weave" });
+    const t = attempt ? Math.floor(timeout / 2) : timeout;
+    const resp = await llm.generate(prompt, { system: SYSTEM, asJson: true, timeout: t, stage: "weave" });
     const out = tryJson(resp);
-    if (!(out && typeof out === "object" && out.reading && out.adventure)) return null;
-    const reading = unquoteExample(String(out.reading).trim());
-    if (reading) return { reading, adventure: String(out.adventure).trim() };
+    if (out && typeof out === "object" && out.reading && out.adventure) {
+      const reading = unquoteExample(String(out.reading).trim());
+      const adventure = String(out.adventure).trim();
+      if (reading && !QUEST_EXAMPLE_RE.test(adventure)) return { reading, adventure };
+    }
+    if (Date.now() - started > timeout / 2) break;
   }
   return null;
 }
@@ -153,11 +163,16 @@ export async function weaveLlm(question, cards, llm, located, context, timeout) 
  * seeker's words. Every seeker would hear the same two sentences first. The prompt is
  * parity-locked to the Python, so the cure is on the way out: drop the copied sentences
  * and keep the rest, which is the model's real reading. If what is left is too short to
- * be a reading, the whole thing is refused and the template takes the turn. */
-const EXAMPLE_RE =
-  /(you )?built all year for other people|(that is )?a fine way to disappear|tonight nobody needs you|where the map runs out|^(then )?bite it[.!]?$|walk out past the man/i;
+ * be a reading, the whole thing is refused and the template takes the turn.
+ * Only the example's long, distinctive phrases are fingerprints. "Then bite it", "the
+ * Man" and "where the map runs out" are the Turtle's own register — a reading that ends
+ * on them is a good reading, and was being cut short (review, 2026-09-02). */
+const EXAMPLE_RE = /built all year for other people|a fine way to disappear|tonight nobody needs you/i;
+/* the example's second half is a quest, and lands in `adventure`, not `reading` */
+const QUEST_EXAMPLE_RE = /stay until you want one thing|past the man to where the map runs out/i;
 export function unquoteExample(reading) {
-  const parts = reading.split(/(?<=[.!?…])\s+/);
+  // a sentence ends at its terminator, or at the closing quote after it
+  const parts = reading.split(/(?<=[.!?…][”"']?)\s+/);
   const kept = parts.filter((sentence) => !EXAMPLE_RE.test(sentence));
   if (kept.length === parts.length) return reading;
   const cleaned = kept.join(" ").trim();
