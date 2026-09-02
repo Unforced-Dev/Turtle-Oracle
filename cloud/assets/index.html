@@ -1099,6 +1099,13 @@ function esc(v){ return String(v==null?"":v)
   .replace(/&/g,"&amp;").replace(/</g,"&lt;").replace(/>/g,"&gt;")
   .replace(/"/g,"&quot;").replace(/'/g,"&#39;"); }
 let LAST_QUEST=null;
+/* cloud: the quest is ONE bite, so a sealed quest normally holds one move and the heading
+   says so. A phone can still restore an OLDER quest, though — one sealed before the
+   rebuild, out of localStorage or a Durable Object session — and those hold three. Three
+   blocks all headed "the one bite" is a lie the seeker can see. Same rule as the paper
+   (src/printer.js formatReceipt, guarded by test/seance.mjs "the receipt heads a legacy
+   three-move quest as MOVE 1..3"): number them when there is more than one. */
+function moveHead(n,i){ return n>1?("move "+(i+1)):"the one bite"; }
 /* cloud: the same fields the parchment draws, as plain text a share sheet or a clipboard
    can carry. Kept next to renderQuest on purpose — they must read the same quest. */
 function questText(e){
@@ -1106,8 +1113,8 @@ function questText(e){
   const L=[q.title||"A quest from the Terrible Turtle Oracle"];
   if(q.for) L.push("sealed for "+q.for);
   if(q.charge) L.push("",q.charge);
-  (q.moves||[]).forEach(m=>{
-    L.push("",["THE ONE BITE",m.card].filter(Boolean).join(" — "));
+  (q.moves||[]).forEach((m,i)=>{
+    L.push("",[moveHead((q.moves||[]).length,i).toUpperCase(),m.card].filter(Boolean).join(" — "));
     if(m.task) L.push(m.task);
     if(m.where) L.push("where: "+m.where);
     if(m.proof) L.push("bring back: "+m.proof);
@@ -1126,10 +1133,10 @@ function renderQuest(e,restored){
     <h1>${esc(q.title)}</h1>
     ${q.for?`<div class="sealedfor">sealed for ${esc(q.for)}</div>`:""}
     <div class="charge">${esc(q.charge)}</div>
-    ${q.moves.map(m=>`
+    ${q.moves.map((m,i)=>`
       <div class="move">
         <div>
-          <div class="mslot">the one bite — ${esc(m.card)}</div>
+          <div class="mslot">${esc(moveHead(q.moves.length,i))} — ${esc(m.card)}</div>
           <div class="mtask">${esc(m.task)}</div>
           <div class="mwhere">📍 ${esc(m.where)}</div>
           <div class="mproof">⌘ bring back: ${esc(m.proof)}</div>

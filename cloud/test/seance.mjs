@@ -20,7 +20,8 @@
  * binding — the only route here that talks to Workers AI without a séance in its body.
  */
 import { start, hear, accept, replayable, __test as S } from "../src/session.js";
-import { landmarkRealm, landmarkWhere } from "../src/weave.js";
+import { biteRealm, landmarkRealm, landmarkWhere } from "../src/weave.js";
+import { formatReceipt } from "../src/printer.js";
 import { transcribe, toBase64, MAX_AUDIO_BYTES } from "../src/ears.js";
 
 let failures = 0;
@@ -448,12 +449,24 @@ section("the sealed quest is one bite, with a bearing and a proof");
     "the first person who hands you water",
     "before the sun is up",
     "Somewhere quiet on the open playa",
+    // an hour on its own is a TIME OF DAY, which is one of the three things a bearing may
+    // be — the flat address rule was reading the clock and throwing the bearing away
+    "before 6:00, when the light is grey",
+    // the city capitalizes some common nouns; none of these is a camp
+    "out where the Deep Playa goes dark",
+    "the first Ranger you see",
+    // two sentences: the capital that starts the SECOND one is forced too
+    "wherever the music is worst. Before the sun is up",
+    "Center Camp",
   ];
   const drop = [
     "Camp Questionmark, 7:30 & E",
     "the Esplanade at 3:00",
     "Ashram Galactica — ask at the desk",
     "",
+    // one word, and it is a camp: there is no sentence to forgive the capital
+    "Kidsville",
+    "Camp Questionmark at 7:30 & E",
     "out past the last lamp, and then keep walking until you reach the place where the music " +
       "finally gives up on you",
   ];
@@ -527,6 +540,138 @@ section("the sealed quest is one bite, with a bearing and a proof");
   const s2 = await seanceAt("proposed", ctxWith(long));
   const out2 = await hear(s2, { text: "I have never told anyone I sing." }, ctxWith(long));
   check("a rambling rewrite is refused too", (out2.modes || {}).refine === "fallback", JSON.stringify(out2.modes));
+}
+
+{
+  /* THE SPOKEN quest is address-checked too. The seal's bearing has been guarded since the
+   * rebuild, but the seeker HEARS the quest before any parchment exists — a clock and a
+   * lettered street in that is heard whatever the parchment later says. So a spoken address
+   * costs one more roll of the model, and then the template, whose bearing is a bearing by
+   * construction. */
+  const CLEAN = JSON.stringify({
+    reading: "You came a long way to sit still. " + "word ".repeat(96),
+    adventure:
+      "Say the sentence you have been swallowing, out loud, to the first face that stops for " +
+      "you tonight. Out past the last lamp. Bring back what their face did.",
+  });
+  const ADDRESSED = JSON.stringify({
+    reading: "You came a long way to sit still. " + "word ".repeat(96),
+    adventure:
+      "Go to Camp Questionmark at 7:30 & E before 9:00 and say the thing you have not said. " +
+      "Bring back what their face did.",
+  });
+  /** goodLlm, but the weave answers a different thing on each roll. */
+  function weaver(...rolls) {
+    const base = goodLlm();
+    let i = 0;
+    return {
+      seen: base.seen,
+      available: () => true,
+      async generate(p, opts = {}) {
+        if (opts.stage !== "weave") return base.generate(p, opts);
+        base.seen.push("weave");
+        return rolls[Math.min(i++, rolls.length - 1)];
+      },
+    };
+  }
+  const second = weaver(ADDRESSED, CLEAN);
+  const { proposed: reRolled } = await walk("talk", { llm: second, answer: { text: "I have not said it yet." } });
+  check(
+    "a spoken quest with an address is re-rolled, and the clean roll is what is spoken",
+    (reRolled.modes || {}).weave === "llm" && /Out past the last lamp/.test(reRolled.adventure) &&
+      !/7:30/.test(reRolled.adventure) &&
+      second.seen.filter((s) => s === "weave").length === 2,
+    reRolled.adventure,
+  );
+  const never = weaver(ADDRESSED);
+  const { proposed: templated } = await walk("talk", { llm: never, answer: { text: "I have not said it yet." } });
+  check(
+    "and a model that only ever gives an address loses the turn to the template",
+    (templated.modes || {}).weave === "fallback" && !/7:30|Camp Questionmark/.test(templated.adventure),
+    templated.adventure,
+  );
+}
+{
+  /* THE SEAL THAT DID NOT ANSWER. When sealLlm comes back null the parchment used to fall
+   * to the card's canned dare — which is right offline, where the spoken quest was stitched
+   * from that dare, and wrong on the model path, where the seeker heard a quest written for
+   * them and then read a stock errand off the parchment. Two quests in one séance. */
+  const mute = () => goodLlm({ seal: "not json at all" });
+  let fromTheSpokenQuest = 0;
+  let notTheDare = 0;
+  for (let i = 0; i < 6; i++) {
+    const { sess, sealed } = await walk("talk", {
+      llm: mute(),
+      answer: { text: "I have not said it yet." },
+    });
+    const m = sealed.quest.moves[0];
+    const dare = sess.picks[sess.bite].turtle_dare;
+    if (m.task === "Say the sentence you have been swallowing, out loud, to the first face " +
+      "that stops for you tonight.") fromTheSpokenQuest++;
+    if (m.task !== dare && m.proof === "Bring back what their face did.") notTheDare++;
+  }
+  check(
+    "a model quest with no seal still prints the quest the seeker HEARD",
+    fromTheSpokenQuest === 6,
+    String(fromTheSpokenQuest),
+  );
+  check(
+    "and its proof is the one the quest asked for out loud, not the card's",
+    notTheDare === 6,
+    String(notTheDare),
+  );
+  // the offline quest is built FROM the dare, so there the dare is what they heard
+  const { sess: os, sealed: oq } = await walk("touch", { llm: deadLlm, answer: { pass: true } });
+  check(
+    "the template quest still seals its own dare",
+    oq.quest.moves[0].task === os.picks[os.bite].turtle_dare,
+    oq.quest.moves[0].task,
+  );
+}
+{
+  /* The model answers the seal in the shape it was asked for for a year — {"moves": [...]}
+   * — often enough that dropping it cost a good seal. One move in a list of one is a seal. */
+  const listy = goodLlm({
+    seal: JSON.stringify({
+      moves: [{ task: "Sing the one you never sing, once, to one stranger.", where: "wherever the music is worst", proof: "what they said back", leave: "" }],
+    }),
+  });
+  const { sealed } = await walk("talk", { llm: listy, answer: { text: "I have not said it yet." } });
+  check(
+    "a seal answered as moves[] is still a seal",
+    (sealed.modes || {}).seal === "llm" &&
+      sealed.quest.moves[0].task === "Sing the one you never sing, once, to one stranger." &&
+      sealed.quest.moves[0].where === "wherever the music is worst",
+    JSON.stringify(sealed.quest.moves[0]),
+  );
+}
+{
+  /* A REAL rewrite, all the way through: the 15-60 word gate and the isSameQuest guard only
+   * ever ran on rewrites they refused, so a genuine short rewrite had no test at all. */
+  const rewrite =
+    "Sing the song you have never sung for anyone, out loud, to the first stranger who stops " +
+    "walking. Wherever the music is worst. Bring back the face they made.";
+  const singer = goodLlm({ refine: JSON.stringify({ say: "So you sing.", adventure: rewrite }) });
+  const sess = await seanceAt("proposed", ctxWith(singer));
+  const before = sess.adventure;
+  const out = await hear(sess, { text: "I have never told anyone I sing." }, ctxWith(singer));
+  const n = rewrite.split(/\s+/).length;
+  check(
+    `a genuine ${n}-word rewrite is taken, and it is what the seeker now hears`,
+    (out.modes || {}).refine === "llm" &&
+      out.adventure === rewrite &&
+      sess.adventure === rewrite &&
+      before !== rewrite &&
+      out.say === "So you sing.",
+    JSON.stringify(out.modes) + " " + out.adventure,
+  );
+  // …and it is the rewritten quest that gets sealed, not the one it replaced
+  const sealedAfter = await accept(sess, ctxWith(singer));
+  check(
+    "and the parchment seals the rewritten quest",
+    sealedAfter.quest.adventure === rewrite,
+    sealedAfter.quest.adventure,
+  );
 }
 
 /* ---- 8. the echoes: a clause, not a word count ------------------------------------ */
@@ -946,6 +1091,102 @@ section("the ears will not open without a séance");
     [0, 1, 2, 3, 47, 49151, 49152, 49153].every(
       (n) => toBase64(bytes.subarray(0, n)) === Buffer.from(bytes.subarray(0, n)).toString("base64"),
     ),
+  );
+}
+
+/* ---- 13. a séance sealed before the rebuild --------------------------------------- */
+
+/* The quest became ONE bite on fix/seance-smooth. Sessions older than that are still out
+ * there — in a phone's localStorage, and in a Durable Object that has not expired — and
+ * they carry the old shape: an `anchor` instead of a `bite`, and three moves on the
+ * parchment. None of that may throw, and none of it may be relabelled into a lie: three
+ * moves headed "the one bite" three times is a lie the seeker can read. */
+
+section("a quest sealed before the rebuild still reads, and still says three");
+{
+  const ctx = ctxWith(deadLlm);
+  // an unsealed legacy session: the old field is there, the new one is not
+  const sess = await seanceAt("proposed", ctx);
+  delete sess.bite;
+  sess.anchor = "roots";
+  let sealed;
+  let threw = "";
+  try {
+    sealed = await accept(sess, ctx);
+  } catch (e) {
+    threw = String(e && e.stack ? e.stack : e);
+  }
+  check(
+    "a session with an anchor and no bite still seals, and seals one bite",
+    !threw && sealed && sealed.quest && sealed.quest.moves.length === 1 &&
+      sealed.quest.moves[0].card === sess.picks[biteRealm(sess.located, sess.picks)].name,
+    threw || JSON.stringify(sealed && sealed.quest && sealed.quest.moves),
+  );
+
+  // …and the same session with a THREE-move parchment already on it, as a restore finds it
+  const legacy = await seanceAt("proposed", ctx);
+  const bite = legacy.bite;
+  delete legacy.bite;
+  legacy.anchor = "roots";
+  legacy.stage = "accepted";
+  legacy.quest = {
+    title: "The Quest of the Old Shape",
+    for: "Wren",
+    charge: "Three moves, as the Turtle used to ask.",
+    adventure: legacy.adventure,
+    moves: ["roots", "trunk", "branches"].map((realm, i) => ({
+      slot: ["FACE", "STAND", "REACH"][i],
+      card: legacy.picks[realm].name,
+      task: legacy.picks[realm].turtle_dare,
+      where: "out past the last lamp",
+      at: legacy.picks[realm].real_2026.name,
+      proof: "Bring back what you found there.",
+      leave: "",
+    })),
+    vow: "I will bring it back.",
+    vow_where: "at the shell",
+    chosen: "you chose this",
+    map: legacy.quest ? legacy.quest.map : "",
+  };
+  check("the legacy fixture is the old shape", legacy.quest.moves.length === 3 && !legacy.bite && Boolean(bite));
+  check("a legacy accepted session is replayable", replayable(legacy));
+  const replayed = await accept(legacy, ctx);
+  const heard = await hear(legacy, { pass: true }, ctx);
+  const tapped = await hear(legacy, { text: "one more thing" }, ctx);
+  check(
+    "accept replays the three moves it was sealed with, and never reseals",
+    replayed.stage === "accepted" && replayed.quest.moves.length === 3 &&
+      replayed.quest.moves[0].card === legacy.picks.roots.name,
+    JSON.stringify(replayed.quest && replayed.quest.moves.map((m) => m.card)),
+  );
+  check(
+    "and a phone that taps or talks at it gets the same parchment back",
+    heard.stage === "accepted" && tapped.stage === "accepted" &&
+      JSON.stringify(heard.quest) === JSON.stringify(replayed.quest) &&
+      JSON.stringify(tapped.quest) === JSON.stringify(replayed.quest),
+    JSON.stringify([heard.stage, tapped.stage]),
+  );
+
+  /* THE HEADING, which is the one the client mirrors. assets/index.html renderQuest and
+   * questText cannot be imported here — they live inside the HTML — so the rule is tested
+   * where it also lives on the server, and index.html's moveHead() points back at this
+   * test by name. Change one, change the other. */
+  const payload = { question: "a question", reading: legacy.reading, adventure: legacy.adventure };
+  const three = formatReceipt(payload, legacy.picks, legacy.located, legacy.quest);
+  check(
+    "the receipt heads a legacy three-move quest as MOVE 1..3",
+    /MOVE 1 \[FACE\]/.test(three) && /MOVE 2 \[STAND\]/.test(three) && /MOVE 3 \[REACH\]/.test(three) &&
+      !/THE ONE BITE/.test(three),
+    three.split("\n").filter((l) => /MOVE|ONE BITE/.test(l)).join(" | "),
+  );
+  const one = formatReceipt(payload, legacy.picks, legacy.located, {
+    ...legacy.quest,
+    moves: legacy.quest.moves.slice(0, 1),
+  });
+  check(
+    "and a one-bite quest is headed the one bite, never MOVE 1",
+    /THE ONE BITE \[FACE\]/.test(one) && !/MOVE 1/.test(one),
+    one.split("\n").filter((l) => /MOVE|ONE BITE/.test(l)).join(" | "),
   );
 }
 

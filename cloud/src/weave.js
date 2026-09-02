@@ -178,19 +178,33 @@ export async function weaveLlm(question, cards, llm, located, context, timeout) 
    * sized against (first roll up to timeout + timeout/2 on the model fallback; the second
    * only starts before timeout/2 has passed and gets timeout/2). */
   const started = Date.now();
+  let reason = "example";
   for (let attempt = 0; attempt < 2; attempt++) {
     const t = attempt ? Math.floor(timeout / 2) : timeout;
     /* The second roll says why it is happening. On production 2026-09-02 the first roll
      * came back as the example and nothing else in 3 of 10 séances; a bare re-roll of
-     * the same prompt is the same dice. This line is an ADDITION, only ever sent on the
-     * retry, so the parity-locked first prompt is untouched. */
-    const p = attempt ? prompt + RETRY_NOTE : prompt;
+     * the same prompt is the same dice. The note is an ADDITION, only ever sent on the
+     * retry, so the parity-locked first prompt is untouched — and it names the actual
+     * reason, because "you copied the example" is no help to a model that gave a bearing
+     * with a street in it. */
+    const p = attempt ? prompt + (reason === "address" ? ADDRESS_NOTE : RETRY_NOTE) : prompt;
     const resp = await llm.generate(p, { system: SYSTEM, asJson: true, timeout: t, stage: "weave" });
     const out = tryJson(resp);
     if (out && typeof out === "object" && out.reading && out.adventure) {
       const reading = unquoteExample(String(out.reading).trim());
       const adventure = String(out.adventure).trim();
-      if (reading && !QUEST_EXAMPLE_RE.test(adventure)) return { reading, adventure };
+      /* The quest is address-checked HERE, where it can still be re-rolled. The seal
+       * checks the parchment's bearing (session.js usableBearing) but the seeker hears
+       * the spoken quest first, and a clock-and-street in that is heard whatever the
+       * parchment later says — so a spoken address costs one more roll, then the
+       * template, whose bearing is a bearing by construction. */
+      if (reading && !QUEST_EXAMPLE_RE.test(adventure)) {
+        if (!namesAnAddress(adventure)) return { reading, adventure };
+        reason = "address";
+        console.log("weave: the spoken quest named an address, re-rolling");
+      } else {
+        reason = "example";
+      }
     }
     /* timeout is in seconds; the clock is in ms (a bare `timeout / 2` compared 19 to
      * milliseconds and the second roll never ran — production, 2026-09-02) */
@@ -203,6 +217,17 @@ const RETRY_NOTE =
   "\n\nYour last answer repeated the EXAMPLE from your instructions word for word. That example " +
   "is not this seeker's reading. Write this reading fresh: its first sentence must contain one " +
   "exact word or phrase the seeker said above, and no sentence may come from the example.";
+
+/* The other reason the second roll happens: the quest was asked for a bearing and gave an
+ * address anyway — a clock, a lettered street, the Esplanade, a camp. Measured on staging
+ * 2026-09-02 on the seal side; the spoken quest has the same habit, and it is the half the
+ * seeker actually hears. */
+const ADDRESS_NOTE =
+  "\n\nYour last quest gave an ADDRESS — a clock time, a lettered street, the Esplanade, or a " +
+  "camp name. That is homework, not a quest. Write the quest again with a BEARING in place of " +
+  "it: a kind of place, a kind of person, or a time of day — 'out past the last lamp', " +
+  "'wherever the music is worst', 'the first person who hands you water'. Finding it is half " +
+  "the quest.";
 
 /* ADDITION, not in weave.py — measured on staging 2026-09-02, thinking mode on: 3 of 4
  * readings OPENED with the SYSTEM prompt's own example, word for word ("You built all

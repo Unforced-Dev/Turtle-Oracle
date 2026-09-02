@@ -1261,12 +1261,14 @@ async function refineStep(sess, text, ctx) {
 /* The words a bearing is allowed to capitalize. A bearing is made of common nouns — a
  * direction, a kind of place, a kind of person, an hour — so a proper noun in one is a
  * placement in disguise, and the model was told to give a bearing and names camps anyway.
- * The exceptions are the placements nobody can miss, which the quest may say out loud. */
-const BEARING_NAMES = new Set(["man", "temple", "center", "camp", "playa", "black", "rock", "city"]);
+ * The exceptions are the placements nobody can miss, which the quest may say out loud, and
+ * the few common nouns the city happens to capitalize — the Deep Playa, a Ranger, Playa
+ * Info. None of those is a camp, and refusing them was throwing away real bearings. */
+const BEARING_NAMES = new Set([
+  "man", "temple", "center", "camp", "playa", "black", "rock", "city",
+  "deep", "ranger", "rangers", "info", "greeters",
+]);
 
-/** Is the model's own bearing safe to seal? Short, no address, no proper noun but those.
- *  Worth taking when it passes: it is the bearing the seeker just HEARD, and the Turtle's
- *  standing line is the same three sentences every séance. */
 /** The bearing the Turtle itself would say for this bite: the landmark line at one of the
  *  four unmissable placements, else the open bearing. The prompts, the fallback and the
  *  parchment all read from here so they never disagree. */
@@ -1275,12 +1277,34 @@ function bearingFor(bite, located) {
   return landmarkRealm(located) === bite && landmarkWhere(loc) ? landmarkWhere(loc) : openWhere(bite, loc);
 }
 
+/* An address INSIDE a bearing — not the same rule as namesAnAddress, and deliberately so.
+ * That rule reads a whole quest, where a clock is nearly always the grid. But ONE BEARING
+ * asks the model for "a time of day" in as many words, so a bare hour is the thing being
+ * ASKED for, and "before 6:00, when the light is grey" was being thrown out as an address
+ * (review, 2026-09-02). A clock is only an address once the city's grid is attached to it:
+ * a lettered street with an ampersand, the Esplanade, or a pointer at a lookup. */
+function addressInBearing(s) {
+  if (/\bEsplanade\b|\baddress\b|\bWWW guide\b/i.test(s)) return true;
+  return /\b[A-L]\s*(?:&|and)\s*\d|\d\s*(?:&|and)\s*[A-L]\b/.test(s);
+}
+
+/** Is the model's own bearing safe to seal? Short, no address, no proper noun but those.
+ *  Worth taking when it passes: it is the bearing the seeker just HEARD, and the Turtle's
+ *  standing line is the same three sentences every séance.
+ *  A capital is forgiven only where a capital is forced — at the start of a SENTENCE, and
+ *  a bearing may be two of them ("wherever the music is worst. Before the sun is up"), so
+ *  the skip is per sentence, not once for the whole line. A bearing of ONE word has no
+ *  sentence to forgive: "Kidsville" is a camp, and skipping it sealed the camp whole. */
 function usableBearing(text) {
   const s = String(text || "").trim();
-  if (!s || words(s) > 16 || namesAnAddress(s)) return false;
+  if (!s || words(s) > 16 || addressInBearing(s)) return false;
+  const lone = words(s) === 1;
   return s
-    .split(/\s+/)
-    .slice(1) // the first word is capitalized because it starts a sentence
+    .split(/(?<=[.!?…])\s+/)
+    .flatMap((sentence) => {
+      const toks = sentence.split(/\s+/).filter(Boolean);
+      return lone ? toks : toks.slice(1); // the first word starts a sentence, so it is capitalized
+    })
     .filter((w) => /^[“"'(]*[A-Z]/.test(w))
     .every((w) => BEARING_NAMES.has(w.replace(/[^A-Za-z]/g, "").toLowerCase()));
 }
@@ -1321,9 +1345,54 @@ async function sealLlm(sess, llm, tLong) {
     stage: "seal",
   });
   const parsed = tryJson(resp);
-  const move = parsed && typeof parsed === "object" ? parsed.move : null;
+  /* The prompt asks for {"move": …} and the model sometimes answers with the shape it was
+   * asked for for a year — {"moves": [ … ]}. That is a sealed quest in a list of one, and
+   * throwing it away sent a good seal to the fallback. Take the first move out of it. */
+  const move =
+    parsed && typeof parsed === "object"
+      ? parsed.move ?? (Array.isArray(parsed.moves) ? parsed.moves[0] : null)
+      : null;
   if (!(move && typeof move === "object" && move.task)) return null;
   return move;
+}
+
+/* WHAT THE SEEKER HEARD, for the parchment the seal did not write.
+ *
+ * When sealLlm falls back, the move used to be filled from the card's canned turtle_dare —
+ * which is what the OFFLINE quest was built from, so offline that is exactly right, but on
+ * the model path the seeker heard a quest written for them and then read a stock dare off
+ * the parchment. Two different quests in one séance. So: when the spoken quest still
+ * carries the dare it was stitched from, the dare is what they heard; otherwise the act is
+ * cut out of the spoken quest itself. */
+
+/** The "Bring back …" line the quest asked for out loud, or "" if it did not ask. */
+function spokenProof(adventure) {
+  const s = String(adventure || "")
+    .split(/(?<=[.!?…])\s+/)
+    .map((x) => x.trim())
+    .find((x) => /^bring back\b/i.test(x));
+  return s || "";
+}
+
+/** The one act out of the spoken quest: its sentences up to the bearing and the proof —
+ *  the whole of what is left when that is already a bite, else its first two sentences. */
+function spokenTask(adventure, where) {
+  const w = String(where || "");
+  const kept = String(adventure || "")
+    .split(/(?<=[.!?…])\s+/)
+    .map((x) => x.trim())
+    .filter(Boolean)
+    // the proof and the Turtle's own standing bearing are not the act; they have their
+    // own lines on the parchment, and printing them twice is what made it read as a list
+    .filter((x) => !/^bring back\b/i.test(x) && !(x.length > 3 && w.includes(rstrip(x, " ."))));
+  // a short last sentence that is itself a bearing is the WHERE the model spoke, not the act
+  const last = kept[kept.length - 1];
+  if (kept.length > 1 && words(last) <= 8 && usableBearing(last) && words(kept.slice(0, -1).join(" ")) >= 10) {
+    kept.pop();
+  }
+  if (!kept.length) return "";
+  const whole = kept.join(" ");
+  return words(whole) <= 40 ? whole : kept.slice(0, 2).join(" ");
 }
 
 /** Seal the quest: one bite with its bearing and its proof, the vow, the map. */
@@ -1365,14 +1434,22 @@ export async function accept(sess, ctx) {
   /* the model's bearing when it is one (a landmark's name passes usableBearing; a
    * clock-and-street line does not), else the Turtle's standing line for this bite */
   const where = usableBearing(mWhere) ? mWhere : standing;
+  /* No seal: the parchment still has to say the quest the seeker HEARD. Offline the spoken
+   * quest was stitched from the dare, so the dare is that quest; on the model path it is
+   * whatever the model spoke, and the canned dare would be a second, different quest. */
+  const heardTask = String(sess.adventure || "").includes(c.turtle_dare.trim())
+    ? c.turtle_dare
+    : spokenTask(sess.adventure, standing) || c.turtle_dare;
   const moves = [
     {
       slot: SLOT_TITLES[bite],
       card: c.name,
-      task: sealed ? String(sealed.task).trim() : c.turtle_dare,
+      task: sealed ? String(sealed.task).trim() : heardTask,
       where,
       at: c.real_2026.name,
-      proof: sealed ? String(sealed.proof || proofFor(bite, c)).trim() : proofFor(bite, c),
+      proof: sealed
+        ? String(sealed.proof || proofFor(bite, c)).trim()
+        : spokenProof(sess.adventure) || proofFor(bite, c),
       /* THE SACRIFICE is folded into the act or it is not there at all — the offline
        * Turtle has no way to judge whether this act leaves anything, and bolting a second
        * errand onto a one-bite quest is exactly what this stopped being. */
@@ -1434,4 +1511,6 @@ export const __test = {
   openWhere,
   namesAnAddress,
   usableBearing,
+  spokenTask,
+  spokenProof,
 };
