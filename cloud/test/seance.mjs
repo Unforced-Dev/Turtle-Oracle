@@ -24,7 +24,7 @@ import { biteRealm, landmarkRealm, landmarkWhere } from "../src/weave.js";
 import { formatReceipt } from "../src/printer.js";
 import { transcribe, toBase64, MAX_AUDIO_BYTES } from "../src/ears.js";
 import CARDS from "../../data/cards.json" with { type: "json" };
-import { voiceText } from "../src/voice.js";
+import { voiceText, voiceChoice, TRYOUT_SPEAKERS, TRYOUT_MODELS } from "../src/voice.js";
 
 let failures = 0;
 function check(label, ok, detail = "") {
@@ -1332,6 +1332,52 @@ section("the voice skips the Turtle's throat-clearing");
   );
   check("and nothing at all is still nothing", voiceText("") === "" && voiceText(null) === "");
 }
+{
+  /* The tryouts are staging-only, and they are an ALLOWLIST because /api/speak is public
+     and unauthenticated: a `model` reaching env.AI.run() unchecked is an open door onto
+     every model on the account. */
+  const prod = { TTS_MODEL: "@cf/deepgram/aura-1", TTS_SPEAKER: "angus" };
+  const stg = { ...prod, TTS_MODEL: "@cf/deepgram/aura-2-en", TTS_SPEAKER: "pluto", VOICE_TRYOUTS: "1" };
+  const body = { speaker: "draco", model: "@cf/deepgram/aura-1" };
+  check(
+    "with no tryouts, the environment's own voice answers whatever the body asks",
+    JSON.stringify(voiceChoice(prod, body)) ===
+      JSON.stringify({ model: "@cf/deepgram/aura-1", speaker: "angus", tryout: false }),
+    JSON.stringify(voiceChoice(prod, body)),
+  );
+  check(
+    "with tryouts on, an allowed speaker and model are taken",
+    JSON.stringify(voiceChoice(stg, body)) ===
+      JSON.stringify({ model: "@cf/deepgram/aura-1", speaker: "draco", tryout: true }),
+    JSON.stringify(voiceChoice(stg, body)),
+  );
+  check(
+    "every allowlisted speaker is reachable, and only those",
+    TRYOUT_SPEAKERS.every((sp) => voiceChoice(stg, { speaker: sp }).speaker === sp) &&
+      TRYOUT_MODELS.every((m) => voiceChoice(stg, { model: m }).model === m),
+  );
+  const bad = [
+    { model: "@cf/meta/llama-3.3-70b-instruct-fp8-fast" },
+    { model: "../../etc/passwd" },
+    { speaker: "angus2" },
+    { speaker: "PLUTO; drop" },
+    { model: null, speaker: [] },
+  ];
+  check(
+    "anything outside the allowlists is ignored in silence",
+    bad.every((b) => {
+      const v = voiceChoice(stg, b);
+      return v.model === "@cf/deepgram/aura-2-en" && v.speaker === "pluto" && v.tryout === false;
+    }),
+    JSON.stringify(bad.map((b) => voiceChoice(stg, b))),
+  );
+  check(
+    "a body that is not an object never reaches the model name",
+    voiceChoice(stg, "pluto").model === "@cf/deepgram/aura-2-en" &&
+      voiceChoice(stg, null).speaker === "pluto",
+  );
+}
+
 /* ---- 13. a séance sealed before the rebuild --------------------------------------- */
 
 /* The quest became ONE bite on fix/seance-smooth. Sessions older than that are still out

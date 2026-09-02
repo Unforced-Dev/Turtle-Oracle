@@ -179,8 +179,15 @@ THINK_STAGES = "weave,tale,ask"
 T_SHORT = "20"
 T_LONG = "38"
 WHISPER_MODEL = "@cf/openai/whisper-large-v3-turbo"
-TTS_MODEL = "@cf/deepgram/aura-1"
-TTS_SPEAKER = "angus"
+# STAGING ONLY, 2026-09-02: Aura-2 with Pluto, so the Turtle can be picked by ear.
+# Same {text, speaker} input and the same MPEG stream out, so the route is unchanged.
+# Production stays on aura-1/angus until Aaron has heard these.
+TTS_MODEL = "@cf/deepgram/aura-2-en"
+TTS_SPEAKER = "pluto"
+# STAGING ONLY: /api/speak will take an allowlisted `speaker` and `model` off the body,
+# so a few sample lines can be curled in several voices without a redeploy between them.
+# Unset everywhere else, and unset means the environment's own voice, always.
+VOICE_TRYOUTS = "1"
 
 [env.staging.observability]
 enabled = true

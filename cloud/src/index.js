@@ -19,7 +19,7 @@ import * as lore from "./lore.js";
 import { formatReceipt } from "./printer.js";
 import * as session from "./session.js";
 import { json } from "./util.js";
-import { voiceText } from "./voice.js";
+import { TRYOUT_SPEAKERS, voiceChoice, voiceText } from "./voice.js";
 
 /* wrangler needs the Durable Object class exported from the entry module. The séance
  * state lives here now rather than in KV — sessiondo.js says why. */
@@ -161,8 +161,10 @@ async function speak(req, env) {
    * screen still shows every word — this is the voice, not the text. */
   const text = voiceText(line);
   if (!text) return new Response(null, { status: 204 });
-  const model = (env.TTS_MODEL || DEFAULT_TTS).trim();
-  const speaker = env.TTS_SPEAKER || DEFAULT_TTS_SPEAKER;
+  const { model, speaker } = voiceChoice(env, body, {
+    model: DEFAULT_TTS,
+    speaker: DEFAULT_TTS_SPEAKER,
+  });
   if (!model || model === "off") {
     return json({ error: "the Turtle's deeper voice is unavailable" }, 503);
   }
@@ -306,6 +308,8 @@ export default {
             backend: (env.TTS_MODEL || DEFAULT_TTS) === "off" ? "browser" : "workers-ai",
             model: env.TTS_MODEL || DEFAULT_TTS,
             speaker: env.TTS_SPEAKER || DEFAULT_TTS_SPEAKER,
+            // staging only: /api/speak will take a speaker and a model off the body
+            tryouts: String(env.VOICE_TRYOUTS || "") === "1" ? TRYOUT_SPEAKERS : null,
           },
           readings: tiers,
           // the number to look at: if this is climbing, the Turtle has gone dumb
