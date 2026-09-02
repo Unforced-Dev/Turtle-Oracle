@@ -152,7 +152,14 @@
      the card the Turtle is speaking about during the echo pass */
   .flip.axisglow{box-shadow:0 0 34px rgba(232,205,133,.65), 0 14px 40px rgba(0,0,0,.55)}
 
-  /* ---- the pull screen: the Turtle's read of the table, then its one question ---- */
+  /* ---- the pull screen: the Turtle's read of the table, then its one question ----
+     THE ORDER ON SCREEN IS THE ORDER OF THE CEREMONY: the cards, then the Turtle's read
+     of them, then its one question, and only then anything to press. With the answer row
+     above the spread — where the old ask box lived, because it was the FIRST thing a
+     seeker saw — the seeker is handed three buttons before they have seen a single card,
+     which is the intake form coming back in by the layout. These three are empty at
+     `naming`, so they must take no room there. */
+  #spread:empty, #lookline:empty, #askline:empty{display:none}
   #lookline{width:100%;max-width:720px;margin-top:16px;text-align:center;
     font-size:clamp(1.05rem,2.1vw,1.28rem);color:var(--parch);
     opacity:0;transition:opacity .7s}
@@ -261,6 +268,16 @@
     <div class="wgrid" id="wgrid"></div>
     <div class="stemline" id="stemline"></div>
     <div id="stonesrow"></div>
+    <div class="panel" id="giftrow" style="text-align:center">
+      <div style="font-size:1.3rem;margin-bottom:12px">🎁</div>
+      <div style="color:var(--gold2)">Receive your gift from the turtle beside you.</div>
+      <div class="row"><button class="ghost" id="taledone">↺&nbsp; The Oracle sleeps</button></div>
+    </div>
+    <div class="spread" id="spread"></div>
+    <!-- the Turtle's reading of the three, under the cards it is reading -->
+    <div id="lookline"></div>
+    <!-- the Turtle's one question, under the reading it follows from -->
+    <div id="askline"></div>
     <div class="panel" id="askpanel">
       <!-- THE PULL SCREEN's primary. Letting the cards speak is a whole answer, not a
            refusal — it is the fast way through, and it is the default. -->
@@ -275,16 +292,6 @@
       <div id="chiprow"></div>
       <button class="ghost" id="writehere">write it instead</button>
     </div>
-    <div class="panel" id="giftrow" style="text-align:center">
-      <div style="font-size:1.3rem;margin-bottom:12px">🎁</div>
-      <div style="color:var(--gold2)">Receive your gift from the turtle beside you.</div>
-      <div class="row"><button class="ghost" id="taledone">↺&nbsp; The Oracle sleeps</button></div>
-    </div>
-    <div class="spread" id="spread"></div>
-    <!-- the Turtle's reading of the three, under the cards it is reading -->
-    <div id="lookline"></div>
-    <!-- the Turtle's one question, under the reading it follows from -->
-    <div id="askline"></div>
     <div class="scroll" id="scroll">
       <h2 id="h-read">The Reading</h2><div class="prose" id="reading"></div>
       <h2 id="h-adv">The Quest Offered</h2><div class="prose" id="adventure"></div>

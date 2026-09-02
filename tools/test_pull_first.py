@@ -9,11 +9,19 @@ who says nothing but their name still gets a real reading and a real quest.
 """
 import json
 import os
+import shutil
 import sys
+import tempfile
 
 sys.path.insert(0, os.path.join(os.path.dirname(os.path.abspath(__file__)), "..", "app"))
 
 from oracle import lore, printer, session  # noqa: E402
+
+# The Tale-Book is the camp's real ledger — on the Spark it is the record of every seeker
+# who ever sealed a quest. A test that seals a dozen must not write into it.
+_TALEBOOK = tempfile.mkdtemp(prefix="turtle-test-")
+lore.LOG = os.path.join(_TALEBOOK, "talebook.jsonl")
+
 from oracle.deck import load_deck  # noqa: E402
 from oracle.geo import locate_spread  # noqa: E402
 from oracle.voice import is_interjection, strip_interjections  # noqa: E402
@@ -260,6 +268,7 @@ def main():
     check("'Ah, the dust' is a sentence, not a breath",
           strip_interjections("Ah, the dust.") == "Ah, the dust.")
 
+    shutil.rmtree(_TALEBOOK, ignore_errors=True)
     print("\nALL PASS" if not FAILS else f"\n{len(FAILS)} FAILED: " + "; ".join(FAILS))
     return 1 if FAILS else 0
 
