@@ -20,6 +20,7 @@
  * binding — the only route here that talks to Workers AI without a séance in its body.
  */
 import { start, hear, accept, replayable, __test as S } from "../src/session.js";
+import { landmarkRealm } from "../src/weave.js";
 import { transcribe, toBase64, MAX_AUDIO_BYTES } from "../src/ears.js";
 
 let failures = 0;
@@ -47,15 +48,18 @@ function goodLlm(overrides = {}) {
     }),
     weave: JSON.stringify({
       reading: "You came a long way to sit still. " + "word ".repeat(96),
-      adventure: "Tonight, three moves. First. Second. Third. " + "word ".repeat(80),
+      adventure:
+        "Say the sentence you have been swallowing, out loud, to the first face that stops for " +
+        "you tonight. Out past the last lamp. Bring back what their face did.",
     }),
     echoes: JSON.stringify({ roots: "no quote", trunk: "no quote", branches: "no quote" }),
     seal: JSON.stringify({
-      moves: [
-        { task: "Sit alone until it stops shaking.", where: "past the last lamp", proof: "one word" },
-        { task: "Take the shift nobody wants.", where: "your own camp", proof: "a name" },
-        { task: "Tell one stranger.", where: "wherever they are thickest", proof: "their name", leave: "a written word" },
-      ],
+      move: {
+        task: "Say the sentence you have been swallowing, out loud, to one face.",
+        where: "out past the last lamp",
+        proof: "what their face did",
+        leave: "",
+      },
     }),
     ...overrides,
   };
@@ -166,7 +170,13 @@ section("the talk door: naming → door → listening → asking → proposed �
     proposed.reading && proposed.adventure && proposed.ask && proposed.expects === "decision",
   );
   check("the echoes quote the seeker, or name the card", ["roots", "trunk", "branches"].every((r) => proposed.echoes[r]));
-  check("the seal produces three moves and a vow", sealed.quest.moves.length === 3 && Boolean(sealed.quest.vow));
+  check(
+    "the seal produces ONE bite — act, bearing, proof — and the vow",
+    sealed.quest.moves.length === 1 &&
+      ["card", "task", "where", "proof"].every((k) => sealed.quest.moves[0][k]) &&
+      Boolean(sealed.quest.vow),
+    JSON.stringify(sealed.quest.moves),
+  );
   check("the sealed quest is stamped with the name", sealed.quest.for === "Wren");
   check(
     "every stage that spends a model call asked for one",
@@ -221,7 +231,7 @@ section("the touch door: naming → door → weather → stones → wanting → 
     S.toldFrom(sess),
   );
   check("the chip answer was taken", asking.expects === "answer" && proposed.stage === "proposed");
-  check("a wordless séance still seals", sealed.quest.moves.length === 3);
+  check("a wordless séance still seals", sealed.quest.moves.length === 1);
 }
 
 /* ---- 3. refusing to answer -------------------------------------------------------- */
@@ -358,25 +368,25 @@ section("the stem stage is gone");
   check("no event on either path carries a stem", after.expects === "stones");
 }
 
-/* ---- 7. the sealed parchment: one address, two bearings --------------------------- */
+/* ---- 7. the sealed quest: one bite, one bearing, one proof ----------------------- */
 
-/* The quest is spoken with ONE move pinned to a real 2026 placement and two given a
- * bearing (weave.js: THE ANCHOR / THE OPEN TWO). The parchment used to put the card's
- * directions on all three, so a move that said "lie flat somewhere quiet" sealed with a
- * street address. These walk real random draws — the spread is drawn blind, so this runs
- * enough séances to hit citywide, pending and fixed cards. */
+/* The quest is ONE act now (weave.js: THE BITE / ONE BEARING / ONE PROOF). The parchment
+ * used to seal three moves with a street address on one of them; it now seals the single
+ * act the seeker heard, and its `where` is a bearing — a kind of place, a kind of person,
+ * an hour — unless the card happens to stand at one of the four placements nobody can miss.
+ * These walk real random draws, because the spread is drawn blind. */
 
-section("the sealed parchment carries one address and two bearings");
+section("the sealed quest is one bite, with a bearing and a proof");
 {
-  const REALMS = ["roots", "trunk", "branches"];
   /* A clock, a lettered street, the Esplanade, or a pointer at the WWW guide, which is an
    * address one lookup away. Deliberately NOT the bare word "address" — the Turtle's own
    * bearing says "No address for this one" out loud, and that is the opposite of one. */
   const ADDRESSY = /\d{1,2}:\d{2}|Esplanade|\b[A-L]\s*(?:&|and)\s*\d|WWW guide/i;
-  let pinnedRight = 0;
-  let bearingsClean = 0;
-  let atMostOneAddress = 0;
-  let sawAnchorLine = 0;
+  let oneBite = 0;
+  let bitTheRightCard = 0;
+  let woreABearing = 0;
+  let carriedAProof = 0;
+  let landmarks = 0;
   const runs = [];
   for (let i = 0; i < 12; i++) {
     const llm = i % 4 === 0 ? goodLlm() : deadLlm;
@@ -384,20 +394,32 @@ section("the sealed parchment carries one address and two bearings");
       llm,
       answer: { text: "I have not said the thing I came here to say." },
     });
-    const ai = REALMS.indexOf(sess.anchor);
-    const anchorLine = sess.located[sess.anchor].directions || "Somewhere out there";
-    const wheres = sealed.quest.moves.map((m) => m.where);
-    const open = wheres.filter((_, j) => j !== ai);
-    if (ai >= 0 && wheres[ai].startsWith(anchorLine)) pinnedRight++;
-    if (open.every((w) => w && !ADDRESSY.test(w))) bearingsClean++;
-    if (wheres.filter((w) => ADDRESSY.test(w)).length <= 1) atMostOneAddress++;
-    if (wheres.filter((w) => anchorLine && w.startsWith(anchorLine)).length === 1) sawAnchorLine++;
-    runs.push(wheres);
+    const moves = sealed.quest.moves;
+    const m = moves[0];
+    if (moves.length === 1) oneBite++;
+    if (m.card === sess.picks[sess.bite].name) bitTheRightCard++;
+    if (m.proof && m.task) carriedAProof++;
+    if (landmarkRealm(sess.located) === sess.bite) {
+      landmarks++;
+      // the one draw where a place may be named: it is named from the real BRC geo
+      if (m.where.startsWith((sess.located[sess.bite].directions || "").trim())) woreABearing++;
+    } else if (m.where && !ADDRESSY.test(m.where)) {
+      woreABearing++;
+    }
+    runs.push({ card: m.card, where: m.where });
   }
-  check("the placed move seals with its own card's directions", pinnedRight === 12, JSON.stringify(runs[0]));
-  check("exactly one move carries the anchor's directions line", sawAnchorLine === 12, JSON.stringify(runs));
-  check("the other two seal with a bearing, never an address", bearingsClean === 12, JSON.stringify(runs));
-  check("no sealed quest carries more than one address", atMostOneAddress === 12, JSON.stringify(runs));
+  check("every sealed quest carries exactly one move", oneBite === 12, JSON.stringify(runs));
+  check(
+    "and it is the card the spoken quest was bitten from",
+    bitTheRightCard === 12,
+    JSON.stringify(runs),
+  );
+  check(
+    `the where is a bearing, never an address (${12 - landmarks} bearings, ${landmarks} landmarks)`,
+    woreABearing === 12,
+    JSON.stringify(runs),
+  );
+  check("and the bite always asks for something back", carriedAProof === 12, JSON.stringify(runs));
 }
 {
   // the bearing itself: the card's own citywide line when that line is a kind of place,
@@ -413,7 +435,99 @@ section("the sealed parchment carries one address and two bearings");
   const placed = S.openWhere("branches", { status: "fixed", directions: "E & 6:15 (mid-block facing man)." });
   check("a citywide line that is a kind of place becomes the bearing", /^Anywhere the playa is open/.test(clean), clean);
   check("a citywide line that is really a lookup does not", /^No address for this one\./.test(lookup), lookup);
-  check("a placed card's line is never handed to an open move", /^No address for this one\./.test(placed), placed);
+  check("a placed card's line is never handed to an open bite", /^No address for this one\./.test(placed), placed);
+}
+{
+  /* The model's own bearing is the one the seeker HEARD, so it is worth sealing — but only
+   * when it is a bearing. It was told not to name a camp and it names camps anyway. */
+  const keep = [
+    "out past the last lamp",
+    "wherever the music is worst",
+    "the first person who hands you water",
+    "before the sun is up",
+    "Somewhere quiet on the open playa",
+  ];
+  const drop = [
+    "Camp Questionmark, 7:30 & E",
+    "the Esplanade at 3:00",
+    "Ashram Galactica — ask at the desk",
+    "",
+    "out past the last lamp, and then keep walking until you reach the place where the music " +
+      "finally gives up on you",
+  ];
+  check("a real bearing is kept", keep.every(S.usableBearing), JSON.stringify(keep.filter((w) => !S.usableBearing(w))));
+  check(
+    "an address or a camp name in a bearing is not",
+    drop.every((w) => !S.usableBearing(w)),
+    JSON.stringify(drop.filter(S.usableBearing)),
+  );
+  /* End to end, on real draws: the model's clean bearing is the one sealed, and the camp
+   * address it invented instead is thrown away for the Turtle's own line. At a landmark
+   * draw both are pinned to the real BRC geo, which is the point of the exception. */
+  const camped = () =>
+    goodLlm({
+      seal: JSON.stringify({
+        move: { task: "Say it to one face.", where: "Camp Questionmark at 7:30 & E", proof: "their face" },
+      }),
+    });
+  let sealedBearing = 0;
+  let refusedCamp = 0;
+  for (let i = 0; i < 6; i++) {
+    const a = await walk("talk", { llm: goodLlm(), answer: { text: "I have not said it yet." } });
+    const b = await walk("talk", { llm: camped(), answer: { text: "I have not said it yet." } });
+    const aWhere = a.sealed.quest.moves[0].where;
+    const bWhere = b.sealed.quest.moves[0].where;
+    const aPinned = landmarkRealm(a.sess.located) === a.sess.bite;
+    const bPinned = landmarkRealm(b.sess.located) === b.sess.bite;
+    if (aPinned ? aWhere.includes("out past the last lamp") : aWhere === "out past the last lamp") {
+      sealedBearing++;
+    }
+    if (bPinned ? /Camp Questionmark/.test(bWhere) : !/Camp Questionmark|7:30/.test(bWhere)) refusedCamp++;
+  }
+  check("the model's bearing reaches the parchment when it is one", sealedBearing === 6, String(sealedBearing));
+  check("and a camp address it invented never does", refusedCamp === 6, String(refusedCamp));
+}
+{
+  /* The offline quest is the same three parts, stitched from the card: one act, one
+   * bearing, one proof — and nothing that reads as an itinerary. */
+  const { sess, proposed } = await walk("touch", { llm: deadLlm, answer: { pass: true } });
+  const n = proposed.adventure.split(/\s+/).length;
+  check(`the template quest stays one bite (${n}w)`, n <= 90, proposed.adventure);
+  check(
+    "and never speaks in First, Second, Third",
+    !/\b(First|Second|Third)[.,]/.test(proposed.adventure),
+    proposed.adventure,
+  );
+  /* the bearing it speaks is the one the parchment will seal — the card's own citywide
+     line when that is a kind of place, the Turtle's standing line when it is not, and the
+     map line on the rare draw that stands at a landmark */
+  const bearing =
+    landmarkRealm(sess.located) === sess.bite
+      ? "The map says "
+      : S.openWhere(sess.bite, sess.located[sess.bite]);
+  check(
+    "it says where, and what to bring back",
+    proposed.adventure.includes(bearing) && /Bring back /.test(proposed.adventure),
+    proposed.adventure + "\n         bearing: " + bearing,
+  );
+}
+{
+  /* A rewrite that is a shrug never reaches the seeker: the refinement falls to the
+   * template, which genuinely re-scores the cards. */
+  const stub = goodLlm({ refine: JSON.stringify({ say: "That changes it.", adventure: "do a thing" }) });
+  const sess = await seanceAt("proposed", ctxWith(stub));
+  const out = await hear(sess, { text: "I have never told anyone I sing." }, ctxWith(stub));
+  check(
+    "a stub rewrite is refused and the template answers instead",
+    (out.modes || {}).refine === "fallback" && Boolean(out.adventure),
+    JSON.stringify(out.modes),
+  );
+  const long = goodLlm({
+    refine: JSON.stringify({ say: "That changes it.", adventure: "word ".repeat(120) }),
+  });
+  const s2 = await seanceAt("proposed", ctxWith(long));
+  const out2 = await hear(s2, { text: "I have never told anyone I sing." }, ctxWith(long));
+  check("a rambling rewrite is refused too", (out2.modes || {}).refine === "fallback", JSON.stringify(out2.modes));
 }
 
 /* ---- 8. the echoes: a clause, not a word count ------------------------------------ */
@@ -631,7 +745,7 @@ section("every stage answers every body with something the phone can draw");
   const after = await hear(sealed, { pass: true }, ctx);
   check(
     "a sealed séance replays the parchment rather than saying it heard wind",
-    drawable(after) && after.stage === "accepted" && after.quest.moves.length === 3,
+    drawable(after) && after.stage === "accepted" && after.quest.moves.length === 1,
     JSON.stringify(Object.keys(after)),
   );
 }
@@ -680,7 +794,7 @@ section("a phone one stage behind the server still reaches a sealed quest");
   const sealed = await accept(sess, ctx);
   check(
     "and the séance still seals",
-    sealed.stage === "accepted" && sealed.quest.moves.length === 3 && !sealed.error,
+    sealed.stage === "accepted" && sealed.quest.moves.length === 1 && !sealed.error,
   );
   // …and the same walk with a REAL refinement in the middle of the stale ones
   const s2 = await seanceAt("proposed", ctx);

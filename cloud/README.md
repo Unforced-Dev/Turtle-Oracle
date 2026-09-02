@@ -14,8 +14,10 @@ tuned prompt strings were copied out of `app/oracle/` unchanged, and `cloud/test
 proves it by building each prompt on both sides and diffing them byte for byte. If you
 change a prompt in one place, that test fails until you change it in both.
 
-As of `feat/cloud-seance-v2` the cloud turtle is **ahead of the Spark in two places, on
-purpose** — the séance flow, and how specific a quest is allowed to be. Every string that
+As of `feat/cloud-seance-v2` the cloud turtle is **ahead of the Spark in three places, on
+purpose** — the séance flow, how specific a quest is allowed to be, and (as of
+`fix/seance-smooth`) the shape of a quest: the cloud turtle gives ONE bite of 20-40 words
+with one bearing and one proof, where the Spark still gives three moves. Every string that
 diverged prints as `skip` in the parity test rather than `ok`, each with a note saying what
 moved and to port it back to `app/oracle/` when the Spark is reachable, then restore the
 byte-diff. Everything else still diffs, and still has to match.

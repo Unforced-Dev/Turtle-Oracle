@@ -19,11 +19,21 @@
 import WEATHER from "../../data/weather.json" with { type: "json" };
 import { BY_REALM, SPREAD_REALMS, drawSpread, cardPayload } from "./deck.js";
 import { selectFallback, tokens } from "./select.js";
-import { weave, weaveFallback, SYSTEM, cardLore, anchorRealm, OPEN_WHERE } from "./weave.js";
+import {
+  weave,
+  weaveFallback,
+  SYSTEM,
+  cardLore,
+  biteRealm,
+  landmarkRealm,
+  namesAnAddress,
+  openWhere,
+  proofFor,
+} from "./weave.js";
 import { locateSpread, directionsLines, COMPASS_ROSE } from "./geo.js";
 import { tryJson } from "./llm.js";
 import * as lore from "./lore.js";
-import { randRange, choice, words, rstrip, brcNow, brcClockString, firstSentence } from "./util.js";
+import { choice, words, rstrip, brcNow, brcClockString, firstSentence } from "./util.js";
 
 const WEATHERS = Object.fromEntries(WEATHER.weathers.map((w) => [w.id, w]));
 const STONES = WEATHER.stones;
@@ -114,7 +124,7 @@ const DECISION_REASK =
 const ALREADY_SEALED = "The quest is already sealed, traveler. Go live it — the shell will wait.";
 
 const ACCEPT_LINES = [
-  "So be it. The quest is sealed. Move slow, bite things, and bring your proofs back to the shell.",
+  "So be it. The quest is sealed. Move slow, bite things, and bring your proof back to the shell.",
   "Sealed. The Tree will be watching, and trees see everything slowly. Go — and come back with the tale.",
 ];
 
@@ -135,37 +145,9 @@ const TALE_THANKS = [
     "Witness: give this one their gift.",
 ];
 
-// Proof-of-quest tokens, one flavor per realm (rotated by card number so quests differ).
-const PROOFS = {
-  roots: [
-    "Bring back the hardest true sentence spoken there — yours or a stranger's.",
-    "Bring back the name of what you almost didn't face.",
-    "Bring back one word for what you left behind in the dust there.",
-    "Bring back the thing you understood there that you didn't before.",
-  ],
-  trunk: [
-    "Bring back the name of a stranger who stood beside you.",
-    "Bring back one thing you only noticed because you stayed still.",
-    "Bring back the story of who was there, and why they had come.",
-    "Bring back a description of the ground you stood on — exactly as it was.",
-  ],
-  branches: [
-    "Bring back something given to you freely — a word, a bead, a taste, a promise.",
-    "Bring back the wish you said out loud there.",
-    "Bring back proof of one small brave thing: what it was, and how it felt.",
-    "Bring back the name of the first person you told about it.",
-  ],
-};
-
-const LEAVES = [
-  "Write one word on a scrap and leave it there, weighted with a stone.",
-  "Leave behind something small you have been carrying — and mean it.",
-  "Say the name of a habit out loud there, once, and walk away from it.",
-];
-
 const VOW =
-  "When your three moves are made, return to the Terrible Turtle shell. Find a turtle. " +
-  "Tell the tale aloud, to their face — your proofs are the witnesses. Those who return and tell " +
+  "When the bite is taken, return to the Terrible Turtle shell. Find a turtle. " +
+  "Tell the tale aloud, to their face — your proof is the witness. Those who return and tell " +
   "receive a gift from the shell — and while the shell still holds them, that gift " +
   "is a deck of this very oracle.";
 const VOW_WHERE =
@@ -388,7 +370,7 @@ export function start(mode = "seek") {
     ground: 0.0,
     picks: null,
     located: null,
-    anchor: null,
+    bite: null,
     reading: null,
     adventure: null,
     axis_slot: null,
@@ -892,12 +874,12 @@ async function drawStep(sess, ctx) {
   const located = locateSpread(picks);
   sess.picks = picks;
   sess.located = located;
-  /* THE ANCHOR, decided once and carried: weave.js pins exactly one move to a real 2026
-   * placement, and the seal has to pin the SAME one or the parchment contradicts the
-   * quest the seeker just heard. It is derived from `located`, so it is recomputed
-   * wherever `located` is (refineFallback), and re-derived defensively in accept() for a
-   * session that started before this field existed. */
-  sess.anchor = anchorRealm(located);
+  /* THE BITE, decided once and carried: weave.js builds the one act out of exactly one
+   * card, and the refinement and the seal have to bite the SAME card or the parchment
+   * contradicts the quest the seeker just heard. It is derived from `located` and the
+   * draw, so it is recomputed wherever those are (refineFallback), and re-derived
+   * defensively in accept() for a session that started before this field existed. */
+  sess.bite = biteRealm(located, picks);
   sess.axis_slot = axisSlot;
   sess.stage = "asking";
   const ask =
@@ -942,35 +924,30 @@ async function refineLlm(sess, llm, tLong) {
   const spoken = seekerWords(sess);
   const earlier = spoken.slice(0, -1);
   const newest = spoken.length ? spoken[spoken.length - 1] : "";
-  const lines = [];
-  for (const realm of ["roots", "trunk", "branches"]) {
-    const c = picks[realm];
-    const loc = located[realm] || {};
-    lines.push(
-      `${SLOT_TITLES[realm]} — ${c.name}: dare="${c.turtle_dare}" ` +
-        `real_2026="${c.real_2026.name}" where="${loc.directions || ""}"`,
-    );
-  }
+  const bite = sess.bite || biteRealm(located, picks);
+  const c = picks[bite];
+  const lo = cardLore()[c.id] || {};
+  const card =
+    `${c.name}: dare="${c.turtle_dare}" seed="${lo.seed || ""}" ` +
+    `real_2026="${c.real_2026.name}" where="${(located[bite] || {}).directions || ""}"`;
   const prompt =
     "The seeker has heard their reading and wants the quest tuned before accepting.\n" +
     "What they shared earlier:\n" +
     earlier.map((s) => `- ${s}`).join("\n") +
     `\n\nWhat they JUST added — the new truth the rewritten quest MUST visibly use:\n"${newest}"\n` +
     `\nCONTEXT: ${context(sess)}\n` +
-    "\nThe drawn cards (KEEP these, do not swap):\n" +
-    lines.join("\n") +
+    "\nThe card the bite was made from (KEEP it, do not swap):\n" +
+    card +
     `\n\nThe current quest:\n${sess.adventure}\n\n` +
-    "Rewrite the quest around that new truth — same three cards, same three real places, but the " +
-    "tasks should now put what they just confessed at the center (if they said they secretly sing, " +
-    "the quest makes them sing). At least ONE of the three moves must be REPLACED, not reworded — " +
-    "put the new truth in its own words, don't just gesture at it. If the new truth is something " +
-    "they are keeping secret, the REACH move should be telling one person. Keep the arc: FACE alone " +
-    "with a hard truth, STAND as presence at a place, REACH involving another human; keep one " +
-    "leave-something-behind. Concrete, doable, with directions, and as detailed as the quest you are " +
-    "replacing — this is a rewrite, not a summary. Keep it fit for speech: 75-110 words, one short " +
-    "opening, then exactly three compact moves introduced as First, Second, Third. No headings or " +
-    "bullets. Also write one short acknowledgement line (under 20 words) the Turtle says first, " +
-    "naming the new truth.\n" +
+    "Rewrite the ONE BITE around that new truth — same card, still one act, but the act now puts " +
+    "what they just confessed at the center (if they said they secretly sing, the quest makes them " +
+    "sing). REPLACE the act, do not reword it: put the new truth in its own words, don't just " +
+    "gesture at it. If the new truth is something they are keeping secret, the act is telling one " +
+    "person. Keep the shape it was spoken in: 20-40 words, one act, imperative, verb first, then " +
+    "one bearing (a kind of place, a kind of person, or a time of day — no address, no clock, no " +
+    "camp name) and one proof to bring back to the Turtle. No second chore, no 'stay until…' " +
+    "interior door, no First and Second and Third, no headings or bullets. Also write one short " +
+    "acknowledgement line (under 20 words) the Turtle says first, naming the new truth.\n" +
     'Return JSON only: {"say": "...", "adventure": "..."}';
   const resp = await llm.generate(prompt, {
     system: SYSTEM,
@@ -981,16 +958,17 @@ async function refineLlm(sess, llm, tLong) {
   const out = tryJson(resp);
   if (out && typeof out === "object" && out.adventure) {
     const adventure = String(out.adventure).trim();
-    // Reject a summary or a ramble: this whole passage is spoken while the seeker waits.
+    // Reject a shrug or a ramble: a bite is 20-40 words spoken, and the gate is loose
+    // around that so a good rewrite is never thrown away for a clause.
     const n = words(adventure);
-    if (n < 60 || n > 140) return null;
+    if (n < 15 || n > 60) return null;
     // ADDITION, not in session.py — measured on staging 2026-08-23: asked to rewrite a
     // short quest, the model handed back the SAME quest, word for word, in 2 of 5 runs.
     // It passes the length gate, so the seeker hears "That changes the shape of it" and
     // then their unchanged quest read back at them — a visible lie from the Turtle. The
-    // prompt already demands "At least ONE of the three moves must be REPLACED"; this
-    // enforces it, the same way _valid_echo enforces the quoted phrase. A rejected
-    // rewrite falls to refineFallback, which genuinely re-scores the cards.
+    // prompt already demands the act be REPLACED, not reworded; this enforces it, the same
+    // way _valid_echo enforces the quoted phrase. A rejected rewrite falls to
+    // refineFallback, which genuinely re-scores the cards.
     // Worth back-porting to app/oracle/session.py.
     if (isSameQuest(adventure, sess.adventure)) return null;
     return { say: cleanLine(out.say, 30) || choice(REFINE_ACKS), adventure };
@@ -1028,7 +1006,7 @@ function refineFallback(sess) {
   const out = weaveFallback(told, picks, located);
   sess.picks = picks;
   sess.located = located;
-  sess.anchor = anchorRealm(located);
+  sess.bite = biteRealm(located, picks);
   sess.reading = out.reading;
   sess.echoes = echoesFallback(sess);
   return { say: choice(REFINE_ACKS), adventure: out.adventure, reading: out.reading };
@@ -1281,61 +1259,54 @@ async function refineStep(sess, text, ctx) {
   return proposedEvent(sess, fb.say, { modes: { refine: "fallback" } });
 }
 
-/* A `where` that is an address however it is dressed: a clock, a lettered street, the
- * Esplanade — or "the address is in the WWW guide", which is an address one lookup away
- * and lands on the parchment as an errand. Only the placed move may carry one. */
-const ADDRESS_LINE = /\b\d{1,2}:\d{2}\b|\bEsplanade\b|\b[A-L]\s*(?:&|and)\s*\d|\baddress\b|\bWWW guide\b/i;
+/* The words a bearing is allowed to capitalize. A bearing is made of common nouns — a
+ * direction, a kind of place, a kind of person, an hour — so a proper noun in one is a
+ * placement in disguise, and the model was told to give a bearing and names camps anyway.
+ * The exceptions are the placements nobody can miss, which the quest may say out loud. */
+const BEARING_NAMES = new Set(["man", "temple", "center", "camp", "playa", "black", "rock", "city"]);
 
-function namesAnAddress(text) {
-  return ADDRESS_LINE.test(String(text || ""));
+/** Is the model's own bearing safe to seal? Short, no address, no proper noun but those.
+ *  Worth taking when it passes: it is the bearing the seeker just HEARD, and the Turtle's
+ *  standing line is the same three sentences every séance. */
+function usableBearing(text) {
+  const s = String(text || "").trim();
+  if (!s || words(s) > 16 || namesAnAddress(s)) return false;
+  return s
+    .split(/\s+/)
+    .slice(1) // the first word is capitalized because it starts a sentence
+    .filter((w) => /^[“"'(]*[A-Z]/.test(w))
+    .every((w) => BEARING_NAMES.has(w.replace(/[^A-Za-z]/g, "").toLowerCase()));
 }
 
-/** What an unpinned move seals with instead of an address: the card's own citywide line
- *  when that line is a kind of place rather than a lookup ("Anywhere the playa is open
- *  under you"), else the Turtle's standing bearing for that realm, the same words
- *  weaveFallback speaks. Never the model's `where` — it was told to give a bearing, but
- *  it names camps anyway, and a camp is an address with the numbers filed off. */
-function openWhere(realm, loc) {
-  const line = String((loc || {}).directions || "").trim();
-  if ((loc || {}).status === "citywide" && line && !namesAnAddress(line)) return line;
-  return OPEN_WHERE[realm];
-}
-
-/** Personalize the three sealed moves (task/where/proof + one leave) from the final quest. */
+/** Personalize the sealed bite (task/where/proof, and a leave if the act leaves one). */
 async function sealLlm(sess, llm, tLong) {
   const picks = sess.picks;
   const located = sess.located;
-  const anchor = sess.anchor || anchorRealm(located);
-  const lines = [];
-  for (const realm of ["roots", "trunk", "branches"]) {
-    const c = picks[realm];
-    const loc = located[realm] || {};
-    lines.push(
-      `${SLOT_TITLES[realm]}: card="${c.name}" at="${c.real_2026.name}" ` +
-        `where="${loc.directions || ""}"` +
-        (realm === anchor ? "   <- THE PLACED MOVE" : ""),
-    );
-  }
+  const bite = sess.bite || biteRealm(located, picks);
+  const c = picks[bite];
+  const loc = located[bite] || {};
+  const landmark = landmarkRealm(located) === bite;
   const prompt =
-    "Seal this quest into exactly three moves, in order FACE, STAND, REACH.\n" +
+    "Seal this quest into ONE BITE: one act, one bearing, one proof.\n" +
     "The seeker's words:\n" +
     sess.shares.map((s) => `- ${s}`).join("\n") +
-    `\n\nThe accepted quest:\n${sess.adventure}\n\nThe cards:\n` +
-    lines.join("\n") +
-    "\n\nFor each move give: task (1-2 concrete sentences drawn from the quest; EVERY task must " +
-    "pair a physical action with an open interior door — 'stay until…', 'leave when you have…', " +
-    "'ask until someone…' — specific on the outside, open on the inside, since that openness is " +
-    "where the seeker finds themselves), where (short — see THE ANCHOR below), proof (ONE specific " +
-    "thing to bring back to the shell, personal to their words). EXACTLY ONE move also gets leave: " +
-    "one small thing left behind there. FACE is done alone with a hard truth; STAND is presence at " +
-    "a place; REACH involves another human. Nothing risky, nothing without consent.\n" +
-    `THE ANCHOR: exactly ONE of the three — the ${SLOT_TITLES[anchor]} move, marked THE PLACED ` +
-    "MOVE above — stands at a real place, and its where comes from that card's where line. The " +
-    "other two must NOT name an address, a clock, a street, or a camp: their where is a bearing — " +
-    "a direction, a kind of place, a kind of person, or a time of day ('out past the last lamp', " +
-    "'wherever the music is worst', 'the first person who hands you water', 'before the sun is " +
-    "up'). It is the burn: what is on the map moved, and finding it is half the quest.\n" +
-    'Return JSON only: {"moves": [{"task":"","where":"","proof":"","leave":""}, {...}, {...}]}';
+    `\n\nThe accepted quest:\n${sess.adventure}\n\nThe card it was bitten from:\n` +
+    `card="${c.name}" at="${c.real_2026.name}" where="${loc.directions || ""}"\n\n` +
+    "Give: task (the ONE act, in one or two sentences, imperative and verb first, taken straight " +
+    "from the quest as it was spoken — no second chore, no 'stay until…' or 'leave when you have…' " +
+    "interior door), where (short — see THE BEARING below), proof (the ONE thing they carry back " +
+    "to the shell, concrete and personal to their words). leave is optional and usually empty: " +
+    "fill it only when the act itself leaves something behind, and then it is that same act, not " +
+    "another one. Nothing risky, nothing without consent.\n" +
+    "THE BEARING: " +
+    (landmark
+      ? `this card stands at ${c.real_2026.name}, which nobody can miss, so the where is that ` +
+        "place and its line above — no other address, and nothing else pinned.\n"
+      : "the where must NOT name an address, a clock, a street, or a camp. It is a bearing — a " +
+        "direction, a kind of place, a kind of person, or a time of day ('out past the last lamp', " +
+        "'wherever the music is worst', 'the first person who hands you water', 'before the sun is " +
+        "up'). It is the burn: what is on the map moved, and finding it is half the quest.\n") +
+    'Return JSON only: {"move": {"task":"","where":"","proof":"","leave":""}}';
   const resp = await llm.generate(prompt, {
     system: SYSTEM,
     asJson: true,
@@ -1343,20 +1314,12 @@ async function sealLlm(sess, llm, tLong) {
     stage: "seal",
   });
   const parsed = tryJson(resp);
-  const moves = parsed && typeof parsed === "object" ? parsed.moves : null;
-  if (
-    !(
-      Array.isArray(moves) &&
-      moves.length === 3 &&
-      moves.every((m) => m && typeof m === "object" && m.task)
-    )
-  ) {
-    return null;
-  }
-  return moves;
+  const move = parsed && typeof parsed === "object" ? parsed.move : null;
+  if (!(move && typeof move === "object" && move.task)) return null;
+  return move;
 }
 
-/** Seal the quest: three moves with places + proofs (+ one sacrifice), the vow, the map. */
+/** Seal the quest: one bite with its bearing and its proof, the vow, the map. */
 export async function accept(sess, ctx) {
   if (!sess) {
     return { error: "no such séance — touch the shell to begin again", stage: "gone" };
@@ -1378,71 +1341,48 @@ export async function accept(sess, ctx) {
   const r = picks.roots;
   const t = picks.trunk;
   const b = picks.branches;
+  /* ONE BITE, from the card the spoken quest was built on. The seeker heard one act; the
+   * parchment says that act, its bearing and its proof, and nothing else. */
+  const bite = sess.bite || biteRealm(located, picks);
+  const c = picks[bite];
+  const loc = located[bite] || {};
+  const landmark = landmarkRealm(located) === bite;
   const sealed = ctx.llm && ctx.llm.available() ? await sealLlm(sess, ctx.llm, ctx.tLong) : null;
   const sealMode = sealed ? "llm" : "fallback";
-  const moves = [];
-  const leaveAt = randRange(3);
-  const realms = ["roots", "trunk", "branches"];
-  /* ONE address, two bearings — the same split the spoken quest was written to. */
-  const anchor = sess.anchor || anchorRealm(located);
-  realms.forEach((realm, i) => {
-    const c = picks[realm];
-    const loc = located[realm] || {};
-    const where =
-      realm === anchor
-        ? loc.directions || "Somewhere out there — ask Playa Info."
-        : openWhere(realm, loc);
-    if (sealed) {
-      const m = sealed[i];
-      // Real BRC geo wins over whatever the model invented; its guess only rides along as
-      // a suffix on the PLACED move, and only when it actually adds something. On the
-      // other two the model's `where` is dropped entirely: it was told to give a bearing
-      // and it names camps anyway, the same way it cannot be trusted with the count of
-      // `leave` below.
-      const mWhere = String(m.where || "").trim();
-      const mergedWhere =
-        realm === anchor && mWhere && mWhere.toLowerCase() !== where.toLowerCase()
-          ? `${where} — ${mWhere}`
-          : where;
-      moves.push({
-        slot: SLOT_TITLES[realm],
-        card: c.name,
-        task: String(m.task).trim(),
-        where: mergedWhere,
-        at: c.real_2026.name,
-        proof: String(m.proof || PROOFS[realm][((c.number || 1) - 1) % 4]).trim(),
-        leave: String(m.leave || "").trim(),
-      });
-    } else {
-      moves.push({
-        slot: SLOT_TITLES[realm],
-        card: c.name,
-        task: c.turtle_dare,
-        where,
-        at: c.real_2026.name,
-        proof: PROOFS[realm][((c.number || 1) - 1) % 4],
-        leave: i === leaveAt ? LEAVES[(c.number || 1) % LEAVES.length] : "",
-      });
-    }
-  });
-  // THE SACRIFICE demands exactly one move leave something behind — the model isn't
-  // trustworthy on the count, so enforce it here rather than in the prompt alone.
-  let leaveIdx = moves.findIndex((mv) => mv.leave);
-  if (leaveIdx === -1) {
-    leaveIdx = leaveAt;
-    const c = picks[realms[leaveIdx]];
-    moves[leaveIdx].leave = LEAVES[(c.number || 1) % LEAVES.length];
-  } else {
-    moves.forEach((mv, i) => {
-      if (i !== leaveIdx) mv.leave = "";
-    });
+  /* Real BRC geo wins at a landmark, where the model's line only rides along as a suffix
+   * and only when it adds something. Everywhere else the bearing the seeker actually heard
+   * is worth keeping — but only when it is a bearing: usableBearing throws out the camp
+   * names and the addresses the model puts there however it is asked not to. */
+  const standing = landmark
+    ? loc.directions || "Somewhere out there — ask Playa Info."
+    : openWhere(bite, loc);
+  const mWhere = sealed ? String(sealed.where || "").trim() : "";
+  let where = standing;
+  if (landmark && mWhere && mWhere.toLowerCase() !== standing.toLowerCase()) {
+    where = `${standing} — ${mWhere}`;
+  } else if (!landmark && usableBearing(mWhere)) {
+    where = mWhere;
   }
+  const moves = [
+    {
+      slot: SLOT_TITLES[bite],
+      card: c.name,
+      task: sealed ? String(sealed.task).trim() : c.turtle_dare,
+      where,
+      at: c.real_2026.name,
+      proof: sealed ? String(sealed.proof || proofFor(bite, c)).trim() : proofFor(bite, c),
+      /* THE SACRIFICE is folded into the act or it is not there at all — the offline
+       * Turtle has no way to judge whether this act leaves anything, and bolting a second
+       * errand onto a one-bite quest is exactly what this stopped being. */
+      leave: sealed ? String(sealed.leave || "").trim() : "",
+    },
+  ];
   sess.quest = {
     title: `The Quest of ${b.name}`,
     for: sess.name || "Traveler",
     charge:
       `Face “${r.name}.” Stand in “${t.name}.” Reach for “${b.name}.” ` +
-      "Three moves, made slow — then home to the shell.",
+      "One bite, taken slow — then home to the shell.",
     adventure: sess.adventure,
     moves,
     vow: VOW,
@@ -1491,4 +1431,5 @@ export const __test = {
   isSameQuest,
   openWhere,
   namesAnAddress,
+  usableBearing,
 };

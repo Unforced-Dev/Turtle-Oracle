@@ -246,8 +246,6 @@
   .parchment h1{font-size:clamp(1.4rem,3.4vw,2rem);color:#3d2f14;margin:.3em 0 .2em;text-align:center;line-height:1.2}
   .parchment .charge{text-align:center;font-style:italic;color:#5c4a26;margin-bottom:18px}
   .move{display:flex;gap:14px;padding:15px 0;border-top:1px solid #cbb98f;align-items:flex-start}
-  .move .n{flex:none;width:44px;height:44px;border-radius:50%;border:2px solid #8a6f34;color:#6b5426;
-    display:flex;align-items:center;justify-content:center;font-weight:700;font-size:1.15rem}
   .move .mslot{font-size:.66rem;letter-spacing:.3em;color:#8a6f34;text-transform:uppercase}
   .move .mname{font-weight:700;color:#3d2f14;font-size:1.08rem}
   .move .mtask{margin:4px 0 2px;font-size:1rem}
@@ -1108,8 +1106,8 @@ function questText(e){
   const L=[q.title||"A quest from the Terrible Turtle Oracle"];
   if(q.for) L.push("sealed for "+q.for);
   if(q.charge) L.push("",q.charge);
-  (q.moves||[]).forEach((m,i)=>{
-    L.push("",(["I","II","III"][i]||(i+1)+".")+"  "+[m.slot,m.card].filter(Boolean).join(" — "));
+  (q.moves||[]).forEach(m=>{
+    L.push("",["THE ONE BITE",m.card].filter(Boolean).join(" — "));
     if(m.task) L.push(m.task);
     if(m.where) L.push("where: "+m.where);
     if(m.proof) L.push("bring back: "+m.proof);
@@ -1128,11 +1126,10 @@ function renderQuest(e,restored){
     <h1>${esc(q.title)}</h1>
     ${q.for?`<div class="sealedfor">sealed for ${esc(q.for)}</div>`:""}
     <div class="charge">${esc(q.charge)}</div>
-    ${q.moves.map((m,i)=>`
+    ${q.moves.map(m=>`
       <div class="move">
-        <div class="n">${["I","II","III"][i]}</div>
         <div>
-          <div class="mslot">${esc(m.slot)} — ${esc(m.card)}</div>
+          <div class="mslot">the one bite — ${esc(m.card)}</div>
           <div class="mtask">${esc(m.task)}</div>
           <div class="mwhere">📍 ${esc(m.where)}</div>
           <div class="mproof">⌘ bring back: ${esc(m.proof)}</div>
