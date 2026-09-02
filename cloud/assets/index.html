@@ -145,6 +145,7 @@
     letter-spacing:.12em}
   #talkpanel.done .orwrite,#talkpanel.done #story,#talkpanel.done #offerrow,#talkpanel.done #writeinstead,
   #talkpanel.done #rectime{display:none}
+  #talkpanel.done #rec{pointer-events:none;opacity:.6}
   .orwrite{text-align:center;color:var(--gold-dim);font-size:.76rem;letter-spacing:.24em;
     text-transform:uppercase;margin:16px 0 8px}
   /* cloud: the Turtle's own guesses at the answer, tapable. */
@@ -425,8 +426,10 @@ function restoreStep(){
   if(step.stage==="accepted"&&step.quest){ renderQuest(step,true); return true; }
   if(step.stage==="asking"&&step.cards){
     CARD_IDS=SLOTS.map(s=>step.cards[s].id).join(",");
+    $('spread').classList.add("asking");
     dealSpread(step,{instant:true});
-    $('says').textContent=step.question||step.say||"";
+    $('says').textContent=step.look||step.say||"";
+    if(step.question){ $('askline').textContent=step.question; $('askline').classList.add("on"); }
     renderAnswer(step);
     return true;
   }
@@ -788,9 +791,13 @@ function renderListening(e,restored){
   /* cloud: if the mic is already open (the talk tap opened it) the invite is shown and
      NOT spoken — the Turtle's voice would go straight into the recording — and nothing
      here may reset the ring or the box the recording is about to land in. */
-  if(TALK_ARMED){ sayIt(e.say,true); $('talkpanel').classList.add("on"); return; }
-  sayIt(e.say,restored);
-  $('story').value=""; resetRing();
+  const done=$('talkpanel').classList.contains("done");
+  if(TALK_ARMED||done){ if(!done) sayIt(e.say,true); $('talkpanel').classList.add("on"); return; }
+  /* the mic never opened (denied, absent, or "write it instead"): the box is the way in.
+     The invite is shown, not spoken — "tap the shell when you are done" is not for someone
+     with no mic — and whatever they have already typed into the box stays. */
+  sayIt(e.say,true);
+  if(!LISTENING) resetRing();
   $('talkpanel').classList.remove("live","done");
   $('talkpanel').classList.add("on");
 }
@@ -1165,6 +1172,11 @@ let REC_INTO="q", REC_BTN="mic", REC_MS=60000, REC_TICK=null, REC_LEVEL=null;
    that is actually at `listening`, and a seeker who taps stop inside a second can beat
    the round trip. */
 let TALK_ARMED=false, DOOR_READY=null;
+/* cloud: bumped by every discard. getUserMedia can resolve seconds after the seeker gave
+   up on it ("write it instead", a failed door tap) — a permission prompt is not a
+   recording, and a recording that starts after the cancel would hide the box they are
+   typing into and open a hot mic on a screen that has moved on. */
+let REC_GEN=0;
 /* cloud: the server's own roof (src/ears.js). Checked here too, because a 413 arrives
    AFTER two minutes of talking have already been spent and thrown away. */
 const MAX_AUDIO=4*1024*1024;
@@ -1240,6 +1252,7 @@ $('writeinstead').addEventListener('click', ()=>{
   $('talkpanel').classList.remove("live","done"); $('story').focus();
 });
 function discardRecording(){
+  REC_GEN++;
   clearTimeout(micToggle._guard);
   if(TRANSCRIBE){ TRANSCRIBE.abort(); TRANSCRIBE=null; }
   if(REC){
@@ -1256,9 +1269,9 @@ async function micToggle(){
   if(!navigator.mediaDevices||!window.MediaRecorder){
     toast("No microphone on this device — write it instead."); return; }
   try{
-    const sid=SID, generation=SESSION_GEN;
+    const sid=SID, generation=SESSION_GEN, rgen=REC_GEN;
     const stream=await navigator.mediaDevices.getUserMedia({audio:true});
-    if(sid!==SID||generation!==SESSION_GEN){ stream.getTracks().forEach(t=>t.stop()); return; }
+    if(sid!==SID||generation!==SESSION_GEN||rgen!==REC_GEN){ stream.getTracks().forEach(t=>t.stop()); return; }
     const mime=["audio/webm;codecs=opus","audio/webm","audio/mp4"]
       .find(m=>MediaRecorder.isTypeSupported(m))||"";
     const base=mime?{mimeType:mime}:{};
