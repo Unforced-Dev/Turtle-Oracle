@@ -355,10 +355,24 @@ let READ_SHOWN=false;
 const KIOSK=new URLSearchParams(location.search).get("kiosk")||"";
 const SESSION_KEY="turtle-oracle.session"+(KIOSK?"."+KIOSK:"");
 
+/* cloud: can this event actually be DRAWN? Three stages render out of the event itself —
+   theAsking and theReading deal e.cards[slot].id, renderQuest walks e.quest.moves — and an
+   event missing those is not a screen, it is a TypeError. One arriving is a server bug or
+   a mangled response; either way it must never be persisted (a saved one restores the same
+   broken screen on every reload, and a phone has no idle wipe to clear it) and must never
+   be routed. Belt on this side; the server sends the full event as its braces. */
+function renderable(e){
+  if(!e||typeof e!=="object"||!e.stage) return false;
+  const dealt=e.cards&&SLOTS.every(s=>e.cards[s]&&e.cards[s].id);
+  if(e.stage==="asking") return Boolean(dealt&&e.question);
+  if(e.stage==="proposed") return Boolean(dealt&&e.adventure);
+  if(e.stage==="accepted") return Boolean(e.quest&&e.quest.moves);
+  return Boolean(e.say||e.doors||e.weathers||e.stones||e.wantings);
+}
 /* The server already keeps the séance. Keep its id and the last complete UI step too, so
    Android reclaiming/reloading Fully does not turn a live reading into a new seeker. */
 function rememberStep(e){
-  if(!SID||!e||e.session!==SID||e.error) return;
+  if(!SID||!e||e.session!==SID||e.error||!renderable(e)) return;
   try{ localStorage.setItem(SESSION_KEY,JSON.stringify({sid:SID,step:e})); }catch(err){}
 }
 function forgetStep(){ try{ localStorage.removeItem(SESSION_KEY); }catch(err){} }
@@ -368,7 +382,7 @@ function restoreStep(){
   const stages=["naming","tale_naming","tale_listening","tale_told","door","listening",
     "weather","stones","wanting","asking","proposed","accepted"];
   if(!saved||!saved.sid||!saved.step||saved.step.session!==saved.sid
-      ||!stages.includes(saved.step.stage)||(saved.step.stage==="accepted"&&!saved.step.quest)){
+      ||!stages.includes(saved.step.stage)||!renderable(saved.step)){
     forgetStep(); return false;
   }
   SID=saved.sid; SESSION_GEN++;
@@ -661,10 +675,14 @@ function hideAux(){ $('wgrid').classList.remove("on"); $('doorrow').classList.re
 /* one router for every séance event */
 async function handle(e){
   T_ASK=Date.now();
-  if(e.error){
+  if(e&&e.error){
     if(e.stage==="gone") resetAll();
     return toast(e.error);
   }
+  /* cloud: an event this screen cannot draw is a soft error, not a route. Toast it and
+     leave the seeker on the screen they are already looking at — routing it would clear
+     the spread and then throw halfway through re-rendering it. */
+  if(!renderable(e)) return toast("The Turtle lost the thread — touch it again.");
   rememberStep(e);
   if(e.stage==="door") return renderDoor(e);
   if(e.stage==="listening") return renderListening(e);
@@ -826,6 +844,14 @@ function shuffleCards(){
    one open question about them — before there is any reading. That is the order an oracle
    works in, and it is the difference between a séance and an intake form. */
 async function theAsking(e){
+  /* cloud: the retry — "the Turtle heard only wind" — is the same three cards and the
+     same question, and the seeker is already looking at them. Say the line, put the
+     answer row back, and never deal a second time. */
+  if(CARD_IDS&&(e.retry||SLOTS.map(s=>e.cards[s].id).join(",")===CARD_IDS)){
+    incant($('says'),e.say,110); speak(e.say);
+    renderAnswer(e);
+    return;
+  }
   $('askpanel').classList.remove("on"); $('talkpanel').classList.remove("on"); hideAux();
   $('decide').style.display="none";
   shuffleCards();
