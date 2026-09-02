@@ -1200,6 +1200,13 @@ export async function accept(sess, ctx) {
     title: sess.quest.title,
     cards: SPREAD_REALMS.map((x) => picks[x].id),
   });
+  /* A KNOWN SEAM, left open deliberately on feat/cloud-seance-v2. weave.js now pins
+   * exactly ONE move to a real placement and gives the other two a bearing, but the
+   * loop above still writes `loc.directions` into the `where` of all three — so the
+   * sealed parchment is more address-heavy than the spoken quest that led to it. The
+   * fix is to carry the anchor realm from the weave onto the session and let the two
+   * open moves seal with their bearing instead; it touches sealLlm's prompt, which is
+   * still byte-parity with app/oracle, so it wants its own change and its own skip. */
   return {
     session: sess.id,
     stage: "accepted",
