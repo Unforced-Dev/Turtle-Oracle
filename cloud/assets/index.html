@@ -173,6 +173,7 @@
   #askpanel.pull #q{display:none;order:5}
   #askpanel.pull #offer{display:none}
   #askpanel:not(.pull) #miccap{display:none}
+  #askpanel.pull.writing #miccap{display:none}
   #askpanel.pull #writehere{display:inline-block;order:4}
   #askpanel.pull.writing #q{display:block;order:2}
   #askpanel.pull.writing #microw{order:3}
@@ -1481,9 +1482,10 @@ $('mic').addEventListener('click', ()=>{
      to — the big ring, two minutes, and stop means done, with the transcript handed
      straight over as the answer (the server takes it as `text` at the asking, and
      src/ears.js already counts `asking` as a stage the ears are open in). Everywhere else
-     — the name, and "hear me further" — it stays the small 60s mic that fills the box
-     beside it. */
-  if($('askpanel').classList.contains("pull")){
+     — the name, "hear me further", and the pull screen once the seeker has opened the
+     write box — it stays the small 60s mic that fills the box beside it. Opening the big
+     talk screen from under a half-typed answer would leave those words behind unsent. */
+  if($('askpanel').classList.contains("pull")&&!$('askpanel').classList.contains("writing")){
     TALK_FROM_ASK=true;
     $('askpanel').classList.remove("on");
     beginTalk(null);
