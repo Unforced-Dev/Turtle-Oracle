@@ -1097,6 +1097,9 @@ let REC=null, REC_STREAM=null, TRANSCRIBE=null, CHUNKS=[], LISTENING=false;
    and stops itself at 60s; the big orb on the talk screen writes into #story, runs for
    two minutes with a ring around it, and sends the moment it has the transcript. */
 let REC_INTO="q", REC_BTN="mic", REC_MS=60000, REC_TICK=null, REC_LEVEL=null;
+/* cloud: the server's own roof (src/ears.js). Checked here too, because a 413 arrives
+   AFTER two minutes of talking have already been spent and thrown away. */
+const MAX_AUDIO=4*1024*1024;
 const RING=2*Math.PI*92;
 /* The ring belongs to the talk screen alone, so it always shows the talk screen's two
    minutes — never the 60s the little ask-panel mic runs on. */
@@ -1172,10 +1175,27 @@ async function micToggle(){
     if(sid!==SID||generation!==SESSION_GEN){ stream.getTracks().forEach(t=>t.stop()); return; }
     const mime=["audio/webm;codecs=opus","audio/webm","audio/mp4"]
       .find(m=>MediaRecorder.isTypeSupported(m))||"";
-    const recorder=new MediaRecorder(stream, mime?{mimeType:mime}:undefined);
+    const base=mime?{mimeType:mime}:{};
+    /* cloud: ask for 48kbps. It is plenty for one voice and it is the difference between
+       a two-minute iOS share arriving at ~2MB and at ~700KB — iOS defaults to ~128kbps
+       AAC. The hint is a hint: a browser that will not take the option gets the recorder
+       it would have had anyway. */
+    let recorder;
+    try{ recorder=new MediaRecorder(stream,Object.assign({audioBitsPerSecond:48000},base)); }
+    catch(err){ recorder=new MediaRecorder(stream, mime?base:undefined); }
     REC=recorder; REC_STREAM=stream;
     CHUNKS=[];
-    recorder.ondataavailable=e=>{ if(e.data&&e.data.size)CHUNKS.push(e.data); };
+    const limit=REC_MS;
+    recorder.ondataavailable=e=>{
+      if(e.data&&e.data.size)CHUNKS.push(e.data);
+      /* cloud: iOS throttles timers in a backgrounded tab, so the setTimeout guard below
+         can simply not arrive — and the seeker comes back to a recorder still running
+         past the roof. The timeslice makes this fire every second with a real clock in
+         hand; whichever of the two notices first stops it. */
+      if(LISTENING&&Date.now()-(micToggle._t0||Date.now())>=limit){
+        try{ recorder.stop(); }catch(err){}
+      }
+    };
     const into=REC_INTO, btn=REC_BTN, talking=(REC_INTO==="story");
     recorder.onstop=async()=>{
       clearTimeout(micToggle._guard);
@@ -1187,6 +1207,16 @@ async function micToggle(){
       AUDIO_SECS=(Date.now()-(micToggle._t0||Date.now()))/1000; USED_MIC=true;
       const blob=new Blob(CHUNKS,{type:(recorder.mimeType||"audio/webm")});
       if(blob.size<1500){ recIdle(); return; }
+      /* cloud: over the shell's roof, and the answer is NOT to post it and take a 413 —
+         that spends the upload and then throws the whole share away. Nothing is
+         discarded here: the recording stays in CHUNKS and the box is right there, so the
+         seeker writes the short version instead of losing the long one. */
+      if(blob.size>MAX_AUDIO){
+        recIdle(); resetRing();
+        toast("That is more than the shell can hold — write it instead, or say it shorter.");
+        $(into).focus();
+        return;
+      }
       if(talking){ $('recface').textContent="…"; $('reclabel').textContent="the shell is listening back"; }
       else $('mic').textContent="…";
       let heard=false;
@@ -1217,7 +1247,8 @@ async function micToggle(){
          visibly, and goes. If it failed, the box is still there to type into. */
       if(talking&&heard) offerStory();
     };
-    recorder.start(); LISTENING=true; micToggle._t0=Date.now();
+    // a one-second timeslice, so ondataavailable can watch the wall clock (above)
+    recorder.start(1000); LISTENING=true; micToggle._t0=Date.now();
     $(btn).classList.add("listening");
     if(talking){ $('recface').textContent="■"; $('reclabel').textContent="tap when you are done"; startRing(); startLevel(stream); }
     else $('mic').textContent="■";
