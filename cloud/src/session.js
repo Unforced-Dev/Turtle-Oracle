@@ -717,7 +717,7 @@ function cleanLook(raw) {
    * (the failure the header of llm.js documents for the weave). Either one is the
    * template's turn. */
   if (/\b(FACE|STAND|REACH)\s*:/.test(s)) return null;
-  if (/built all year for other people|fine way to disappear|where the map runs out/i.test(s)) return null;
+  if (/built all year|fine way to disappear|map runs out|nobody needs you/i.test(s)) return null;
   /* under ~28 words it is a caption, not a look — the template's three lines beat it */
   const n = words(s);
   if (n < 28 || n > 110) return null;
@@ -753,8 +753,10 @@ async function askLlm(sess, llm, tShort) {
     "what they touched). Let the three run as one thought: what to face, where they stand, what " +
     "they reach for. Say it the way you would say it across a fire, in whole sentences — never a " +
     "card's name followed by a colon and a list of words, never 'X says… Y says… Z says…'. No " +
-    "question in it, no instruction, no place name, no explaining how the cards work. This is the " +
-    "interpretation that earns the question.\n" +
+    "question in it, no instruction, no place name, no explaining how the cards work. The example " +
+    "in your instructions is about a different seeker: never quote it or its ideas back as if this " +
+    "seeker said them — only THEIR words are theirs. This is the interpretation that earns the " +
+    "question.\n" +
     "THEN ask ONE open question in the Turtle's voice, under 25 words, that follows from what you " +
     "just said. It must be answerable out loud in a sentence, must NOT be answerable yes or no, " +
     "must not predict anything, and must make them say something they have not said yet. Then " +
