@@ -71,6 +71,17 @@ type = "ratelimit"
 namespace_id = "1002"
 simple = { limit = 120, period = 60 }
 
+# The ears, on their own budget too. One POST to /api/transcribe is up to two minutes of
+# audio billed by Workers AI, so on the shared 30/min counter a single IP could push
+# ~120MB of whisper a minute — and every one of those POSTs also came out of a real
+# seeker's séance budget. src/ears.js additionally requires a live séance in a listening
+# stage, so this is the roof over a seeker who taps the mic a lot, not the gate.
+[[unsafe.bindings]]
+name = "RL_EARS"
+type = "ratelimit"
+namespace_id = "1003"
+simple = { limit = 12, period = 60 }
+
 [vars]
 # Same family as the playa Spark's qwen3:30b-a3b. Verified on this account 2026-08-23.
 MODEL = "@cf/qwen/qwen3-30b-a3b-fp8"
@@ -138,6 +149,17 @@ name = "RL_SPEAK"
 type = "ratelimit"
 namespace_id = "1002"
 simple = { limit = 120, period = 60 }
+
+# The ears, on their own budget too. One POST to /api/transcribe is up to two minutes of
+# audio billed by Workers AI, so on the shared 30/min counter a single IP could push
+# ~120MB of whisper a minute — and every one of those POSTs also came out of a real
+# seeker's séance budget. src/ears.js additionally requires a live séance in a listening
+# stage, so this is the roof over a seeker who taps the mic a lot, not the gate.
+[[env.staging.unsafe.bindings]]
+name = "RL_EARS"
+type = "ratelimit"
+namespace_id = "1003"
+simple = { limit = 12, period = 60 }
 
 [env.staging.vars]
 MODEL = "@cf/qwen/qwen3-30b-a3b-fp8"

@@ -1174,15 +1174,19 @@ async function micToggle(){
       let controller=null;
       try{
         controller=new AbortController(); TRANSCRIBE=controller;
+        /* cloud: the ears belong to a séance now. The id rides in a header rather than
+           the query string so it stays out of request logs; src/ears.js rejects a POST
+           without a live séance in a stage that is actually listening. */
         const r=await fetch("/api/transcribe",{method:"POST",
-          headers:{"Content-Type":blob.type.split(";")[0]},body:blob,signal:controller.signal});
+          headers:{"Content-Type":blob.type.split(";")[0],"x-seance-session":sid||""},
+          body:blob,signal:controller.signal});
         const d=await r.json();
         if(TRANSCRIBE===controller) TRANSCRIBE=null;
         if(sid!==SID||generation!==SESSION_GEN){ recIdle(); return; }
         if(d.text){ $(into).value=($(into).value+" "+d.text).trim(); heard=true; }
-        else toast(r.status===413
+        else toast(d.error&&r.ok ? d.error : (r.status===413
           ? "That was more than the shell can hold — say the shorter version."
-          : "The Turtle couldn't make out the words — write them instead.");
+          : "The Turtle couldn't make out the words — write them instead."));
       }catch(e){
         if(TRANSCRIBE===controller) TRANSCRIBE=null;
         if(e.name!=="AbortError"&&sid===SID&&generation===SESSION_GEN)

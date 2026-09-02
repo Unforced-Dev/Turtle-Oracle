@@ -12,6 +12,7 @@
  *   - a warm-keeper thread. Workers AI has no cold model to keep resident.
  */
 import { DECK, CARDS, cardPayload } from "./deck.js";
+import { DEFAULT_WHISPER, transcribe } from "./ears.js";
 import { locate } from "./geo.js";
 import { WorkersAILLM, DEFAULT_MODEL } from "./llm.js";
 import * as lore from "./lore.js";
@@ -23,20 +24,12 @@ import { json } from "./util.js";
  * state lives here now rather than in KV — sessiondo.js says why. */
 export { SessionDO } from "./sessiondo.js";
 
-const DEFAULT_WHISPER = "@cf/openai/whisper-large-v3-turbo";
 const DEFAULT_TTS = "@cf/deepgram/aura-1";
 const DEFAULT_TTS_SPEAKER = "angus";
 
 /* The kiosk holds a séance across several minutes of talking; two hours is a generous
  * roof that still lets an abandoned session fall off the shelf the same evening. */
 const SESSION_TTL = 7200;
-
-/* Whisper is billed by audio. The talk door asks a seeker to tell the Turtle about their
- * burn and gives them two minutes to do it, which is ~480KB of webm/opus on Android and
- * ~2MB of iOS mp4/aac (iOS records AAC at ~128kbps and does not let us ask for less), so
- * the roof is 4MB. Anything past that is not a seeker, it is a mistake or an attack.
- * The kiosk's own recorder still stops itself at 120s — this is the second wall. */
-const MAX_AUDIO_BYTES = 4 * 1024 * 1024;
 
 /* Every POST /api/* route spends money — whisper, the voice, and the séance itself — so
  * they are limited per client IP. The voice gets its OWN budget: /api/speak is one POST
@@ -93,9 +86,15 @@ async function overLimit(binding, request) {
   }
 }
 
-/** Which budget a route spends from: the voice has its own, everything else shares RL. */
+/** Which budget a route spends from. The two routes that bill by the SECOND of media
+ *  each have their own: the voice because a séance is ~41 POSTs of it and two phones
+ *  behind one carrier NAT were 429ing each other out of a reading, and the ears because
+ *  one POST there is up to two minutes of billed Whisper and should not be able to eat a
+ *  seeker's séance budget — nor have 30 of them a minute to itself. */
 function limiterFor(env, path) {
-  return path === "/api/speak" ? env.RL_SPEAK : env.RL;
+  if (path === "/api/speak") return env.RL_SPEAK;
+  if (path === "/api/transcribe") return env.RL_EARS;
+  return env.RL;
 }
 
 /** The kiosk and the card art, with the headers a public deployment wants. */
@@ -136,48 +135,6 @@ async function readJsonBody(req) {
     return (await req.json()) || {};
   } catch (e) {
     return {};
-  }
-}
-
-function toBase64(bytes) {
-  let s = "";
-  const CH = 0x8000;
-  for (let i = 0; i < bytes.length; i += CH) {
-    s += String.fromCharCode.apply(null, bytes.subarray(i, i + CH));
-  }
-  return btoa(s);
-}
-
-/* ---- ears: app/oracle/ears.py, whisper.cpp -> Workers AI whisper ------------------ */
-async function transcribe(req, env) {
-  const buf = await req.arrayBuffer();
-  if (!buf.byteLength) return json({ error: "no audio" }, 400);
-  if (buf.byteLength > MAX_AUDIO_BYTES) return json({ error: "that is too much audio" }, 413);
-  const model = env.WHISPER_MODEL || DEFAULT_WHISPER;
-  /* The kiosk posts the raw MediaRecorder blob with its own Content-Type — webm/opus on
-   * Android and Chrome, mp4/aac on iOS. Both were round-tripped through this model on
-   * 2026-08-23 and both transcribed; unlike the playa path there is no ffmpeg step.
-   *
-   * The 60s/1.5MB roof was measured; this 120s/4MB one is NOT — nobody has round-tripped
-   * a real two-minute recording through whisper-large-v3-turbo on this account. Verify it
-   * on staging with an actual long share before trusting it, and check the TAIL of the
-   * transcript, not just that a transcript came back: a truncated answer looks like a
-   * quiet seeker, not like an error. If it truncates, slice client-side and post the
-   * pieces — do not raise anything here. */
-  try {
-    const out = await env.AI.run(model, { audio: toBase64(new Uint8Array(buf)) });
-    const text = String((out && (out.text || out.transcription)) || "")
-      .split(/\s+/)
-      .filter(Boolean)
-      .join(" ")
-      .trim();
-    if (!text) return json({ error: "the Turtle has no ears on this machine" }, 501);
-    return json({ text });
-  } catch (err) {
-    return json(
-      { error: "the Turtle has no ears on this machine", detail: String(err && err.message) },
-      501,
-    );
   }
 }
 
@@ -319,7 +276,7 @@ export default {
 
     if (request.method === "POST" && path.startsWith("/api/")) {
       if (await overLimit(limiterFor(env, path), request)) return json({ error: RATE_LIMITED }, 429);
-      if (path === "/api/transcribe") return await transcribe(request, env);
+      if (path === "/api/transcribe") return await transcribe(request, env, url);
       if (path === "/api/speak") return await speak(request, env);
       if (path === "/api/print") return await print(request, env);
       if (path.startsWith("/api/session/")) {
