@@ -31,10 +31,12 @@ const DEFAULT_TTS_SPEAKER = "angus";
  * roof that still lets an abandoned session fall off the shelf the same evening. */
 const SESSION_TTL = 7200;
 
-/* Whisper is billed by audio; the kiosk's own recorder caps at 60s, which is ~240KB of
- * webm/opus on Android and ~1MB of mp4/aac on iOS. Anything past 1.5MB is not a seeker,
- * it is a mistake or an attack. */
-const MAX_AUDIO_BYTES = 1.5 * 1024 * 1024;
+/* Whisper is billed by audio. The talk door asks a seeker to tell the Turtle about their
+ * burn and gives them two minutes to do it, which is ~480KB of webm/opus on Android and
+ * ~2MB of iOS mp4/aac (iOS records AAC at ~128kbps and does not let us ask for less), so
+ * the roof is 4MB. Anything past that is not a seeker, it is a mistake or an attack.
+ * The kiosk's own recorder still stops itself at 120s — this is the second wall. */
+const MAX_AUDIO_BYTES = 4 * 1024 * 1024;
 
 /* Every POST /api/* route spends money — whisper, the voice, and the séance itself — so
  * they are limited per client IP. The voice gets its OWN budget: /api/speak is one POST
@@ -154,7 +156,14 @@ async function transcribe(req, env) {
   const model = env.WHISPER_MODEL || DEFAULT_WHISPER;
   /* The kiosk posts the raw MediaRecorder blob with its own Content-Type — webm/opus on
    * Android and Chrome, mp4/aac on iOS. Both were round-tripped through this model on
-   * 2026-08-23 and both transcribed; unlike the playa path there is no ffmpeg step. */
+   * 2026-08-23 and both transcribed; unlike the playa path there is no ffmpeg step.
+   *
+   * The 60s/1.5MB roof was measured; this 120s/4MB one is NOT — nobody has round-tripped
+   * a real two-minute recording through whisper-large-v3-turbo on this account. Verify it
+   * on staging with an actual long share before trusting it, and check the TAIL of the
+   * transcript, not just that a transcript came back: a truncated answer looks like a
+   * quiet seeker, not like an error. If it truncates, slice client-side and post the
+   * pieces — do not raise anything here. */
   try {
     const out = await env.AI.run(model, { audio: toBase64(new Uint8Array(buf)) });
     const text = String((out && (out.text || out.transcription)) || "")
