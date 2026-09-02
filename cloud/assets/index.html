@@ -1031,7 +1031,14 @@ function renderAnswer(e){
   $('passq').disabled=false;
   $('askpanel').classList.remove("late","writing");
   $('askpanel').classList.add("on","pull");
-  $('askpanel').scrollIntoView({behavior:"smooth",block:"nearest"});
+  /* cloud: THE PRIMARY MUST BE REACHABLE WITHOUT HUNTING. A panel coming on animates its
+     max-height from 0 over .45s, so scrolling to it in the same tick scrolls to a box
+     that is still nearly flat — measured on a 390x844 phone, that left "Let the cards
+     speak" nine pixels below the fold, which on a phone is invisible. So the scroll waits
+     for the panel to finish opening, and it centres the BUTTON rather than the panel:
+     the look and the question above it have just been read out, and the one thing the
+     seeker needs now is the thing to press. */
+  setTimeout(()=>{ $('passrow').scrollIntoView({behavior:"smooth",block:"center"}); },520);
 }
 /* cloud: THE PASS IS THE PRIMARY, and it must not feel like a refusal — it says the cards
    have spoken, and it goes straight to the weave. Nothing is posted but {pass:true}. */
