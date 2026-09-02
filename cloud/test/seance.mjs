@@ -1303,6 +1303,71 @@ section("the ears will not open without a séance");
   );
 }
 
+/* ---- 11b. the reading has a roof --------------------------------------------------- */
+
+/* A reading anchored in the seeker's own words runs out on its own. Asked to read three
+ * cards for a seeker who said nothing, the model came back from staging with 426 words of
+ * one thought in twenty metaphors — spoken aloud, at one /api/speak call per sentence. */
+
+section("a runaway reading is re-rolled, then given up on");
+{
+  const runaway = "The shell is not a wall. It is a womb. ".repeat(30);
+  const good =
+    "You came a long way to sit still. The weight you carry is not yours to carry alone. " +
+    "word ".repeat(70);
+  const quest = "Say it to the first face that stops. Out past the last lamp. Bring back what their face did.";
+  let rolls = 0;
+  const notes = [];
+  const rambler = {
+    available: () => true,
+    async generate(prompt, opts = {}) {
+      if (opts.stage !== "weave") return goodLlm().generate(prompt, opts);
+      rolls++;
+      notes.push(prompt.includes("ran far too long"));
+      return JSON.stringify({ reading: rolls === 1 ? runaway : good, adventure: quest });
+    },
+  };
+  const { sess } = start("seek");
+  const e = await hear(sess, { text: "Wren" }, ctxWith(rambler));
+  const p2 = await hear(sess, { pass: true }, ctxWith(rambler));
+  check(
+    "a 400-word reading is thrown back once, with the reason",
+    rolls === 2 && notes[0] === false && notes[1] === true,
+    `rolls=${rolls} notes=${JSON.stringify(notes)}`,
+  );
+  check(
+    "and the second, sane one is what the seeker hears",
+    p2.stage === "proposed" &&
+      p2.modes.weave === "llm" &&
+      p2.reading.split(/\s+/).length < 170 &&
+      !/is not a wall/.test(p2.reading),
+    String(p2.reading || "").slice(0, 120),
+  );
+  check("the asking before it was a real one", e.stage === "asking" && Boolean(e.look));
+}
+{
+  // a model that will not stop rambling: the template takes the turn rather than the ramble
+  const runaway = "The shell is not a wall. It is a womb. ".repeat(30);
+  const always = {
+    available: () => true,
+    async generate(prompt, opts = {}) {
+      if (opts.stage !== "weave") return goodLlm().generate(prompt, opts);
+      return JSON.stringify({
+        reading: runaway,
+        adventure: "Say it to the first face. Out past the last lamp. Bring back what their face did.",
+      });
+    },
+  };
+  const { sess } = start("seek");
+  await hear(sess, { text: "Wren" }, ctxWith(always));
+  const p2 = await hear(sess, { pass: true }, ctxWith(always));
+  check(
+    "a model that only rambles falls to the template, and says so",
+    p2.modes.weave === "fallback" && p2.reading.split(/\s+/).length < 170,
+    `${p2.modes.weave} ${p2.reading.split(/\s+/).length}w`,
+  );
+}
+
 /* ---- 12b. the voice: what is worth saying aloud ----------------------------------- */
 
 /* The kiosk posts ONE SENTENCE per /api/speak call, so the Turtle's "Mm." reaches the

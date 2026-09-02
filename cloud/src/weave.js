@@ -160,7 +160,9 @@ export async function weaveLlm(question, cards, llm, located, context, timeout, 
     ") spoken directly TO the seeker in the " +
     "Turtle's voice, honoring the REGISTER in CONTEXT. Move as one connected thought about " +
     (pulled ? "what the three of them say together" : "THEIR words") +
-    ": what to face -> how to stand -> what to reach for. Fold one card's shadow in as a plain " +
+    ": what to face -> how to stand -> what to reach for. Say each thing ONCE and then stop — " +
+    "never restate the same idea in fresh metaphors, never run a list of 'it is not X, it is Y' " +
+    "reversals. Fold one card's shadow in as a plain " +
     "warning, in your own words — never write the word 'shadow', never write 'the root/trunk/branch " +
     "says', never label which card anything came from. The reading contains NO instructions and NO " +
     "place names — it names what is true, not what to do or where to go; all doing belongs to the " +
@@ -228,7 +230,9 @@ export async function weaveLlm(question, cards, llm, located, context, timeout, 
      * retry, so the parity-locked first prompt is untouched — and it names the actual
      * reason, because "you copied the example" is no help to a model that gave a bearing
      * with a street in it. */
-    const p = attempt ? prompt + (reason === "address" ? ADDRESS_NOTE : RETRY_NOTE) : prompt;
+    const p = attempt
+      ? prompt + (reason === "address" ? ADDRESS_NOTE : reason === "long" ? LONG_NOTE : RETRY_NOTE)
+      : prompt;
     const resp = await llm.generate(p, { system: SYSTEM, asJson: true, timeout: t, stage: "weave" });
     const out = tryJson(resp);
     if (out && typeof out === "object" && out.reading && out.adventure) {
@@ -239,7 +243,16 @@ export async function weaveLlm(question, cards, llm, located, context, timeout, 
        * the spoken quest first, and a clock-and-street in that is heard whatever the
        * parchment later says — so a spoken address costs one more roll, then the
        * template, whose bearing is a bearing by construction. */
-      if (reading && !QUEST_EXAMPLE_RE.test(adventure)) {
+      /* THE READING HAS A ROOF. It never needed one while the seeker's own words anchored
+       * it; asked to read three cards for a seeker who said nothing, the model came back
+       * with 426 words of the same thought in twenty new metaphors (staging, 2026-09-02).
+       * That is not a reading, it is a machine idling, and it is spoken aloud. Generous —
+       * a real one runs 60-140 — because a good reading must never be thrown away. */
+      const rw = words(reading || "");
+      if (reading && rw > 170) {
+        reason = "long";
+        console.log(`weave: the reading ran to ${rw}w, re-rolling`);
+      } else if (reading && !QUEST_EXAMPLE_RE.test(adventure)) {
         if (!namesAnAddress(adventure)) return { reading, adventure };
         reason = "address";
         console.log("weave: the spoken quest named an address, re-rolling");
@@ -269,6 +282,14 @@ const ADDRESS_NOTE =
   "this card stands at, with a rough direction and no address on it, or give a bearing — a kind " +
   "of place, a kind of person, or a time of day ('out past the last lamp', 'wherever the music " +
   "is worst', 'the first person who hands you water'). Finding it is half the quest.";
+
+/* The third reason the second roll happens, and the one the pull brought with it: a
+ * reading with no seeker words under it has nothing to run out of, and the model kept
+ * going — 426 words, one thought, twenty metaphors, all of it to be spoken aloud. */
+const LONG_NOTE =
+  "\n\nYour last reading ran far too long and said the same thing over and over in new " +
+  "metaphors. Write it ONCE, in under 120 words, and stop. Three cards, one thought, no list " +
+  "of 'it is not X, it is Y' reversals. End by handing them a choice.";
 
 /* ADDITION, not in weave.py — measured on staging 2026-09-02, thinking mode on: 3 of 4
  * readings OPENED with the SYSTEM prompt's own example, word for word ("You built all
