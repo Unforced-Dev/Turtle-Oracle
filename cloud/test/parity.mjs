@@ -20,7 +20,7 @@ import path from "node:path";
 
 import { BY_REALM } from "../src/deck.js";
 import { locateSpread } from "../src/geo.js";
-import { SYSTEM, weaveLlm, weaveFallback } from "../src/weave.js";
+import { SYSTEM, weaveLlm, weaveFallback, biteRealm, landmarkRealm } from "../src/weave.js";
 import { __test as S } from "../src/session.js";
 
 const HERE = path.dirname(fileURLToPath(import.meta.url));
@@ -64,7 +64,14 @@ function firstDiff(a, b) {
 
 /* ---- the fixture, shared by both sides ------------------------------------------- */
 
-const CARD_IDS = { roots: "roots-04", trunk: "trunk-13", branches: "branches-10" };
+/* Why these three ids. ONE BEARING (the bite says a kind of place, never an address, unless
+ * the card stands at one of the four placements nobody can miss) only says anything on a
+ * spread with no unmissable landmark in it — and WHICH cards resolve where is data, not a
+ * constant: data/playa_2026.json gains addresses every time the BRC directories are
+ * re-fetched. So the fixture is a plain draw with no landmark, and the landmark branch of
+ * the prompt is checked below against a draw built by hand. The checks read the bite off
+ * `located` rather than trust this. */
+const CARD_IDS = { roots: "roots-05", trunk: "trunk-13", branches: "branches-10" };
 const WEATHER_ID = "thunderhead";
 const SHARES = [
   "I keep swallowing… the thing I want to say to my sister, because my friends all think I am " +
@@ -73,12 +80,9 @@ const SHARES = [
   "I secretly want to sing in front of people and I have never done it once",
 ];
 const ADVENTURE =
-  "Tonight, an adventure in three moves. First, walk out alone past the Man until the music " +
-  "thins, sit in the dust, and say out loud the sentence you have been swallowing for your " +
-  "sister — stay until it stops shaking. Second, stand at the Heartwood work of your own camp: " +
-  "take one shift nobody wants, the 4am ice run or the last sweep, and stay until the job is " +
-  "finished. Third, find one stranger at Center Camp, tell them the thing you make that has no " +
-  "use, and give them something small you made. Leave your written word weighted under a stone.";
+  "Tonight, one bite. Say the sentence you have been swallowing about your sister out loud, to " +
+  "the first stranger who hands you water — no hedging, no laugh at the end. Bring back what " +
+  "their face did.";
 
 /* ---- the Python side ------------------------------------------------------------- */
 
@@ -162,6 +166,18 @@ const picks = Object.fromEntries(
   Object.entries(CARD_IDS).map(([r, id]) => [r, BY_REALM[r].find((c) => c.id === id)]),
 );
 const located = locateSpread(picks);
+
+/* What the 2026 data actually says about THIS spread, read off `located` instead of assumed.
+ * The bite is one card, and whether its quest may name a place at all depends on that card
+ * standing at one of the four unmissable landmarks. Every bite check below is stated against
+ * these rather than against a card id. */
+const REALMS = ["roots", "trunk", "branches"];
+const SLOT_TITLES = { roots: "FACE", trunk: "STAND", branches: "REACH" };
+const BITE = biteRealm(located, picks);
+const LANDMARK = landmarkRealm(located);
+const spread = () =>
+  `the bite is ${SLOT_TITLES[BITE]} (${picks[BITE].name}), landmark: ${LANDMARK || "none"}`;
+
 const sess = {
   id: "fixture",
   weather: WEATHER_ID,
@@ -204,28 +220,27 @@ await S.sealLlm(sess, cs, 1);
 
 console.log("\nprompt parity with app/oracle (byte for byte):");
 check("SYSTEM voice", SYSTEM === py.system, firstDiff(py.system, SYSTEM));
-/* The weave prompt's quest rules diverged on feat/cloud-seance-v2: the playa turtle tells
- * the model to name real 2026 places for all three moves, the cloud turtle pins exactly
- * ONE move to a placement and gives the other two a bearing instead of an address. The
- * reading half of the prompt, and every other prompt, still match byte for byte — so the
- * rest of this diff is worth keeping, and only this one string is skipped. */
-skip("weave prompt (quest rules: one anchor + two open moves)", AHEAD);
+/* The weave prompt's quest half diverged on feat/cloud-seance-v2 and again on
+ * fix/seance-smooth: the playa turtle asks for three moves with real 2026 places in them,
+ * the cloud turtle asks for ONE act of 20-40 words with a bearing and a proof. The READING
+ * half of this prompt is untouched and still says the same words — but the two halves are
+ * built as one string, so the byte-diff cannot see that; the structural checks below hold
+ * the reading's budget instead. */
+skip("weave prompt (quest rules: one bite, one bearing, one proof)", AHEAD);
 /* The seal prompt diverged for the same reason the weave prompt did, one stage later: the
- * playa turtle tells the model to take every move's `where` from its card, the cloud
- * turtle marks the ONE placed move and forbids an address on the other two, so the sealed
- * parchment says what the spoken quest said. Retire this skip by porting the same
- * paragraph into app/oracle/session.py's _seal_llm. */
-skip("seal prompt (one placed move, two bearings)", AHEAD);
+ * playa turtle seals three moves, the cloud turtle seals the one bite the seeker heard,
+ * with a bearing instead of an address. Retire this skip by porting the same shape into
+ * app/oracle/session.py's _seal_llm. */
+skip("seal prompt (one bite: act, bearing, proof)", AHEAD);
 /* The echoes prompt gained one paragraph the Spark does not have yet: what a quotable
  * phrase IS — a clause with a noun or a verb in it, cut at the seeker's own punctuation.
  * Everything the Spark's version says is still said, in the same words and the same
  * order. Retire this skip by porting that paragraph into app/oracle/session.py. */
 skip("echoes prompt (quote a clause, not a word count)", AHEAD);
-for (const [label, a, b] of [["refine prompt", py.refine, cr.p]]) {
-  const A = normalise(a);
-  const B = normalise(b);
-  check(label, A === B, firstDiff(A, B));
-}
+/* The refine prompt diverged with the two above and for the same reason: the playa turtle
+ * rewrites three moves around the new truth, the cloud turtle rewrites the ONE bite the
+ * seeker heard. Retire this skip by porting the one-bite quest into app/oracle. */
+skip("refine prompt (rewrite the one bite, not three moves)", AHEAD);
 check("CONTEXT block", normalise(py.context) === normalise(ctx), firstDiff(normalise(py.context), normalise(ctx)));
 check(
   "time-of-day phrasing",
@@ -260,10 +275,10 @@ check(
   jsWf.reading === py.weave_fallback.reading,
   firstDiff(py.weave_fallback.reading, jsWf.reading),
 );
-/* Same divergence, offline half: the Python appends "The map says <directions>." to all
- * three moves, the cloud appends it to the anchor move only. The reading above is
- * untouched by that and still diffs. */
-skip("fallback quest (anchor move keeps the map line, the other two do not)", AHEAD);
+/* Same divergence, offline half: the Python stitches three dares into First/Second/Third,
+ * the cloud speaks one dare with a bearing and a proof. The reading above is untouched by
+ * that and still diffs. */
+skip("fallback quest (one bite, not First/Second/Third)", AHEAD);
 
 /* ---- 3. the structural guarantees tools/test_spoken_readings.py makes ------------ */
 
@@ -306,36 +321,77 @@ const rw = jsWf.reading.split(/\s+/).length;
 const qw = jsWf.adventure.split(/\s+/).length;
 check(`fallback reading fits a spoken-length budget (${rw}w)`, rw >= 70 && rw <= 125);
 check(
-  `fallback quest is compact and orally sequenced (${qw}w)`,
-  qw <= 175 && ["First.", "Second.", "Third."].every((x) => jsWf.adventure.includes(x)),
+  `fallback quest is one bite — act, bearing, proof (${qw}w)`,
+  qw <= 90 &&
+    !/\b(First|Second|Third)[.,]/.test(jsWf.adventure) &&
+    /Bring back /.test(jsWf.adventure),
+  jsWf.adventure,
 );
 check(
   "runtime prompt carries spoken word budgets",
-  cw.p.includes("90-120 words") && cw.p.includes("75-110 words"),
+  cw.p.includes("90-120 words") && cw.p.includes("20-40 words"),
 );
 check(
   "system voice bans prose that reads poorly aloud",
   SYSTEM.includes("spoken aloud") && SYSTEM.includes("no semicolons"),
 );
 
-/* The two skips above are only safe if SOMETHING still guards the diverged strings. This
- * is that something: the cloud's own rule, checked on the cloud's own side. */
+/* The skips above are only safe if SOMETHING still guards the diverged strings. This is
+ * that something: the cloud's own rule, checked on the cloud's own side. */
+/* Guard the guard: if a data refresh ever puts this fixture's bite at a landmark, the
+ * bearing checks would go quietly vacuous, so fail here first and say to repick CARD_IDS. */
 check(
-  "quest prompt pins exactly one move to a placement",
-  (cw.p.match(/- THE ANCHOR: exactly ONE move/g) || []).length === 1 &&
-    cw.p.includes("the REACH move") &&
-    cw.p.includes("Terrible Turtle Camp"),
-  "the fixture's only non-citywide card is the branches card, at E & 6:15",
+  "the fixture is still a draw with no unmissable landmark in it",
+  LANDMARK === null,
+  spread() + " — repick CARD_IDS above; the bearing rule needs a draw without one.",
 );
 check(
-  "quest prompt tells the other two moves to give a bearing, not an address",
-  cw.p.includes("the other two moves name NO address and NO camp") &&
-    cw.p.includes("Give them a bearing, not an address."),
+  "quest prompt asks for ONE act, built from ONE named card",
+  (cw.p.match(/ONE BITE, not an errand list/g) || []).length === 1 &&
+    cw.p.includes("in 20-40 words") &&
+    cw.p.includes(`built from the “${picks[BITE].name}” card`) &&
+    cw.p.includes("- THE BITE: one act, and only one.") &&
+    !cw.p.includes("THE ANCHOR") &&
+    !cw.p.includes("First, Second, Third"),
+  spread(),
 );
 check(
-  "fallback quest carries the map line exactly once",
-  (jsWf.adventure.match(/The map says /g) || []).length === 1 &&
-    (jsWf.adventure.match(/No address for this one\./g) || []).length === 2,
+  "quest prompt keeps THE CROSSING and folds THE SACRIFICE in",
+  cw.p.includes("- THE CROSSING: the act is the thing the seeker confessed they avoid") &&
+    cw.p.includes("- THE SACRIFICE, when it falls out of that on its own"),
+);
+check(
+  "quest prompt asks for one bearing and one proof, and no interior door",
+  cw.p.includes("- ONE BEARING: say where in one short phrase") &&
+    cw.p.includes("Give them a bearing, not an address.") &&
+    cw.p.includes("NO address, NO clock, NO street, NO camp name.") &&
+    cw.p.includes("- ONE PROOF: end on the single thing they carry back to the Turtle") &&
+    cw.p.includes("no 'stay until…'"),
+);
+/* The control for the check above: the landmark exception is the ONE case where the quest
+ * may name a place, and this fixture has no landmark in it — so a draw that does is built
+ * by hand, and the same prompt has to change its mind. If this ever comes back identical to
+ * the bearing-only prompt, the exception has stopped existing. */
+const lmPicks = { ...picks, trunk: BY_REALM.trunk.find((c) => c.id === "trunk-05") };
+const lmLocated = locateSpread(lmPicks);
+const lmCap = new Cap();
+await weaveLlm(told, lmPicks, lmCap, lmLocated, ctx, 1);
+check(
+  "a draw that DOES stand at a landmark may name it, and only it",
+  landmarkRealm(lmLocated) === "trunk" &&
+    biteRealm(lmLocated, lmPicks) === "trunk" &&
+    lmCap.p.includes(
+      "The one exception, and it is live tonight: this card stands at Center Camp, which nobody " +
+        "can miss — you may name that place, and only that.",
+    ) &&
+    !cw.p.includes("The one exception"),
+  `landmark draw bites ${biteRealm(lmLocated, lmPicks)}`,
+);
+check(
+  "fallback quest gives a bearing, not an address",
+  jsWf.adventure.includes(S.openWhere(BITE, located[BITE])) &&
+    !jsWf.adventure.includes("The map says ") &&
+    !S.namesAnAddress(jsWf.adventure),
   jsWf.adventure,
 );
 check(
@@ -345,22 +401,26 @@ check(
     ce.p.includes("3-8 words"),
 );
 check(
-  "seal prompt marks the one placed move and forbids an address on the other two",
-  (cs.p.match(/<- THE PLACED MOVE/g) || []).length === 1 &&
-    cs.p.includes("THE ANCHOR: exactly ONE of the three — the REACH move") &&
-    cs.p.includes("must NOT name an address, a clock, a street, or a camp"),
-  "the fixture's only placed card is the branches card, at E & 6:15",
+  "seal prompt seals the one bite it was bitten from, with a bearing",
+  cs.p.includes("Seal this quest into ONE BITE: one act, one bearing, one proof.") &&
+    cs.p.includes(`card="${picks[BITE].name}"`) &&
+    !cs.p.includes(picks[BITE === "roots" ? "trunk" : "roots"].name) &&
+    cs.p.includes("the where must NOT name an address, a clock, a street, or a camp") &&
+    cs.p.includes('{"move": {"task":"","where":"","proof":"","leave":""}}'),
+  spread(),
 );
 check(
-  "refine prompt preserves the spoken three-move shape",
-  cr.p.includes("75-110 words") && cr.p.includes("First, Second, Third"),
+  "refine prompt rewrites the one bite, in the shape it was spoken",
+  cr.p.includes("Rewrite the ONE BITE around that new truth") &&
+    cr.p.includes("20-40 words, one act, imperative, verb first") &&
+    cr.p.includes("no First and Second and Third"),
 );
 check(
   "refine prompt excludes UI stems and synthetic stone labels",
   !cr.p.includes("I keep swallowing…") && !cr.p.includes("I am carrying:"),
 );
 
-const stub = { available: () => true, generate: async () => JSON.stringify({ say: "That changes it.", adventure: "word ".repeat(20) }) };
+const stub = { available: () => true, generate: async () => JSON.stringify({ say: "That changes it.", adventure: "word ".repeat(6) }) };
 check("refine rejects a stub quest", (await S.refineLlm(sess, stub, 1)) === null);
 const parrot = {
   available: () => true,
