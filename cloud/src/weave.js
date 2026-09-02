@@ -108,8 +108,16 @@ export function biteRealm(located, cards) {
   return REALMS[n % REALMS.length];
 }
 
-export async function weaveLlm(question, cards, llm, located, context, timeout) {
+/** `opts` (all optional): {pulled} — the seeker said nothing and chose to let the cards
+ *  speak; {look} — the read of the table the Turtle already gave them at the asking, so
+ *  the reading continues that rather than starting the séance over. Both are ADDITIONS
+ *  around the parity-locked prompt: called with six arguments this builds exactly the
+ *  string cloud/test/parity.mjs diffs. */
+export async function weaveLlm(question, cards, llm, located, context, timeout, opts) {
   located = located || {};
+  opts = opts || {};
+  const pulled = Boolean(opts.pulled);
+  const look = String(opts.look || "").trim();
   const bite = biteRealm(located, cards);
   const biteCard = cards[bite];
   const landmark = landmarkRealm(located) === bite;
@@ -120,18 +128,39 @@ export async function weaveLlm(question, cards, llm, located, context, timeout) 
     line("WHAT TO REACH FOR (branch)", cards.branches, located.branches),
   ].join("\n");
   const prompt =
-    `A seeker shared: "${question}"\n\n` +
+    (pulled
+      ? "A seeker gave their name and asked for nothing else. They chose to let the cards " +
+        "speak. That is an answer, not a refusal — never mention that they said nothing, never " +
+        "apologize for it, never ask them for more.\n\n"
+      : `A seeker shared: "${question}"\n\n`) +
     (context ? `CONTEXT: ${context}\n\n` : "") +
+    (look
+      ? "YOU HAVE ALREADY SPOKEN ONCE. When the cards turned over you looked at the table and " +
+        `told them this, and they heard it:\n"${look}"\n\n` +
+        "The reading below CONTINUES that one. Go deeper into it — never repeat a sentence of " +
+        "it back to them, and never start the reading over as if they had not heard it.\n\n"
+      : "") +
     `Three cards rose along the World Tree:\n${body}\n\n` +
-    "THE BINDING — read this first: these cards were drawn BLIND, by the playa's own chance, " +
-    "not chosen to match. That is the craft: bind them to this seeker so tightly they look " +
-    "inevitable. For each card, take one EXACT word or phrase the seeker said and one image " +
-    "from the card (use its essence and bridge lines) and tie them into one thought. Never " +
-    "apologize for a card or call it random.\n\n" +
-    "Weave the three into ONE reading (90-120 words, or 60-85 when CONTEXT asks for grounding) " +
-    "spoken directly TO the seeker in the " +
-    "Turtle's voice, honoring the REGISTER in CONTEXT. Move as one connected thought about THEIR " +
-    "words: what to face -> how to stand -> what to reach for. Fold one card's shadow in as a plain " +
+    (pulled
+      ? "THE BINDING — read this first: these cards were drawn BLIND, by the playa's own chance, " +
+        "not chosen to match. That is the craft: bind the three to each other so tightly they " +
+        "look inevitable. For each card take one image from it (use its essence and bridge lines) " +
+        "and tie it into one thought. You know nothing about this seeker, so say what is TRUE of " +
+        "these three standing together: open enough that anyone in this city tonight could find " +
+        "themselves in it, concrete enough to be about something — an image, an hour, a weight. " +
+        "Never a horoscope, never a guess about their life, never 'you said'. Never apologize " +
+        "for a card or call it random.\n\n"
+      : "THE BINDING — read this first: these cards were drawn BLIND, by the playa's own chance, " +
+        "not chosen to match. That is the craft: bind them to this seeker so tightly they look " +
+        "inevitable. For each card, take one EXACT word or phrase the seeker said and one image " +
+        "from the card (use its essence and bridge lines) and tie them into one thought. Never " +
+        "apologize for a card or call it random.\n\n") +
+    "Weave the three into ONE reading (" +
+    (pulled ? "60-120 words" : "90-120 words, or 60-85 when CONTEXT asks for grounding") +
+    ") spoken directly TO the seeker in the " +
+    "Turtle's voice, honoring the REGISTER in CONTEXT. Move as one connected thought about " +
+    (pulled ? "what the three of them say together" : "THEIR words") +
+    ": what to face -> how to stand -> what to reach for. Fold one card's shadow in as a plain " +
     "warning, in your own words — never write the word 'shadow', never write 'the root/trunk/branch " +
     "says', never label which card anything came from. The reading contains NO instructions and NO " +
     "place names — it names what is true, not what to do or where to go; all doing belongs to the " +
@@ -144,11 +173,19 @@ export async function weaveLlm(question, cards, llm, located, context, timeout) 
     "nothing else. So: one act, imperative, verb first, no preamble and no explaining. A second " +
     "clause is allowed only when it is the payoff or the sting — never a second chore. No headings, " +
     "no bullets, no First and Second and Third. Build it on these rules:\n" +
-    "- THE BITE: one act, and only one. Tie one EXACT word or phrase the seeker said to one image " +
-    `from “${biteCard.name}”, so the act could only be theirs. No 'and then', no 'stay until…', no ` +
-    "'leave when you have…' — those are interior doors, and a bite has none.\n" +
-    "- THE CROSSING: the act is the thing the seeker confessed they avoid, don't do, or secretly " +
-    "want. Not visit it. Not think about it. Do it.\n" +
+    (pulled
+      ? "- THE BITE: one act, and only one. Build it out of one image from " +
+        `“${biteCard.name}” — its seed line and its dare are the raw material — so it is an act, ` +
+        "not an errand. No 'and then', no 'stay until…', no 'leave when you have…' — those are " +
+        "interior doors, and a bite has none.\n" +
+        "- THE CROSSING: the act crosses something. It is the thing most people out here quietly " +
+        "avoid — speaking first, sitting still, asking for something, giving something away, " +
+        "being seen. Not visit it. Not think about it. Do it.\n"
+      : "- THE BITE: one act, and only one. Tie one EXACT word or phrase the seeker said to one " +
+        `image from “${biteCard.name}”, so the act could only be theirs. No 'and then', no 'stay ` +
+        "until…', no 'leave when you have…' — those are interior doors, and a bite has none.\n" +
+        "- THE CROSSING: the act is the thing the seeker confessed they avoid, don't do, or " +
+        "secretly want. Not visit it. Not think about it. Do it.\n") +
     "- THE SACRIFICE, when it falls out of that on its own: the act leaves something behind — a " +
     "written word, an object, a habit named out loud — left, not kept. Never bolted on.\n" +
     "- ONE BEARING: say where in one short phrase, and make it a kind of place, a kind of person, or " +
@@ -323,8 +360,9 @@ export function openWhere(realm, loc) {
   return OPEN_WHERE[realm];
 }
 
-export function weaveFallback(question, cards, located) {
+export function weaveFallback(question, cards, located, opts) {
   located = located || {};
+  opts = opts || {};
   const bite = biteRealm(located, cards);
   const r = cards.roots;
   const t = cards.trunk;
@@ -334,8 +372,14 @@ export function weaveFallback(question, cards, located) {
   const questionQuote = questionShort.endsWith("…")
     ? `“${questionShort}”`
     : `“${questionShort}.”`;
+  /* A seeker who let the cards speak brought the Turtle nothing to quote, and quoting
+   * "The seeker could not put it into words" back at them is the template calling them
+   * mute. The rest of the reading is the same three cards, unchanged. */
+  const opening = opts.pulled
+    ? "You brought the Turtle no words, and the Turtle does not need them. Hear the three as one. "
+    : `You brought the Turtle this: ${questionQuote} Hear the answer as one. `;
   const reading =
-    `You brought the Turtle this: ${questionQuote} Hear the answer as one. ` +
+    opening +
     `${firstSentence(r.reading)} ${firstSentence(t.reading)} ` +
     `${firstSentence(b.reading)} Mind the teeth: ${warning} ` +
     "Nothing here predicts you. Choose what you will face, what you will stand in, and what you " +
@@ -352,11 +396,11 @@ export function weaveFallback(question, cards, located) {
   return { reading, adventure };
 }
 
-/** Returns [{reading, adventure}, mode: 'llm'|'fallback']. */
-export async function weave(question, cards, llm, located, context, timeout) {
+/** Returns [{reading, adventure}, mode: 'llm'|'fallback']. `opts` is weaveLlm's. */
+export async function weave(question, cards, llm, located, context, timeout, opts) {
   if (llm && llm.available()) {
-    const out = await weaveLlm(question, cards, llm, located, context, timeout);
+    const out = await weaveLlm(question, cards, llm, located, context, timeout, opts);
     if (out) return [out, "llm"];
   }
-  return [weaveFallback(question, cards, located), "fallback"];
+  return [weaveFallback(question, cards, located, opts), "fallback"];
 }

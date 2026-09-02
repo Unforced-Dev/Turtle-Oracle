@@ -81,8 +81,16 @@ function ctxWith(llm) {
   return { kv: null, sessions: null, llm, shellChance: 0, tShort: 1, tLong: 1 };
 }
 
-/* ---- the two walks ---------------------------------------------------------------- */
+/* ---- the walks --------------------------------------------------------------------- */
 
+const STORY =
+  "I got here Tuesday and I have not slept and I keep telling everyone I am fine. " +
+  "I am not fine. I have not said the thing I came out here to say.";
+
+/** THE PULL: the only way in now. A name, and then three cards.
+ *  `door` is "pull" for that, or "talk"/"touch" for an OLD SESSION — one written by the
+ *  build before this one and still sitting in a Durable Object at stage `door`. Nothing
+ *  routes there any more, so those two are rewound by hand; they must still finish. */
 async function walk(door, { llm, answer }) {
   const trace = [];
   const { sess, event } = start("seek");
@@ -93,18 +101,19 @@ async function walk(door, { llm, answer }) {
     trace.push(e);
     return e;
   };
-  await say({ text: "um, hi there, I'm Wren" }); // naming -> door
-  await say({ door }); // door -> listening | weather
-  if (door === "talk") {
-    await say({
-      text:
-        "I got here Tuesday and I have not slept and I keep telling everyone I am fine. " +
-        "I am not fine. I have not said the thing I came out here to say.",
-    });
+  if (door === "pull") {
+    await say({ text: "um, hi there, I'm Wren" }); // naming -> asking, in one move
   } else {
-    await say({ weather: "thunderhead" });
-    await say({ stones: ["grief", "secret", "not-a-stone"] });
-    await say({ wanting: "lost" });
+    rewindToDoor(sess);
+    await say({}); // the door, offered again to a phone that came back to it
+    await say({ door }); // door -> listening | weather
+    if (door === "talk") {
+      await say({ text: STORY });
+    } else {
+      await say({ weather: "thunderhead" });
+      await say({ stones: ["grief", "secret", "not-a-stone"] });
+      await say({ wanting: "lost" });
+    }
   }
   const proposed = await say(answer); // asking -> proposed
   const sealed = await accept(sess, ctx);
@@ -114,63 +123,81 @@ async function walk(door, { llm, answer }) {
 
 const stages = (trace) => trace.map((e) => e.stage);
 
-/* ---- 1. the talk door ------------------------------------------------------------- */
+/** A séance parked at the OLD door: what a Durable Object written by the build before
+ *  this one still holds. nameStep will not go there any more, so the stages that only a
+ *  legacy session can reach are rewound by hand — they must all still answer. */
+function rewindToDoor(sess, name = "Wren") {
+  sess.name = name;
+  sess.stage = "door";
+  sess.door = null;
+  sess.picks = null;
+  sess.located = null;
+  sess.bite = null;
+  sess.look = null;
+  sess.question = null;
+  sess.chips = null;
+  return sess;
+}
 
-section("the talk door: naming → door → listening → asking → proposed → accepted");
+/* ---- 1. the pull: a name, and then the cards --------------------------------------- */
+
+section("the pull: naming → asking → proposed → accepted, on the cards alone");
 {
   const llm = goodLlm();
-  const { sess, trace, sealed } = await walk("talk", { llm, answer: { text: "I put down being the calm one." } });
+  const { sess, trace, proposed, sealed } = await walk("pull", { llm, answer: { pass: true } });
   check(
-    "walks the stages in order",
-    JSON.stringify(stages(trace)) ===
-      JSON.stringify(["naming", "door", "listening", "asking", "proposed", "accepted"]),
+    "walks the stages in order — no door, no touch screens",
+    JSON.stringify(stages(trace)) === JSON.stringify(["naming", "asking", "proposed", "accepted"]),
     JSON.stringify(stages(trace)),
   );
-  const [, door, listening, asking, proposed] = trace;
-  check("the name is heard and spoken back", sess.name === "Wren" && door.say.startsWith("Wren."));
+  const [, asking] = trace;
   check(
-    "the door offers exactly talk and touch",
-    JSON.stringify(door.doors.map((d) => d.id)) === JSON.stringify(["talk", "touch"]) &&
-      door.expects === "door" &&
-      door.doors.every((d) => d.label),
+    "the name is heard and said back, and the draw follows in the same breath",
+    sess.name === "Wren" && asking.say.startsWith("Wren.") && asking.say.length > 30,
+    asking.say,
   );
-  check("the talk door invites a story", listening.expects === "story" && /burn/i.test(listening.say));
+  check("the séance knows it pulled first", sess.door === "pull");
+  check("nothing offers a door any more", !asking.doors && !asking.weathers && !asking.wantings);
   check(
-    "the cards are revealed at the asking, not at the reading",
+    "the cards are on the table at the asking, with a gloss each",
     asking.expects === "answer" &&
       ["roots", "trunk", "branches"].every((r) => asking.cards[r] && asking.cards[r].thumb) &&
-      proposed.cards.roots.id === asking.cards.roots.id,
-  );
-  check(
-    "the asking carries a question and three short chips",
-    Boolean(asking.question) && asking.chips.length === 3 && asking.chips.every((c) => c.split(/\s+/).length <= 6),
-    JSON.stringify(asking.chips),
-  );
-  check("the model's question is used when it answers", asking.modes.ask === "llm");
-  /* the oracle LOOKS before it asks: the whole table read in a few sentences, said
-     before the question, and every card carries one plain line of meaning so a name
-     like "the Heartwood" is never a riddle on the phone */
-  check(
-    "the asking carries the Turtle's look at the whole table, before the question",
-    typeof asking.look === "string" && asking.look.split(/\s+/).length >= 28 && !/\?\s*$/.test(asking.look),
-    String(asking.look),
-  );
-  check("the model's look is used when it gives one", /one thread/.test(asking.look), asking.look);
-  check(
-    "every card on the table carries a plain one-line gloss",
-    ["roots", "trunk", "branches"].every((r) => typeof asking.cards[r].gloss === "string" && asking.cards[r].gloss.length > 8),
+      ["roots", "trunk", "branches"].every(
+        (r) => typeof asking.cards[r].gloss === "string" && asking.cards[r].gloss.length > 8,
+      ),
     JSON.stringify(["roots", "trunk", "branches"].map((r) => asking.cards[r].gloss)),
   );
+  /* THE LOOK IS THE READING NOW. Most seekers will let the cards speak and never add a
+     word, so what the Turtle says over the spread has to stand on its own: whole spoken
+     sentences, no question inside it, no place names. */
   check(
-    "the story and the answer both reach the shares",
-    sess.shares.length === 2 && sess.shares[1] === "I put down being the calm one.",
-    JSON.stringify(sess.shares),
+    "the look is a reading of the spread, not a caption",
+    typeof asking.look === "string" &&
+      asking.look.split(/\s+/).length >= 45 &&
+      asking.look.split(/\s+/).length <= 130 &&
+      !/\?\s*$/.test(asking.look),
+    String(asking.look),
   );
+  check("the model's look is used when it gives one", /one thread/.test(asking.look) && asking.modes.look === "llm");
   check(
-    "the reading, the quest and the decision arrive together",
-    proposed.reading && proposed.adventure && proposed.ask && proposed.expects === "decision",
+    "one open question, and three chips nobody has to tap",
+    Boolean(asking.question) &&
+      asking.question.split(/\s+/).length < 30 &&
+      asking.chips.length === 3 &&
+      asking.chips.every((c) => c.split(/\s+/).length <= 6),
+    JSON.stringify(asking.chips),
   );
-  check("the echoes quote the seeker, or name the card", ["roots", "trunk", "branches"].every((r) => proposed.echoes[r]));
+  check("the seeker has said nothing, and nothing was invented for them", sess.shares.length === 0);
+  check(
+    "letting the cards speak still yields a reading and a quest",
+    Boolean(proposed.reading) && Boolean(proposed.adventure) && proposed.expects === "decision",
+  );
+  check("and the event says the reading came off the cards alone", proposed.modes.told === "cards");
+  check(
+    "the fallback echoes name the cards rather than invent a quote",
+    ["roots", "trunk", "branches"].every((r) => proposed.echoes[r] && !proposed.echoes[r].includes("“")),
+    JSON.stringify(proposed.echoes),
+  );
   check(
     "the seal produces ONE bite — act, bearing, proof — and the vow",
     sealed.quest.moves.length === 1 &&
@@ -186,9 +213,101 @@ section("the talk door: naming → door → listening → asking → proposed �
   );
 }
 
-/* ---- 2. the touch door ------------------------------------------------------------ */
+/* The pass path with NO model at all: the templates have to carry a whole séance, because
+   a seeker who says nothing is the ordinary case and the offline turtle still has to read. */
+{
+  const { sess, trace, proposed, sealed } = await walk("pull", { llm: deadLlm, answer: { pass: true } });
+  const [, asking] = trace;
+  check(
+    "with no model, the pull still walks to a sealed quest",
+    stages(trace).join(",") === "naming,asking,proposed,accepted" && Boolean(sealed.quest),
+  );
+  check(
+    "the template look names all three cards and what they mean",
+    ["roots", "trunk", "branches"].every(
+      (r) => asking.look.includes(asking.cards[r].name) && asking.look.includes(asking.cards[r].gloss),
+    ),
+    String(asking.look),
+  );
+  check("the template question is still open", /\?\s*$/.test(asking.question) && asking.modes.ask === "fallback");
+  check(
+    "the template reading does not call the silent seeker mute",
+    Boolean(proposed.reading) && !/could not put it into words/.test(proposed.reading),
+    proposed.reading,
+  );
+  check("and the template is honest about being one", proposed.modes.weave === "fallback");
+  check("a pass adds nothing to the shares", sess.shares.length === 0);
+}
 
-section("the touch door: naming → door → weather → stones → wanting → asking → proposed → accepted");
+/* Context is OPTIONAL, not gone: whatever the seeker adds is a share and the weave uses it. */
+{
+  const llm = goodLlm();
+  const { sess, trace, proposed } = await walk("pull", {
+    llm,
+    answer: { text: "I put down being the calm one." },
+  });
+  check(
+    "an answer at the asking becomes the one share the weave reads",
+    sess.shares.length === 1 && sess.shares[0] === "I put down being the calm one.",
+    JSON.stringify(sess.shares),
+  );
+  check("and the event says the seeker fed something in", proposed.modes.told === "told");
+  check(
+    "the reading and the quest arrive as before",
+    Boolean(proposed.reading) && Boolean(proposed.adventure) && Boolean(proposed.ask),
+  );
+  check("the echoes may quote them now", ["roots", "trunk", "branches"].every((r) => proposed.echoes[r]));
+  check("a chip is an answer too", trace[1].chips.length === 3);
+}
+{
+  const llm = goodLlm();
+  const { sess } = await walk("pull", { llm, answer: { chip: "A whole year" } });
+  check("a tapped chip reaches the shares as the seeker's own words", JSON.stringify(sess.shares) === JSON.stringify(["A whole year"]));
+}
+
+/* ---- 1b. an old session, still at the talk door ------------------------------------ */
+
+section("an old session at the talk door: door → listening → asking → proposed → accepted");
+{
+  const llm = goodLlm();
+  const { sess, trace, sealed } = await walk("talk", { llm, answer: { text: "I put down being the calm one." } });
+  check(
+    "walks the stages in order",
+    JSON.stringify(stages(trace)) ===
+      JSON.stringify(["naming", "door", "listening", "asking", "proposed", "accepted"]),
+    JSON.stringify(stages(trace)),
+  );
+  const [, door, listening, asking, proposed] = trace;
+  check(
+    "the door still offers exactly talk and touch",
+    JSON.stringify(door.doors.map((d) => d.id)) === JSON.stringify(["talk", "touch"]) &&
+      door.expects === "door" &&
+      door.doors.every((d) => d.label),
+  );
+  check("the talk door still invites a story", listening.expects === "story" && /burn/i.test(listening.say));
+  check(
+    "the cards are revealed at the asking, not at the reading",
+    asking.expects === "answer" &&
+      ["roots", "trunk", "branches"].every((r) => asking.cards[r] && asking.cards[r].thumb) &&
+      proposed.cards.roots.id === asking.cards.roots.id,
+  );
+  check("the model's question is used when it answers", asking.modes.ask === "llm");
+  check(
+    "the story and the answer both reach the shares",
+    sess.shares.length === 2 && sess.shares[1] === "I put down being the calm one.",
+    JSON.stringify(sess.shares),
+  );
+  check(
+    "the reading, the quest and the decision arrive together",
+    proposed.reading && proposed.adventure && proposed.ask && proposed.expects === "decision",
+  );
+  check("the echoes quote the seeker, or name the card", ["roots", "trunk", "branches"].every((r) => proposed.echoes[r]));
+  check("an old session still seals one bite", sealed.quest.moves.length === 1 && Boolean(sealed.quest.vow));
+}
+
+/* ---- 2. an old session, still at the touch door ------------------------------------ */
+
+section("an old session at the touch door: door → weather → stones → wanting → asking → …");
 {
   const llm = goodLlm();
   const { sess, trace, proposed, sealed } = await walk("touch", {
@@ -304,7 +423,7 @@ section("what the séance refuses");
 {
   const ctx = ctxWith(deadLlm);
   const { sess } = start("seek");
-  await hear(sess, { text: "Wren" }, ctx);
+  rewindToDoor(sess);
   const bad = await hear(sess, { door: "shrug" }, ctx);
   check("an unknown door re-asks rather than advancing", bad.stage === "door" && bad.expects === "door");
   await hear(sess, { door: "touch" }, ctx);
@@ -326,7 +445,7 @@ section("what the séance refuses");
 {
   const ctx = ctxWith(deadLlm);
   const { sess } = start("seek");
-  await hear(sess, { text: "Wren" }, ctx);
+  rewindToDoor(sess);
   await hear(sess, { door: "talk" }, ctx);
   const long = "word ".repeat(900);
   await hear(sess, { text: long }, ctx);
@@ -341,7 +460,7 @@ section("what the séance refuses");
   const { sess } = start("seek");
   const gone = await hear(null, { text: "hello" }, ctx);
   check("a séance that has aged out says so", gone.stage === "gone" && Boolean(gone.error));
-  await hear(sess, { text: "Wren" }, ctx);
+  rewindToDoor(sess);
   await hear(sess, { door: "talk" }, ctx);
   await hear(sess, { text: "the whole thing" }, ctx);
   await hear(sess, { pass: true }, ctx);
@@ -362,7 +481,7 @@ section("the stem stage is gone");
 {
   const ctx = ctxWith(deadLlm);
   const { sess } = start("seek");
-  await hear(sess, { text: "Wren" }, ctx);
+  rewindToDoor(sess);
   await hear(sess, { door: "touch" }, ctx);
   const after = await hear(sess, { weather: "whiteout" }, ctx);
   check("the weather leads to the stones, never to a sentence to finish", after.stage === "stones" && !after.stem);
@@ -789,13 +908,24 @@ function drawable(e) {
 async function seanceAt(stage, ctx) {
   const { sess } = start(stage.startsWith("tale") ? "tale" : "seek");
   if (stage === "naming" || stage === "tale_naming") return sess;
-  await hear(sess, { text: "Wren" }, ctx);
-  if (stage === "door" || stage === "tale_listening") return sess;
+  if (stage === "tale_listening") {
+    await hear(sess, { text: "Wren" }, ctx);
+    return sess;
+  }
   if (stage === "tale_told") {
+    await hear(sess, { text: "Wren" }, ctx);
     await hear(sess, { text: "I walked out to the fence and I came back changed." }, ctx);
     return sess;
   }
-  if (["weather", "stones", "wanting"].includes(stage)) {
+  /* The five stages only an OLD session can be sitting in. They are still answered, so
+     they are still probed — the matrix below is the whole point of keeping them alive. */
+  if (["door", "weather", "stones", "wanting", "listening"].includes(stage)) {
+    rewindToDoor(sess);
+    if (stage === "door") return sess;
+    if (stage === "listening") {
+      await hear(sess, { door: "talk" }, ctx);
+      return sess;
+    }
     await hear(sess, { door: "touch" }, ctx);
     if (stage === "weather") return sess;
     await hear(sess, { weather: "fog" }, ctx);
@@ -803,9 +933,8 @@ async function seanceAt(stage, ctx) {
     await hear(sess, { stones: ["grief"] }, ctx);
     return sess;
   }
-  await hear(sess, { door: "talk" }, ctx);
-  if (stage === "listening") return sess;
-  await hear(sess, { text: "I got here Tuesday and I have not slept, and I keep saying I am fine." }, ctx);
+  // everything from the asking on comes off the pull, which is how a séance runs now
+  await hear(sess, { text: "Wren" }, ctx);
   if (stage === "asking") return sess;
   await hear(sess, { text: "I put down being the calm one." }, ctx);
   if (stage === "proposed") return sess;
@@ -994,8 +1123,8 @@ section("the caps hold, and truncate rather than refuse");
     JSON.stringify(settled.modes),
   );
   check(
-    "a full story plus three refines stays inside the twelve-share roof",
-    sess.shares.length <= 12 && sess.shares.length === 6,
+    "an answer plus three refines and a settled fourth stays inside the twelve-share roof",
+    sess.shares.length <= 12 && sess.shares.length === 5,
     String(sess.shares.length),
   );
   // the roof itself: a séance cannot reach twelve through the API, so push it there

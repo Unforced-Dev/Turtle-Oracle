@@ -44,10 +44,10 @@ const NAME_ASKS = [
   "Mm. The Tree said someone was coming. Sit. Tell me the name you go by in this city.",
 ];
 
-/* THE DOOR — the one branch the whole séance turns on. A seeker deep in their burn is
- * not going to complete the sentence "I want to keep…", and the old flow made them.
- * So: talk, or touch. Nobody has to type to be read. */
-const DOOR_ASK_TAIL = "Now: will you talk to the Turtle, or touch?";
+/* THE DOOR, as it was. Nothing routes into it any more — a name goes straight to the
+ * draw (nameStep) — but a séance started by the build before this one is still sitting
+ * in a Durable Object at stage `door`, and it has to be able to finish. So the stage and
+ * its three touch screens stay live in hear(); only the way IN is gone. */
 const DOORS = [
   { id: "talk", label: "Talk — tell the Turtle about your burn" },
   { id: "touch", label: "Touch — no words needed" },
@@ -81,6 +81,16 @@ const WANTINGS = [
   { id: "unknown", name: "Nothing yet", line: "I came out here to find out" },
 ];
 const WANTING_RETRY = "Touch one, traveler. Even “nothing yet” is an answer.";
+
+/* What the Turtle says over the pull when the seeker has said NOTHING — which is now the
+ * ordinary way in. DRAWN_LINES all claim to have heard something ("Enough. The Turtle has
+ * heard you"), and a séance that opens by thanking you for words you never said is a
+ * séance that is not listening. */
+const PULL_LINES = [
+  "Then the Turtle will not ask you anything yet. Watch — the Tree is choosing.",
+  "Good. Sit. The shell hums, and three cards rise for you.",
+  "No questions first. That is how the old ones did it. The Tree is choosing your three.",
+];
 
 const DRAWN_LINES = [
   "Enough. The Turtle has heard you. Watch — the Tree is choosing.",
@@ -710,9 +720,12 @@ function cleanLook(raw) {
   if (/\b(FACE|STAND|REACH)\s*:/.test(s)) return refuse("slot labels");
   if (/built all year|fine way to disappear|map runs out|nobody needs you/i.test(s))
     return refuse("quotes the system example");
-  /* under ~28 words it is a caption, not a look — the template's three lines beat it */
+  /* The look is now the WHOLE reading of the spread — it is what most seekers will take
+   * away, because most of them will let the cards speak and never add a word. Under ~45
+   * words it is a caption rather than a reading and the template's three lines beat it;
+   * past ~130 the ear stops following. */
   const n = words(s);
-  if (n < 28 || n > 110) return refuse(n < 28 ? "too short" : "too long");
+  if (n < 45 || n > 130) return refuse(n < 45 ? "too short" : "too long");
   return s;
 }
 
@@ -729,31 +742,42 @@ async function askLlm(sess, llm, tShort) {
       `${SLOT_PHRASE[r]} — ${picks[r].name}: keywords=${(picks[r].keywords || []).join(", ")}; ` +
       `essence="${(cl[picks[r].id] || {}).essence || picks[r].reading || ""}"`,
   ).join("\n");
+  /* THE ZERO-CONTEXT CASE IS THE PRIMARY ONE. Almost every seeker now arrives here having
+   * said nothing but their name, so this prompt is written for that first and treats
+   * anything they did offer as a bonus. A reading that needs the seeker's words to exist
+   * is not an oracle; it is an intake form with a mood. */
+  const told = [...heard, ...taps];
   const prompt =
-    "Three cards are face up on the table. The seeker has NOT heard their reading yet — " +
-    "you are about to ask them one thing, and their answer becomes part of it.\n\n" +
+    "Three cards are face up on the table. The seeker gave their name and asked for nothing " +
+    "else — no question, no story. That is the ordinary way in: they came for a reading, so " +
+    "give them one, and let it stand on the cards alone.\n\n" +
     `The cards:\n${lines}\n\n` +
-    (heard.length
-      ? "What the seeker has already told you:\n" + heard.map((s) => `- ${s}`).join("\n")
-      : "The seeker has said nothing tonight. They only touched what the shell offered:\n" +
-        taps.map((s) => `- ${s}`).join("\n")) +
-    "\n\nFIRST, LOOK at the whole table, the way an oracle does before it asks anything. Write " +
-    "45-75 words, four short spoken sentences or so. This is the seeker's first sight of these " +
-    "cards, so for each one: its name, said once, and in the same breath what it is in plain words " +
-    "— then what it means for THIS seeker, tied to something they actually said. Quote two or three " +
-    "of their own words for at least two of the three cards (if they said nothing, tie each card to " +
-    "what they touched). Let the three run as one thought: what to face, where they stand, what " +
-    "they reach for. Say it the way you would say it across a fire, in whole sentences — never a " +
-    "card's name followed by a colon and a list of words, never 'X says… Y says… Z says…'. No " +
-    "question in it, no instruction, no place name, no explaining how the cards work. The example " +
-    "in your instructions is about a different seeker: never quote it or its ideas back as if this " +
-    "seeker said them — only THEIR words are theirs. This is the interpretation that earns the " +
-    "question.\n" +
+    (told.length
+      ? "This one did offer something, which is more than most give. Use it:\n" +
+        told.map((s) => `- ${s}`).join("\n") +
+        "\n\n"
+      : "") +
+    "FIRST, READ THE SPREAD — the whole table, the way an oracle reads it before it asks " +
+    "anything. Write 60-100 words in whole spoken sentences. Name each card once, and in the " +
+    "same breath say what it is in plain words, so a stranger who has never seen “the Heartwood” " +
+    "knows what just landed in front of them. Then let the three run as ONE thought: what to " +
+    "face, where they stand, what they reach for. " +
+    (told.length
+      ? "Tie it to what they told you above — two or three of their own words, for at least two " +
+        "of the three cards. "
+      : "You know nothing about this one. So read what is actually on the table: open enough " +
+        "that anyone in this city tonight could find themselves in it, and concrete enough to be " +
+        "about something — an image, an hour, a weight, a thing you can hold. Never a horoscope, " +
+        "never a guess about their life, never 'you said', never a fact you invented for them. ") +
+    "Say it the way you would say it across a fire — never a card's name followed by a colon and " +
+    "a list of words, never 'X says… Y says… Z says…'. No question in it, no instruction, no " +
+    "place name, no explaining how the cards work. The example in your instructions is about a " +
+    "different seeker: never quote it or its ideas. This IS the reading they came for.\n" +
     "THEN ask ONE open question in the Turtle's voice, under 25 words, that follows from what you " +
-    "just said. It must be answerable out loud in a sentence, must NOT be answerable yes or no, " +
-    "must not predict anything, and must make them say something they have not said yet. Then " +
-    "give three answers a seeker might actually give — in THEIR words, not yours, under six words " +
-    "each.\n" +
+    "just said. It invites them to say something and never requires it — they may well let the " +
+    "cards speak instead, and that is a whole answer. Answerable out loud in one sentence, never " +
+    "yes or no, predicting nothing. Then give three answers a seeker might actually give — in " +
+    "THEIR words, not yours, under six words each.\n" +
     'Return JSON only: {"look": "...", "question": "...", "chips": ["...", "...", "..."]}';
   const resp = await llm.generate(prompt, {
     system: SYSTEM,
@@ -887,7 +911,9 @@ async function drawStep(sess, ctx) {
   sess.look = ask.look;
   sess.question = ask.question;
   sess.chips = ask.chips;
-  let say = choice(DRAWN_LINES);
+  /* A séance that pulled first has heard nothing yet, so it cannot say "the Turtle has
+   * heard you". A legacy session that came through the door has, and still does. */
+  let say = choice(sess.door === "pull" ? PULL_LINES : DRAWN_LINES);
   if (axisSlot) say = AXIS_LINE.replace("{card}", picks[axisSlot].name);
   return askingEvent(sess, say, { modes: { ask: ask.mode, look: ask.lookMode || ask.mode } });
 }
@@ -903,8 +929,14 @@ async function weaveStep(sess, ctx) {
    * template one when that line quotes something the seeker never said.
    * The echoes read only the picks and the seeker's words, never the weave, so the two
    * model calls run side by side: this is the longest wait in the séance. */
+  /* THE SEEKER MAY HAVE SAID NOTHING, and that is the ordinary case now. The weave is
+   * told so explicitly — a reading built on "The seeker could not put it into words" is a
+   * reading that opens by naming them mute — and it is handed the look it already gave at
+   * the asking, so the reading CONTINUES that read of the table rather than starting the
+   * séance over on the same three cards. */
+  const pulled = !(sess.shares || []).length;
   const [[out, weaveMode], spokenEchoes] = await Promise.all([
-    weave(told, picks, ctx.llm, located, context(sess), ctx.tLong),
+    weave(told, picks, ctx.llm, located, context(sess), ctx.tLong, { pulled, look: sess.look }),
     ctx.llm && ctx.llm.available() ? echoesLlm(sess, ctx.llm, ctx.tShort) : null,
   ]);
   const echoes = spokenEchoes || echoesFallback(sess);
@@ -913,7 +945,13 @@ async function weaveStep(sess, ctx) {
   sess.echoes = echoes;
   sess.stage = "proposed";
   return proposedEvent(sess, choice(WOVEN_LINES), {
-    modes: { select: "playa", weave: weaveMode, echoes: spokenEchoes ? "llm" : "fallback" },
+    modes: {
+      select: "playa",
+      weave: weaveMode,
+      echoes: spokenEchoes ? "llm" : "fallback",
+      // "cards" when the seeker let them speak, "told" when they fed something in
+      told: pulled ? "cards" : "told",
+    },
   });
 }
 
@@ -1027,21 +1065,29 @@ async function nameStep(sess, text, tale, ctx) {
       expects: "tale",
     };
   }
-  sess.stage = "door";
-  let say;
+  /* THE PULL COMES FIRST. There is a potency in simply pulling the cards and giving a
+   * reading, and the door made every seeker answer an intake question before they were
+   * allowed one. So the name goes straight to the draw: three cards, the Turtle's read of
+   * them, and then ONE question they may answer or let be. Context is offered, never
+   * required — `door` is stamped "pull" so the draw and the weave know the seeker has
+   * said nothing and that this is a choice, not a failure. */
+  sess.door = "pull";
+  let ack;
   if (priorQ) {
     sess.prior_line =
       `This seeker has quested with the Turtle before. Their last quest: “${priorQ.title}”.` +
       (priorT ? ` The tale they told of it: "${String(priorT.tale).slice(0, 300)}"` : "") +
       " Build tonight on top of that — acknowledge it once, never repeat it.";
-    say =
+    ack =
       `${name}. The Turtle remembers you — you carried “${priorQ.title}.” ` +
-      (priorT ? "Your tale is in the book. " : "The book still waits for that tale. ") +
-      DOOR_ASK_TAIL;
+      (priorT ? "Your tale is in the book. " : "The book still waits for that tale. ");
   } else {
-    say = `${name}. Good — a name the dust can hold. ${DOOR_ASK_TAIL}`;
+    ack = `${name}. Good — a name the dust can hold. `;
   }
-  return { session: sess.id, stage: "door", say, doors: DOORS, expects: "door" };
+  const event = await drawStep(sess, ctx);
+  // the name is still heard and said back; the draw's own line follows it in one breath
+  event.say = ack + event.say;
+  return event;
 }
 
 /** The six skies, as the kiosk wants them. */

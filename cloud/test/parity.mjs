@@ -387,6 +387,29 @@ check(
     !cw.p.includes("The one exception"),
   `landmark draw bites ${biteRealm(lmLocated, lmPicks)}`,
 );
+/* The pull: a séance where the seeker said nothing must still get a real reading and a
+ * real bite, and the prompt must never treat the silence as a refusal. */
+const pullCap = new Cap();
+await weaveLlm("The seeker could not put it into words.", picks, pullCap, located, ctx, 1, {
+  pulled: true,
+  look: "Three cards, one thread, and none of them is asking you a question yet.",
+});
+check(
+  "the weave knows when the seeker let the cards speak",
+  pullCap.p.startsWith("A seeker gave their name and asked for nothing else.") &&
+    pullCap.p.includes("That is an answer, not a refusal") &&
+    !pullCap.p.includes("A seeker shared:") &&
+    pullCap.p.includes("60-120 words") &&
+    pullCap.p.includes("You know nothing about this seeker") &&
+    !pullCap.p.includes("take one EXACT word or phrase the seeker said"),
+);
+check(
+  "the weave continues the look it already gave, rather than starting over",
+  pullCap.p.includes("YOU HAVE ALREADY SPOKEN ONCE.") &&
+    pullCap.p.includes("Three cards, one thread, and none of them is asking you a question yet.") &&
+    pullCap.p.includes("never start the reading over") &&
+    !cw.p.includes("YOU HAVE ALREADY SPOKEN ONCE."),
+);
 check(
   "fallback quest gives a bearing, not an address",
   jsWf.adventure.includes(S.openWhere(BITE, located[BITE])) &&
