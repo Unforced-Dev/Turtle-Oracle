@@ -93,7 +93,10 @@ TEMPERATURE = "0.75"
 SHELL_CHANCE = "0.10"
 # Which séance stages get a reasoning scratchpad. Measured, not guessed — see the
 # header of src/llm.js. Empty string = never think; "weave,refine,echoes,seal,tale" = always.
-THINK_STAGES = "weave,tale"
+# `ask` thinks too (added 2026-09-02): without the scratchpad the look at the table came
+# back as three six-word captions ("Titanic says… Pulse says… Crown says…"), none of them
+# in the seeker's words. The draw already runs under the veil, so the seconds are covered.
+THINK_STAGES = "weave,tale,ask"
 # Patience before dropping to the offline template. The playa numbers (45/60) were set
 # against a single serialised GPU; Workers AI answers a séance stage in 0.4-6s, so these
 # are guards against a genuinely hung model, not pacing controls. The draw chains two
@@ -169,7 +172,7 @@ TEMPERATURE = "0.75"
 SHELL_CHANCE = "0.10"
 # Which séance stages get a reasoning scratchpad. Measured, not guessed — see the
 # header of src/llm.js. Empty string = never think; "weave,refine,echoes,seal,tale" = always.
-THINK_STAGES = "weave,tale"
+THINK_STAGES = "weave,tale,ask"
 T_SHORT = "20"
 T_LONG = "38"
 WHISPER_MODEL = "@cf/openai/whisper-large-v3-turbo"

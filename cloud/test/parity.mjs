@@ -64,7 +64,15 @@ function firstDiff(a, b) {
 
 /* ---- the fixture, shared by both sides ------------------------------------------- */
 
-const CARD_IDS = { roots: "roots-04", trunk: "trunk-13", branches: "branches-10" };
+/* Why these three ids. THE ANCHOR (one move pinned to a real 2026 placement, two moves given
+ * a bearing instead) only says anything on a spread where some cards resolve to a placement
+ * and some do not — and WHICH cards resolve is data, not a constant: data/playa_2026.json
+ * gains addresses every time the BRC directories are re-fetched (2026-09-01 resolved 19 more
+ * hooks, which silently moved this fixture's anchor from the branches card to the roots card
+ * and broke the seal check below). So the two open cards hang off a ritual and a principle —
+ * hooks with no address to resolve TO in any year's data — and the placed card is the
+ * Turtle's own camp. The checks still read the anchor off `located` rather than trust this. */
+const CARD_IDS = { roots: "roots-05", trunk: "trunk-13", branches: "branches-10" };
 const WEATHER_ID = "thunderhead";
 const SHARES = [
   "I keep swallowing… the thing I want to say to my sister, because my friends all think I am " +
@@ -162,6 +170,19 @@ const picks = Object.fromEntries(
   Object.entries(CARD_IDS).map(([r, id]) => [r, BY_REALM[r].find((c) => c.id === id)]),
 );
 const located = locateSpread(picks);
+
+/* What the 2026 data actually says about THIS spread, read off `located` instead of assumed.
+ * A realm is placed when its hook resolved to somewhere with directions that are a place
+ * rather than "wherever you stand". Every anchor check below is stated against these. */
+const REALMS = ["roots", "trunk", "branches"];
+const SLOT_TITLES = { roots: "FACE", trunk: "STAND", branches: "REACH" };
+const PLACED = REALMS.filter((r) => located[r].directions && located[r].status !== "citywide");
+const OPEN = REALMS.filter((r) => !PLACED.includes(r));
+const ANCHOR = SLOT_TITLES[PLACED[0] || "trunk"];
+const spread = () =>
+  `data places ${PLACED.map((r) => `${SLOT_TITLES[r]} (${located[r].directions.split(".")[0]})`).join(", ") || "nothing"}` +
+  `; open: ${OPEN.map((r) => SLOT_TITLES[r]).join(", ") || "nothing"}`;
+
 const sess = {
   id: "fixture",
   weather: WEATHER_ID,
@@ -320,12 +341,19 @@ check(
 
 /* The two skips above are only safe if SOMETHING still guards the diverged strings. This
  * is that something: the cloud's own rule, checked on the cloud's own side. */
+/* Guard the guard: if a data refresh ever makes all three cards placed (or none of them),
+ * the anchor checks would go quietly vacuous, so fail here first and say to repick CARD_IDS. */
+check(
+  "the fixture still sets one placed card against two open ones",
+  PLACED.length === 1 && OPEN.length === 2,
+  spread() + " — repick CARD_IDS above; the anchor rule needs one of each.",
+);
 check(
   "quest prompt pins exactly one move to a placement",
   (cw.p.match(/- THE ANCHOR: exactly ONE move/g) || []).length === 1 &&
-    cw.p.includes("the REACH move") &&
-    cw.p.includes("Terrible Turtle Camp"),
-  "the fixture's only non-citywide card is the branches card, at E & 6:15",
+    cw.p.includes(`- THE ANCHOR: exactly ONE move — the ${ANCHOR} move — is pinned to a real place`) &&
+    cw.p.includes(picks[PLACED[0]].real_2026.name),
+  spread(),
 );
 check(
   "quest prompt tells the other two moves to give a bearing, not an address",
@@ -347,9 +375,10 @@ check(
 check(
   "seal prompt marks the one placed move and forbids an address on the other two",
   (cs.p.match(/<- THE PLACED MOVE/g) || []).length === 1 &&
-    cs.p.includes("THE ANCHOR: exactly ONE of the three — the REACH move") &&
+    new RegExp(`^${ANCHOR}: card=.*<- THE PLACED MOVE$`, "m").test(cs.p) &&
+    cs.p.includes(`THE ANCHOR: exactly ONE of the three — the ${ANCHOR} move`) &&
     cs.p.includes("must NOT name an address, a clock, a street, or a camp"),
-  "the fixture's only placed card is the branches card, at E & 6:15",
+  spread(),
 );
 check(
   "refine prompt preserves the spoken three-move shape",

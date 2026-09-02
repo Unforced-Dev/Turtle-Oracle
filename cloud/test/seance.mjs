@@ -37,6 +37,11 @@ function section(name) {
 function goodLlm(overrides = {}) {
   const answers = {
     ask: JSON.stringify({
+      look:
+        "Three cards, one thread. The Taproot came up first: the low place that grows you " +
+        "while it feels like burying you — your Tuesday with no sleep. Under it the Heartwood, " +
+        "what holds from the inside; you have been that for everyone, telling them you are fine. " +
+        "And reaching, the Lantern: the thing you have not said yet, and it is already lit.",
       question: "The shell wants to know: what did you put down to get here?",
       chips: ["My phone", "A whole year", "Nothing yet"],
     }),
@@ -137,6 +142,20 @@ section("the talk door: naming → door → listening → asking → proposed �
     JSON.stringify(asking.chips),
   );
   check("the model's question is used when it answers", asking.modes.ask === "llm");
+  /* the oracle LOOKS before it asks: the whole table read in a few sentences, said
+     before the question, and every card carries one plain line of meaning so a name
+     like "the Heartwood" is never a riddle on the phone */
+  check(
+    "the asking carries the Turtle's look at the whole table, before the question",
+    typeof asking.look === "string" && asking.look.split(/\s+/).length >= 28 && !/\?\s*$/.test(asking.look),
+    String(asking.look),
+  );
+  check("the model's look is used when it gives one", /one thread/.test(asking.look), asking.look);
+  check(
+    "every card on the table carries a plain one-line gloss",
+    ["roots", "trunk", "branches"].every((r) => typeof asking.cards[r].gloss === "string" && asking.cards[r].gloss.length > 8),
+    JSON.stringify(["roots", "trunk", "branches"].map((r) => asking.cards[r].gloss)),
+  );
   check(
     "the story and the answer both reach the shares",
     sess.shares.length === 2 && sess.shares[1] === "I put down being the calm one.",
@@ -234,6 +253,12 @@ section("the template question, when the model will not ask one");
   const asking = trace[3];
   const names = ["roots", "trunk", "branches"].map((r) => asking.cards[r].name);
   check("there is still a question", Boolean(asking.question) && asking.modes.ask === "fallback");
+  check(
+    "and still a look at the table that names all three cards with their meaning",
+    typeof asking.look === "string" && names.every((n) => asking.look.includes(n)) &&
+      ["roots", "trunk", "branches"].every((r) => asking.look.includes(asking.cards[r].gloss)),
+    String(asking.look),
+  );
   check(
     "it names one of the three cards that were just turned",
     names.some((n) => asking.question.includes(n)),

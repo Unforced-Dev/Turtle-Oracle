@@ -23,7 +23,7 @@ import { weave, weaveFallback, SYSTEM, cardLore, anchorRealm, OPEN_WHERE } from 
 import { locateSpread, directionsLines, COMPASS_ROSE } from "./geo.js";
 import { tryJson } from "./llm.js";
 import * as lore from "./lore.js";
-import { randRange, choice, words, rstrip, brcNow, brcClockString } from "./util.js";
+import { randRange, choice, words, rstrip, brcNow, brcClockString, firstSentence } from "./util.js";
 
 const WEATHERS = Object.fromEntries(WEATHER.weathers.map((w) => [w.id, w]));
 const STONES = WEATHER.stones;
@@ -45,11 +45,13 @@ const DOORS = [
 ];
 const DOOR_RETRY = "One or the other, traveler. Talk, or touch.";
 
+/* cloud: the mic is already OPEN when this is read — the talk tap itself turned it on —
+ * so the invite is short, is shown and never spoken (the Turtle's own voice would land
+ * in the recording), and says the one thing left to know: how to stop. */
 const LISTEN_INVITES = [
-  "Tell the Turtle about your burn so far. Whatever comes — the good, the strange, " +
-    "the thing you have not said yet. Take your time.",
-  "Then talk. Your burn so far, out loud — the good, the strange, the thing you have " +
-    "not told anyone. The shell has all night.",
+  "The shell is open. Talk — your burn so far, whatever comes. Tap the shell when you are done.",
+  "The Turtle is listening. Your burn so far, out loud — the good, the strange, the thing " +
+    "you have not said. Tap the shell when you are done.",
 ];
 
 const STONES_ASK =
@@ -380,6 +382,7 @@ export function start(mode = "seek") {
     weather: null,
     stones: [],
     wanting: null,
+    look: null,
     question: null,
     chips: null,
     ground: 0.0,
@@ -657,11 +660,35 @@ function askRealm(sess) {
   return SPREAD_REALMS[n % SPREAD_REALMS.length];
 }
 
+/** One plain line per card: what it means, in words a stranger in the dust can take in.
+ *  The lore's essence line when there is one, else the card's own reading, cut short. */
+function cardGloss(card) {
+  const lo = cardLore()[card.id];
+  const g = (lo && lo.essence) || firstSentence(card.reading || "");
+  return rstrip(String(g || "").trim(), ".") ;
+}
+
+/** The Turtle looks at the whole table before it asks anything — offline version.
+ *  Three cards, three plain lines, each one named for the slot it fills. */
+function lookFallback(sess) {
+  const p = sess.picks;
+  return (
+    `Three cards, and here is what they say. “${p.roots.name}” is what you have to face: ` +
+    `${cardGloss(p.roots)}. “${p.trunk.name}” is where you stand tonight: ${cardGloss(p.trunk)}. ` +
+    `“${p.branches.name}” is what you are reaching for: ${cardGloss(p.branches)}.`
+  );
+}
+
 function askFallback(sess) {
   const realm = askRealm(sess);
   const card = sess.picks[realm];
   const kw = (card.keywords || [])[0] || "weight";
-  return { question: ASK_FALLBACKS[realm](card, kw), chips: ASK_CHIPS[realm], mode: "fallback" };
+  return {
+    look: lookFallback(sess),
+    question: ASK_FALLBACKS[realm](card, kw),
+    chips: ASK_CHIPS[realm],
+    mode: "fallback",
+  };
 }
 
 /** Clean the model's three chips: their words, six words each, or none of them. */
@@ -671,6 +698,7 @@ function cleanChips(raw) {
   for (const c of raw) {
     const s = String(c == null ? "" : c)
       .replace(/^[\s"'“”\-•]+|[\s"'“”]+$/g, "")
+      .replace(/[.]+$/, "") // a chip is a tap, not a sentence
       .trim();
     if (!s || words(s) > 6 || s.length > 48) continue;
     if (!out.includes(s)) out.push(s);
@@ -679,14 +707,34 @@ function cleanChips(raw) {
   return out.length === 3 ? out : null;
 }
 
+function cleanLook(raw) {
+  let s = String(raw == null ? "" : raw).replace(/\s+/g, " ").trim();
+  s = s.replace(/^[\s"'“”]+|[\s"'“”]+$/g, "").trim();
+  s = s.replace(/^(look|reading|turtle|oracle)\s*[:\-]\s*/i, "").trim();
+  if (!s || /[?]\s*$/.test(s)) return null; // a question is not a look
+  /* the two ways the model spoils it, both seen live: slot labels written back as
+   * headings, and the SYSTEM prompt's own example handed to the seeker as their reading
+   * (the failure the header of llm.js documents for the weave). Either one is the
+   * template's turn. */
+  if (/\b(FACE|STAND|REACH)\s*:/.test(s)) return null;
+  if (/built all year for other people|fine way to disappear|where the map runs out/i.test(s)) return null;
+  /* under ~28 words it is a caption, not a look — the template's three lines beat it */
+  const n = words(s);
+  if (n < 28 || n > 110) return null;
+  return s;
+}
+
 async function askLlm(sess, llm, tShort) {
   const picks = sess.picks;
   const cl = cardLore();
   const heard = seekerWords(sess);
   const taps = tapPhrases(sess);
+  /* the slots are given as phrases, not as FACE/STAND/REACH — handed the labels, the
+   * model wrote them back as headings in the look ("FACE: The Taproot. …") */
+  const SLOT_PHRASE = { roots: "what to face", trunk: "where they stand", branches: "what to reach for" };
   const lines = SPREAD_REALMS.map(
     (r) =>
-      `${SLOT_TITLES[r]} — ${picks[r].name}: keywords=${(picks[r].keywords || []).join(", ")}; ` +
+      `${SLOT_PHRASE[r]} — ${picks[r].name}: keywords=${(picks[r].keywords || []).join(", ")}; ` +
       `essence="${(cl[picks[r].id] || {}).essence || picks[r].reading || ""}"`,
   ).join("\n");
   const prompt =
@@ -697,12 +745,22 @@ async function askLlm(sess, llm, tShort) {
       ? "What the seeker has already told you:\n" + heard.map((s) => `- ${s}`).join("\n")
       : "The seeker has said nothing tonight. They only touched what the shell offered:\n" +
         taps.map((s) => `- ${s}`).join("\n")) +
-    "\n\nAsk ONE open question in the Turtle's voice, under 25 words. Name one of the cards " +
-    "by name and let it put the question in your mouth. It must be answerable out loud in a " +
-    "sentence, must NOT be answerable yes or no, must not predict anything, and must make them " +
-    "say something they have not said yet. Then give three answers a seeker might actually give " +
-    "— in THEIR words, not yours, under six words each.\n" +
-    'Return JSON only: {"question": "...", "chips": ["...", "...", "..."]}';
+    "\n\nFIRST, LOOK at the whole table, the way an oracle does before it asks anything. Write " +
+    "45-75 words, four short spoken sentences or so. This is the seeker's first sight of these " +
+    "cards, so for each one: its name, said once, and in the same breath what it is in plain words " +
+    "— then what it means for THIS seeker, tied to something they actually said. Quote two or three " +
+    "of their own words for at least two of the three cards (if they said nothing, tie each card to " +
+    "what they touched). Let the three run as one thought: what to face, where they stand, what " +
+    "they reach for. Say it the way you would say it across a fire, in whole sentences — never a " +
+    "card's name followed by a colon and a list of words, never 'X says… Y says… Z says…'. No " +
+    "question in it, no instruction, no place name, no explaining how the cards work. This is the " +
+    "interpretation that earns the question.\n" +
+    "THEN ask ONE open question in the Turtle's voice, under 25 words, that follows from what you " +
+    "just said. It must be answerable out loud in a sentence, must NOT be answerable yes or no, " +
+    "must not predict anything, and must make them say something they have not said yet. Then " +
+    "give three answers a seeker might actually give — in THEIR words, not yours, under six words " +
+    "each.\n" +
+    'Return JSON only: {"look": "...", "question": "...", "chips": ["...", "...", "..."]}';
   const resp = await llm.generate(prompt, {
     system: SYSTEM,
     asJson: true,
@@ -713,7 +771,11 @@ async function askLlm(sess, llm, tShort) {
   if (!out || typeof out !== "object") return null;
   const question = cleanLine(out.question, 30);
   if (!question) return null;
-  return { question, chips: cleanChips(out.chips) || askFallback(sess).chips, mode: "llm" };
+  /* The look is allowed to be a short paragraph, not a line: keep it whole, keep it spoken
+   * (no headings, no bullets), and cap it where the ear stops following. A model that
+   * skipped it, or wrote an essay, gets the plain three-line version instead. */
+  const look = cleanLook(out.look) || lookFallback(sess);
+  return { look, question, chips: cleanChips(out.chips) || askFallback(sess).chips, mode: "llm" };
 }
 
 /* ---- the three events that carry a reveal ----------------------------------------- */
@@ -729,7 +791,12 @@ async function askLlm(sess, llm, tShort) {
  * stayed blank. Nothing at these three stages may return a partial event. */
 function spreadPayload(sess) {
   return Object.fromEntries(
-    SPREAD_REALMS.map((r) => [r, cardPayload(sess.picks[r], sess.located[r])]),
+    SPREAD_REALMS.map((r) => [
+      r,
+      // the gloss rides under the card's name on the phone: a card with a name and no
+      // meaning is exactly the "what does the Heartwood even mean" moment
+      Object.assign(cardPayload(sess.picks[r], sess.located[r]), { gloss: cardGloss(sess.picks[r]) }),
+    ]),
   );
 }
 
@@ -745,6 +812,9 @@ function askingEvent(sess, say, extra) {
       axis_slot: sess.axis_slot,
       map: COMPASS_ROSE,
       directions: directionsLines(sess.picks, sess.located),
+      // the Turtle's read of the whole table, said BEFORE the question — an oracle looks
+      // first and asks second, and a question about a card nobody understands is a quiz
+      look: sess.look,
       question: sess.question,
       chips: sess.chips,
       expects: "answer",
@@ -813,6 +883,7 @@ async function drawStep(sess, ctx) {
   const ask =
     (ctx.llm && ctx.llm.available() ? await askLlm(sess, ctx.llm, ctx.tShort) : null) ||
     askFallback(sess);
+  sess.look = ask.look;
   sess.question = ask.question;
   sess.chips = ask.chips;
   let say = choice(DRAWN_LINES);
