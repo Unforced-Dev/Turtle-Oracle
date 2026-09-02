@@ -156,6 +156,29 @@
   /* cloud: the Turtle's own guesses at the answer, tapable. */
   #chiprow{display:none;flex-wrap:wrap;gap:10px;justify-content:center;margin-top:12px}
   #chiprow.on{display:flex}
+  /* cloud: THE PULL SCREEN's answer row. The primary is "Let the cards speak" — a whole
+     answer, and the fast one, because the cards have already spoken and nothing more is
+     required. Everything under it (the mic, the Turtle's three guesses, the write box) is
+     small and optional. Simplicity, with optional complexity.
+     Off the pull screen — the name, and "hear me further" after the reading — the panel is
+     what it always was: a box, a mic, and one Offer button. */
+  #askpanel{display:flex;flex-direction:column}
+  #q{order:1} #microw{order:2} #chiprow{order:3}
+  #passrow{display:none}
+  #miccap{color:var(--gold-dim);font-size:.8rem;letter-spacing:.14em;text-transform:uppercase}
+  #writehere{display:none;align-self:center;margin:16px auto 0;padding:8px 16px;min-height:0;
+    font-size:.82rem;letter-spacing:.12em}
+  #askpanel.pull #passrow{display:flex;order:1;margin-top:0}
+  #askpanel.pull #passq{width:100%;max-width:460px;font-size:1.14rem;padding:18px 24px}
+  #askpanel.pull #q{display:none;order:5}
+  #askpanel.pull #offer{display:none}
+  #askpanel:not(.pull) #miccap{display:none}
+  #askpanel.pull #writehere{display:inline-block;order:4}
+  #askpanel.pull.writing #q{display:block;order:2}
+  #askpanel.pull.writing #microw{order:3}
+  #askpanel.pull.writing #chiprow{order:4}
+  #askpanel.pull.writing #offer{display:inline-block}
+  #askpanel.pull.writing #writehere{display:none}
   .answerchip{font:inherit;padding:12px 18px;border-radius:999px;border:1px solid var(--gold-dim);
     background:transparent;color:var(--parch);font-weight:400;min-height:0;font-size:1rem}
   /* cloud: a phone that refused to play the voice says so, in the one place the sound
@@ -185,10 +208,18 @@
      about a picture they had not seen. Flex order puts the spread under the Turtle's
      line, the question under the spread, the answer under the question, and the reading
      under all of it. `late` is the one exception: "hear me further" after the reading. */
-  .spread{order:1} #askline{order:2} #askpanel{order:3} #scroll{order:4} #askpanel.late{order:5}
+  .spread{order:1} #lookline{order:2} #askline{order:3} #askpanel{order:4} #scroll{order:5}
+  #askpanel.late{order:6}
   .spread{display:grid;grid-template-columns:repeat(3,1fr);gap:clamp(10px,2vw,22px);
     width:100%;max-width:860px;margin-top:8px;perspective:1400px}
   .spread:empty{display:none}
+  /* cloud: THE READING OF THE SPREAD, said under the cards it is about. Most seekers now
+     add nothing at all, so this is the reading they take away — left-aligned and given
+     room to breathe, unlike the one line of a question. */
+  #lookline{display:none;color:var(--parch);max-width:640px;margin:16px 0 0;
+    font-size:clamp(1.02rem,2.2vw,1.24rem);line-height:1.55;text-align:left}
+  #lookline.on{display:block}
+  #lookline .w{opacity:0;animation:wordin .5s ease forwards}
   /* the one question, said under the cards it is about */
   #askline{display:none;text-align:center;color:var(--parch);max-width:720px;margin:14px 0 0;
     font-size:clamp(1.08rem,2.4vw,1.4rem);line-height:1.4}
@@ -324,14 +355,18 @@
     <div id="stonesrow"></div>
     <div class="wgrid" id="wantgrid"></div>
     <div class="panel" id="askpanel">
+      <!-- cloud: THE PULL SCREEN's primary. Letting the cards speak is a whole answer, not
+           a refusal — it is the fast way through, and it is the default. -->
+      <div class="row" id="passrow"><button id="passq">🐢&nbsp; Let the cards speak</button></div>
       <textarea id="q" placeholder="speak, or write it here…"></textarea>
-      <div class="row">
+      <div class="row" id="microw">
         <button class="micorb" id="mic" title="speak to the turtle">🎙</button>
+        <span id="miccap">or tell the Turtle one thing</span>
         <button id="offer">Offer it to the Turtle</button>
       </div>
-      <!-- cloud: the Turtle's three guesses, and the right to refuse the question -->
+      <!-- cloud: the Turtle's three guesses at the answer, tapable -->
       <div id="chiprow"></div>
-      <div class="row"><button class="ghost" id="passq" style="display:none">let it be</button></div>
+      <button class="ghost" id="writehere">write it instead</button>
     </div>
     <div class="panel" id="giftrow" style="text-align:center">
       <div style="font-size:1.3rem;margin-bottom:12px">🎁</div>
@@ -339,7 +374,9 @@
       <div class="row"><button class="ghost" id="taledone">↺&nbsp; The Oracle sleeps</button></div>
     </div>
     <div class="spread" id="spread"></div>
-    <!-- cloud: the Turtle's one question, under the cards it asks about -->
+    <!-- cloud: the Turtle's reading of the three, under the cards it is reading -->
+    <div id="lookline"></div>
+    <!-- cloud: the Turtle's one question, under the reading it follows from -->
     <div id="askline"></div>
     <div class="scroll" id="scroll">
       <h2 id="h-read">The Reading</h2><div class="prose" id="reading"></div>
@@ -431,7 +468,8 @@ function restoreStep(){
     CARD_IDS=SLOTS.map(s=>step.cards[s].id).join(",");
     $('spread').classList.add("asking");
     dealSpread(step,{instant:true});
-    $('says').textContent=step.look||step.say||"";
+    $('says').textContent=step.say||"";
+    if(step.look){ $('lookline').textContent=step.look; $('lookline').classList.add("on"); }
     if(step.question){ $('askline').textContent=step.question; $('askline').classList.add("on"); }
     renderAnswer(step);
     return true;
@@ -694,7 +732,9 @@ function resetSeance(){
   $('says').innerHTML=""; $('askpanel').classList.remove("on"); $('q').value="";
   $('q').placeholder="speak, or write it here…";
   $('talkpanel').classList.remove("on","live","done"); $('story').value=""; resetRing();
-  $('askline').innerHTML=""; $('askline').classList.remove("on"); $('askpanel').classList.remove("late");
+  $('askline').innerHTML=""; $('askline').classList.remove("on");
+  $('lookline').innerHTML=""; $('lookline').classList.remove("on");
+  $('askpanel').classList.remove("late","pull","writing"); TALK_FROM_ASK=false;
   $('spread').innerHTML=""; $('spread').classList.remove("asking");
   $('reading').innerHTML=""; $('adventure').innerHTML="";
   $('h-read').classList.remove("on"); $('h-adv').classList.remove("on");
@@ -731,7 +771,7 @@ function metaNow(){
 }
 function hideAux(){ $('wgrid').classList.remove("on"); $('doorrow').classList.remove("on");
   $('stonesrow').classList.remove("on"); $('wantgrid').classList.remove("on");
-  $('chiprow').classList.remove("on"); $('passq').style.display="none"; }
+  $('chiprow').classList.remove("on"); $('askpanel').classList.remove("pull","writing"); }
 
 /* one router for every séance event */
 async function handle(e,restored){
@@ -949,13 +989,16 @@ async function theAsking(e){
   CARD_IDS=SLOTS.map(s=>e.cards[s].id).join(",");
   $('spread').classList.add("asking");
   await dealSpread(e);
-  /* cloud: an oracle LOOKS before it asks. The three cards are on the table with their
-     names and one plain line each; now the Turtle says what the three of them mean for
-     this seeker, in two or three sentences, and only then asks. A question about "the
-     Heartwood" to someone who has never seen the Heartwood is a quiz, not a reading. */
+  /* cloud: THE READING OF THE SPREAD. The three cards are on the table with their names and
+     one plain line each; now the Turtle reads them — and since most seekers will let the
+     cards speak and add nothing, this IS the reading for most séances. It goes under the
+     cards it is about rather than into the Turtle's own line, so the order on the phone is
+     the order of the ceremony: the Turtle speaks, the cards turn, the cards are read, and
+     only then is anything asked. */
   if(e.look){
-    const ldur=incant($('says'),e.look,105);
-    await speakOr(e.look, Math.min(ldur+1200,22000));
+    const ldur=incant($('lookline'),e.look,105);
+    $('lookline').classList.add("on");
+    await speakOr(e.look, Math.min(ldur+1500,26000));
   }
   const q=e.question||"And you — what have you not said yet?";
   const qdur=incant($('askline'),q,105);
@@ -963,27 +1006,37 @@ async function theAsking(e){
   await speakOr(q, Math.min(qdur+1500,14000));
   renderAnswer(e);
 }
-/* The answer row: their voice, their typing, the Turtle's three guesses, or nothing. */
+/* The answer row on the pull screen. ONE big thing to press — letting the cards speak,
+   which is a whole answer and the fast way through — and under it, small, every optional
+   way to feed something in: the mic, the Turtle's three guesses, and the write box behind
+   "write it instead". Nobody has to say anything to be read. */
 function renderAnswer(e){
   $('q').value=""; $('q').placeholder="speak, or write it here…";
+  TALK_FROM_ASK=false;
   $('chiprow').innerHTML=(e.chips||[]).map(c=>
     `<button class="answerchip" data-chip="${esc(c)}">${esc(c)}</button>`).join("");
   $('chiprow').classList.toggle("on",Boolean((e.chips||[]).length));
-  $('passq').style.display="";
   $('chiprow').querySelectorAll('.answerchip').forEach(b=>b.addEventListener('click',async()=>{
-    $('chiprow').classList.remove("on"); $('passq').style.display="none";
-    $('askpanel').classList.remove("on");
+    $('chiprow').classList.remove("on");
+    $('askpanel').classList.remove("on","pull","writing");
     await tap({chip:b.dataset.chip});
   }));
-  $('askpanel').classList.remove("late");
-  $('askpanel').classList.add("on");
+  $('passq').disabled=false;
+  $('askpanel').classList.remove("late","writing");
+  $('askpanel').classList.add("on","pull");
   $('askpanel').scrollIntoView({behavior:"smooth",block:"nearest"});
 }
+/* cloud: THE PASS IS THE PRIMARY, and it must not feel like a refusal — it says the cards
+   have spoken, and it goes straight to the weave. Nothing is posted but {pass:true}. */
 $('passq').addEventListener('click', async ()=>{
   $('passq').disabled=true;
-  $('chiprow').classList.remove("on"); $('askpanel').classList.remove("on");
-  await tap({pass:true},()=>{ $('askpanel').classList.add("on"); });
+  $('chiprow').classList.remove("on"); $('askpanel').classList.remove("on","pull","writing");
+  await tap({pass:true},()=>{ $('askpanel').classList.add("on","pull"); });
   $('passq').disabled=false;
+});
+/* the small way in for anyone who would rather type than talk */
+$('writehere').addEventListener('click', ()=>{
+  $('askpanel').classList.add("writing"); $('q').focus();
 });
 
 /* cloud: THE READING. The cards are already on the table by the time this runs, so there
@@ -1083,6 +1136,7 @@ $('accept').addEventListener('click', async ()=>{
 });
 $('more').addEventListener('click', ()=>{
   $('decide').style.display="none";
+  $('askpanel').classList.remove("pull","writing");
   $('askpanel').classList.add("late");
   const line="Then speak. What should the Turtle know before this quest is sealed?";
   incant($('says'),line,110); speak(line);
@@ -1191,6 +1245,19 @@ let REC_INTO="q", REC_BTN="mic", REC_MS=60000, REC_TICK=null, REC_LEVEL=null;
    that is actually at `listening`, and a seeker who taps stop inside a second can beat
    the round trip. */
 let TALK_ARMED=false, DOOR_READY=null;
+/* cloud: the talk panel was opened from the PULL SCREEN's little mic rather than from the
+   old door. Everything about the recording is the same; what differs is where a failure
+   goes back to — the pull screen, with its "Let the cards speak" button still there,
+   rather than a story box with no way out of it. */
+let TALK_FROM_ASK=false;
+function pullTalkEnd(){
+  TALK_FROM_ASK=false;
+  discardRecording();
+  $('talkpanel').classList.remove("on","live","done");
+  $('askpanel').classList.add("on","pull","writing");
+  $('askpanel').scrollIntoView({behavior:"smooth",block:"nearest"});
+  $('q').focus();
+}
 /* cloud: bumped by every discard. getUserMedia can resolve seconds after the seeker gave
    up on it ("write it instead", a failed door tap) — a permission prompt is not a
    recording, and a recording that starts after the cancel would hide the box they are
@@ -1266,7 +1333,10 @@ function beginTalk(ready){
   micToggle();
 }
 $('writeinstead').addEventListener('click', ()=>{
-  /* the seeker asked for the box: drop the recording, keep the panel, keep the séance */
+  /* the seeker asked for the box: drop the recording, keep the panel, keep the séance.
+     Opened from the pull screen, the box that belongs to them is the one back there —
+     and so is the button that needs no words at all. */
+  if(TALK_FROM_ASK) return pullTalkEnd();
   discardRecording();
   $('talkpanel').classList.remove("live","done"); $('story').focus();
 });
@@ -1374,11 +1444,15 @@ async function micToggle(){
         /* keep the quiet "taking it in" screen up; offerStory's ponder line follows it */
         TALK_ARMED=false; stopRing(); stopLevel();
         $('talkpanel').classList.remove("live");
+      } else if(TALK_FROM_ASK){
+        /* nothing came back. On the pull screen that is not a dead end: the cards are
+           still on the table and the seeker can still let them speak. */
+        recIdle(); pullTalkEnd(); return;
       } else { recIdle(); resetRing(); }
       /* cloud: on the talk screen the seeker has just spent two minutes talking — they
          are not going to hunt for a second button. The transcript lands in the box,
          visibly, and goes. If it failed, the box is still there to type into. */
-      if(talking&&heard) offerStory();
+      if(talking&&heard){ TALK_FROM_ASK=false; offerStory(); }
     };
     // a one-second timeslice, so ondataavailable can watch the wall clock (above)
     recorder.start(1000); LISTENING=true; micToggle._t0=Date.now();
@@ -1388,13 +1462,29 @@ async function micToggle(){
     clearTimeout(micToggle._guard);
     micToggle._guard=setTimeout(()=>{ if(LISTENING) try{REC.stop();}catch(e){} },REC_MS);
   }catch(e){
-    /* no mic, or no permission: the talk screen becomes the write screen, box and all */
+    /* no mic, or no permission: the talk screen becomes the write screen, box and all —
+       or, from the pull screen, the pull screen again, where nothing is required at all */
     recIdle(); resetRing();
     toast("The Turtle needs permission to listen — or write it instead.");
+    if(TALK_FROM_ASK) return pullTalkEnd();
     if(REC_INTO==="story") $('story').focus();
   }
 }
-$('mic').addEventListener('click', ()=>{ REC_INTO="q"; REC_BTN="mic"; REC_MS=60000; micToggle(); });
+$('mic').addEventListener('click', ()=>{
+  /* cloud: ON THE PULL SCREEN the little orb opens the SAME talk machinery the door used
+     to — the big ring, two minutes, and stop means done, with the transcript handed
+     straight over as the answer (the server takes it as `text` at the asking, and
+     src/ears.js already counts `asking` as a stage the ears are open in). Everywhere else
+     — the name, and "hear me further" — it stays the small 60s mic that fills the box
+     beside it. */
+  if($('askpanel').classList.contains("pull")){
+    TALK_FROM_ASK=true;
+    $('askpanel').classList.remove("on");
+    beginTalk(null);
+    return;
+  }
+  REC_INTO="q"; REC_BTN="mic"; REC_MS=60000; micToggle();
+});
 /* cloud: two minutes. The server's own roof is 4MB of audio, which is about the same. */
 $('rec').addEventListener('click', ()=>{ REC_INTO="story"; REC_BTN="rec"; REC_MS=TALK_MS;
   if(!LISTENING) resetRing();
