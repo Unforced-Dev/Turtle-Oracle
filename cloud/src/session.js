@@ -711,16 +711,27 @@ function cleanLook(raw) {
   let s = String(raw == null ? "" : raw).replace(/\s+/g, " ").trim();
   s = s.replace(/^[\s"'“”]+|[\s"'“”]+$/g, "").trim();
   s = s.replace(/^(look|reading|turtle|oracle)\s*[:\-]\s*/i, "").trim();
-  if (!s || /[?]\s*$/.test(s)) return null; // a question is not a look
+  /* Why a look was refused goes to the log — the reason and the size, never the words,
+   * which are the seeker's. Without it a template on the phone is indistinguishable
+   * from a model that never answered. */
+  const refuse = (why) => {
+    cleanLook.refused = `${why}, ${words(s)}w`;
+    console.log(`ask: look refused (${cleanLook.refused})`);
+    return null;
+  };
+  cleanLook.refused = null;
+  if (!s) return refuse("empty");
+  if (/[?]\s*$/.test(s)) return refuse("ends in a question");
   /* the two ways the model spoils it, both seen live: slot labels written back as
    * headings, and the SYSTEM prompt's own example handed to the seeker as their reading
    * (the failure the header of llm.js documents for the weave). Either one is the
    * template's turn. */
-  if (/\b(FACE|STAND|REACH)\s*:/.test(s)) return null;
-  if (/built all year|fine way to disappear|map runs out|nobody needs you/i.test(s)) return null;
+  if (/\b(FACE|STAND|REACH)\s*:/.test(s)) return refuse("slot labels");
+  if (/built all year|fine way to disappear|map runs out|nobody needs you/i.test(s))
+    return refuse("quotes the system example");
   /* under ~28 words it is a caption, not a look — the template's three lines beat it */
   const n = words(s);
-  if (n < 28 || n > 110) return null;
+  if (n < 28 || n > 110) return refuse(n < 28 ? "too short" : "too long");
   return s;
 }
 
@@ -777,7 +788,14 @@ async function askLlm(sess, llm, tShort) {
    * (no headings, no bullets), and cap it where the ear stops following. A model that
    * skipped it, or wrote an essay, gets the plain three-line version instead. */
   const look = cleanLook(out.look) || lookFallback(sess);
-  return { look, question, chips: cleanChips(out.chips) || askFallback(sess).chips, mode: "llm" };
+  return {
+    look,
+    question,
+    chips: cleanChips(out.chips) || askFallback(sess).chips,
+    mode: "llm",
+    // which of the two wrote the look — the event says so, as it does for the echoes
+    lookMode: cleanLook.refused ? `template (${cleanLook.refused})` : "llm",
+  };
 }
 
 /* ---- the three events that carry a reveal ----------------------------------------- */
@@ -890,7 +908,7 @@ async function drawStep(sess, ctx) {
   sess.chips = ask.chips;
   let say = choice(DRAWN_LINES);
   if (axisSlot) say = AXIS_LINE.replace("{card}", picks[axisSlot].name);
-  return askingEvent(sess, say, { modes: { ask: ask.mode } });
+  return askingEvent(sess, say, { modes: { ask: ask.mode, look: ask.lookMode || ask.mode } });
 }
 
 /** The reading and the quest, from the cards already on the table plus every share. */
