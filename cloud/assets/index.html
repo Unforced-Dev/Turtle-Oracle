@@ -596,6 +596,12 @@ async function playServerLine(line,token){
     const r=await fetch("/api/speak",{method:"POST",signal:ctl.signal,
       headers:{"Content-Type":"application/json"},body:JSON.stringify({text:line})});
     if(!r.ok) return false;
+    /* cloud: 204 — the shell had nothing worth SAYING in that part. The Turtle's "Mm." is
+       right on the page and a groan through a synthesised voice, so the server drops it
+       (src/voice.js) rather than spend a call on it. That is not a failure: no audio, no
+       browser fallback, and above all no "tap to hear the Turtle" on a phone whose sound
+       was never broken. Report it spoken and move to the next part. */
+    if(r.status===204) return true;
     const blob=await r.blob();
     if(token!==SPEAK_GEN||!SPOKEN) return true;
     SERVER_AUDIO_URL=URL.createObjectURL(blob);

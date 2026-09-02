@@ -19,6 +19,7 @@ import * as lore from "./lore.js";
 import { formatReceipt } from "./printer.js";
 import * as session from "./session.js";
 import { json } from "./util.js";
+import { voiceText } from "./voice.js";
 
 /* wrangler needs the Durable Object class exported from the entry module. The séance
  * state lives here now rather than in KV — sessiondo.js says why. */
@@ -148,21 +149,25 @@ async function readJsonBody(req) {
 /* ---- voice: app/oracle/voice.py, kokoro -> Workers AI TTS ------------------------- */
 async function speak(req, env) {
   const body = await readJsonBody(req);
-  const text = String(body.text || "")
+  const line = String(body.text || "")
     .split(/\s+/)
     .filter(Boolean)
     .join(" ");
-  if (!text) return json({ error: "no text" }, 400);
-  if (text.length > 600) return json({ error: "speech line is too long" }, 400);
+  if (!line) return json({ error: "no text" }, 400);
+  if (line.length > 600) return json({ error: "speech line is too long" }, 400);
+  /* The kiosk posts one SENTENCE per request, so the Turtle's "Mm." arrives here alone
+   * and comes back as a groan. Strip the throat-clearing before spending the call; if
+   * that is all the line was, answer 204 and let the kiosk move to the next part. The
+   * screen still shows every word — this is the voice, not the text. */
+  const text = voiceText(line);
+  if (!text) return new Response(null, { status: 204 });
   const model = (env.TTS_MODEL || DEFAULT_TTS).trim();
+  const speaker = env.TTS_SPEAKER || DEFAULT_TTS_SPEAKER;
   if (!model || model === "off") {
     return json({ error: "the Turtle's deeper voice is unavailable" }, 503);
   }
   try {
-    const out = await env.AI.run(model, {
-      text,
-      speaker: env.TTS_SPEAKER || DEFAULT_TTS_SPEAKER,
-    });
+    const out = await env.AI.run(model, { text, speaker });
     const stream = out instanceof ReadableStream ? out : out && out.audio ? out.audio : null;
     if (!stream) return json({ error: "the Turtle's deeper voice is unavailable" }, 503);
     return new Response(stream, {
