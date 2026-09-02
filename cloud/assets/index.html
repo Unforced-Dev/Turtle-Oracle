@@ -618,7 +618,13 @@ $('snd').addEventListener('click',()=>{
 });
 
 /* ---------- word-by-word incantation ---------- */
+/* cloud: a silent séance paces on reading, not on a voice. With sound off — muted, or
+   refused by the phone — every reveal used to keep the spoken cadence, so a seeker
+   watched 76 words appear at speech speed and then sat through the silence budgeted for
+   the Turtle's voice: ~25 s between tapping an answer and seeing the quest. */
+const SILENT_WORD_MS=45, SILENT_WAIT_MS=1800;
 function incant(el,text,msPerWord=120){
+  if(!SPOKEN) msPerWord=Math.min(msPerWord,SILENT_WORD_MS);
   el.innerHTML="";
   const words=(text||"").split(/\s+/);
   words.forEach((w,i)=>{ const s=document.createElement("span"); s.className="w";
@@ -902,7 +908,7 @@ async function offer(){
    where playback started and then died without an onended. */
 function speakOr(text,fallbackMs){
   return new Promise(res=>{
-    if(!SPOKEN){ setTimeout(res,fallbackMs); return; }
+    if(!SPOKEN){ setTimeout(res,Math.min(fallbackMs,SILENT_WAIT_MS)); return; }
     let done=false;
     const fin=()=>{ if(done)return; done=true; res(); };
     SPEAK_STARTED=false;

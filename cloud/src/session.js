@@ -916,13 +916,16 @@ async function weaveStep(sess, ctx) {
   const told = toldFrom(sess);
   const picks = sess.picks;
   const located = sess.located;
-  const [out, weaveMode] = await weave(told, picks, ctx.llm, located, context(sess), ctx.tLong);
   /* Which of the two wrote the echoes is not visible from the lines themselves — a model
    * echo and a template echo both read "You said “…” — …" — so the event says it. "llm"
    * means the model answered; echoesLlm still swaps any single card's line for the
-   * template one when that line quotes something the seeker never said. */
-  const spokenEchoes =
-    ctx.llm && ctx.llm.available() ? await echoesLlm(sess, ctx.llm, ctx.tShort) : null;
+   * template one when that line quotes something the seeker never said.
+   * The echoes read only the picks and the seeker's words, never the weave, so the two
+   * model calls run side by side: this is the longest wait in the séance. */
+  const [[out, weaveMode], spokenEchoes] = await Promise.all([
+    weave(told, picks, ctx.llm, located, context(sess), ctx.tLong),
+    ctx.llm && ctx.llm.available() ? echoesLlm(sess, ctx.llm, ctx.tShort) : null,
+  ]);
   const echoes = spokenEchoes || echoesFallback(sess);
   sess.reading = out.reading;
   sess.adventure = out.adventure;

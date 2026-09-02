@@ -135,12 +135,14 @@ export async function weaveLlm(question, cards, llm, located, context, timeout) 
     "a bearing, not an address.\n\n" +
     'Return JSON only: {"reading": "...", "adventure": "..."}';
 
-  const resp = await llm.generate(prompt, { system: SYSTEM, asJson: true, timeout, stage: "weave" });
-  const out = tryJson(resp);
-  if (out && typeof out === "object" && out.reading && out.adventure) {
+  /* Two tries: a reading that was the example and nothing else (1 in 5 on staging,
+   * 2026-09-02) is worth one more roll of the model before the template takes over. */
+  for (let attempt = 0; attempt < 2; attempt++) {
+    const resp = await llm.generate(prompt, { system: SYSTEM, asJson: true, timeout, stage: "weave" });
+    const out = tryJson(resp);
+    if (!(out && typeof out === "object" && out.reading && out.adventure)) return null;
     const reading = unquoteExample(String(out.reading).trim());
-    if (!reading) return null;
-    return { reading, adventure: String(out.adventure).trim() };
+    if (reading) return { reading, adventure: String(out.adventure).trim() };
   }
   return null;
 }
