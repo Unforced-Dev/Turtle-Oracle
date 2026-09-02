@@ -109,8 +109,11 @@ T_SHORT = "20"
 T_LONG = "38"
 WHISPER_MODEL = "@cf/openai/whisper-large-v3-turbo"
 # Set TTS_MODEL = "off" to fall the kiosk back to the tablet's own browser voice.
-TTS_MODEL = "@cf/deepgram/aura-1"
-TTS_SPEAKER = "angus"
+# Aura-2 speaking as Draco, picked by ear off staging 2026-09-02 (Aaron). Set here so the
+# next PRODUCTION deploy carries the voice; that deploy is a human's to make, not this
+# branch's — nothing on feat/pull-first has been deployed to production.
+TTS_MODEL = "@cf/deepgram/aura-2-en"
+TTS_SPEAKER = "draco"
 
 [observability]
 enabled = true
@@ -179,11 +182,11 @@ THINK_STAGES = "weave,tale,ask"
 T_SHORT = "20"
 T_LONG = "38"
 WHISPER_MODEL = "@cf/openai/whisper-large-v3-turbo"
-# STAGING ONLY, 2026-09-02: Aura-2 with Pluto, so the Turtle can be picked by ear.
-# Same {text, speaker} input and the same MPEG stream out, so the route is unchanged.
-# Production stays on aura-1/angus until Aaron has heard these.
+# Aura-2 speaking as Draco, the voice Aaron picked by ear off this staging worker on
+# 2026-09-02. Same {text, speaker} input and the same MPEG stream out as aura-1, so the
+# route is unchanged. Production carries the same pair now, for its next hand-made deploy.
 TTS_MODEL = "@cf/deepgram/aura-2-en"
-TTS_SPEAKER = "pluto"
+TTS_SPEAKER = "draco"
 # STAGING ONLY: /api/speak will take an allowlisted `speaker` and `model` off the body,
 # so a few sample lines can be curled in several voices without a redeploy between them.
 # Unset everywhere else, and unset means the environment's own voice, always.
