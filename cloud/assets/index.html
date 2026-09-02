@@ -85,9 +85,17 @@
   .wtile:active{transform:scale(.96)} .wtile:hover{border-color:var(--gold-dim)}
   .wtile img{width:100%;aspect-ratio:1;object-fit:cover;border-radius:8px;background:#0b0805;display:block}
   .wtile .wname{color:var(--gold);font-size:.92rem;margin-top:7px;line-height:1.2}
-  .stemline{display:none;color:var(--gold2);font-style:italic;font-size:clamp(1.3rem,3vw,1.7rem);
-    text-align:center;margin-top:10px;letter-spacing:.02em}
-  .stemline.on{display:block;animation:shimmer 3.2s ease-in-out infinite}
+  /* cloud: the wanting tiles have no art of their own — they are words on the same tile
+     as the six skies, so the third touch screen reads as the same gesture. */
+  .wtile.want{display:flex;flex-direction:column;justify-content:center;min-height:96px;padding:12px}
+  .wtile .wline{color:var(--parch-dim);font-size:.76rem;font-style:italic;margin-top:5px;line-height:1.25}
+  /* cloud: THE DOOR. Two buttons, thumb-sized, the whole width of a phone. */
+  #doorrow{display:none;flex-direction:column;gap:14px;width:100%;max-width:520px;margin-top:16px}
+  #doorrow.on{display:flex}
+  .doorbtn{display:flex;flex-direction:column;align-items:center;gap:4px;padding:20px 18px;
+    text-align:center;line-height:1.3}
+  .doorbtn .dhead{font-size:1.2rem;letter-spacing:.04em}
+  .doorbtn .dsub{font-size:.86rem;font-weight:400;opacity:.75}
   #stonesrow{display:none;flex-wrap:wrap;gap:12px;justify-content:center;max-width:640px;margin-top:14px}
   #stonesrow.on{display:flex}
   .stonechip{font:inherit;padding:14px 20px;border-radius:999px;border:1px solid var(--gold-dim);
@@ -112,6 +120,33 @@
     background:radial-gradient(circle at 35% 30%,#e0c477,#96772f);border:1px solid var(--gold2)}
   .micorb.listening{animation:miclisten 1s ease-in-out infinite}
   @keyframes miclisten{0%,100%{box-shadow:0 0 0 0 rgba(232,205,133,.5)}50%{box-shadow:0 0 0 18px rgba(232,205,133,0)}}
+
+  /* cloud: THE TALK DOOR. One big record button inside a two-minute ring, because the
+     thing a seeker deep in their burn can actually do is hold a phone and talk. */
+  .recwrap{position:relative;width:190px;height:190px;margin:6px auto 0}
+  .recring{position:absolute;inset:0;transform:rotate(-90deg)}
+  .recring circle{fill:none;stroke-linecap:round}
+  .recring .track{stroke:var(--edge);stroke-width:6}
+  .recring .burn{stroke:var(--gold);stroke-width:6;transition:stroke-dashoffset .3s linear}
+  .recorb{position:absolute;inset:22px;width:auto;height:auto;border-radius:50%;padding:0;
+    display:flex;flex-direction:column;align-items:center;justify-content:center;gap:4px;
+    font-size:2.1rem;background:radial-gradient(circle at 35% 30%,#e0c477,#96772f);
+    border:1px solid var(--gold2);min-height:0}
+  .recorb .rlabel{font-size:.72rem;font-weight:400;letter-spacing:.18em;text-transform:uppercase}
+  /* the level cue: the orb's own halo, driven by the mic. --lvl is 0..1 from the analyser. */
+  .recorb.listening{box-shadow:0 0 0 calc(6px + var(--lvl,0) * 26px) rgba(232,205,133,.18)}
+  #rectime{text-align:center;color:var(--gold-dim);font-size:.86rem;letter-spacing:.22em;margin-top:10px}
+  .orwrite{text-align:center;color:var(--gold-dim);font-size:.76rem;letter-spacing:.24em;
+    text-transform:uppercase;margin:16px 0 8px}
+  /* cloud: the Turtle's own guesses at the answer, tapable. */
+  #chiprow{display:none;flex-wrap:wrap;gap:10px;justify-content:center;margin-top:12px}
+  #chiprow.on{display:flex}
+  .answerchip{font:inherit;padding:12px 18px;border-radius:999px;border:1px solid var(--gold-dim);
+    background:transparent;color:var(--parch);font-weight:400;min-height:0;font-size:1rem}
+  /* cloud: a phone that refused to play the voice says so, in the one place the sound
+     lives, and the tap that fixes it is the tap that replays the line. */
+  .soundtoggle.blocked{border-color:var(--gold);color:var(--gold2);letter-spacing:.02em;
+    animation:shimmer 2.6s ease-in-out infinite}
 
   /* ---- the pull: shuffle veil ---- */
   #veil{position:fixed;inset:0;background:rgba(8,6,3,.92);display:flex;align-items:center;justify-content:center;
@@ -151,8 +186,9 @@
   .cardcap .cname{color:var(--gold);font-size:clamp(.9rem,1.8vw,1.12rem);line-height:1.25}
   .cardcap .cbite{color:#a3743f;font-size:.72rem;font-style:italic;margin-top:3px}
   .cardcap .cwhere{color:var(--parch-dim);font-size:.74rem;font-style:italic;margin-top:3px}
-  .flip{cursor:pointer}
-  .flip.yourturn .face.back{animation:chosepulse 1.5s ease-in-out infinite}
+  /* cloud: the cards are dealt face up now and are not tappable, so "your turn" is gone.
+     What is left is "the Turtle is talking about THIS one", used during the echoes. */
+  .flip.heard{animation:chosepulse 1.5s ease-in-out infinite}
   @keyframes chosepulse{0%,100%{box-shadow:0 14px 40px rgba(0,0,0,.55)}
     50%{box-shadow:0 0 34px rgba(232,205,133,.65), 0 14px 40px rgba(0,0,0,.55)}}
 
@@ -233,15 +269,38 @@
   <div class="medallion"><img src="/avatar.jpg" alt=""></div>
   <div class="col">
     <div class="oracle-says" id="says"></div>
+    <!-- cloud: THE DOOR — talk, or touch. Everything below branches from here. -->
+    <div id="doorrow"></div>
+    <!-- cloud: the talk door. One record button, a two-minute ring, and a way to type
+         instead for anyone who cannot or will not speak into a phone. -->
+    <div class="panel" id="talkpanel">
+      <div class="recwrap">
+        <svg class="recring" viewBox="0 0 190 190" aria-hidden="true">
+          <circle class="track" cx="95" cy="95" r="92"></circle>
+          <circle class="burn" id="recburn" cx="95" cy="95" r="92"></circle>
+        </svg>
+        <button class="recorb" id="rec" title="tell the turtle">
+          <span id="recface">🎙</span>
+          <span class="rlabel" id="reclabel">hold nothing — just talk</span>
+        </button>
+      </div>
+      <div id="rectime">2:00</div>
+      <div class="orwrite">or write it</div>
+      <textarea id="story" placeholder="…the good, the strange, the thing you have not said yet"></textarea>
+      <div class="row"><button id="offerstory">Offer it to the Turtle</button></div>
+    </div>
     <div class="wgrid" id="wgrid"></div>
-    <div class="stemline" id="stemline"></div>
     <div id="stonesrow"></div>
+    <div class="wgrid" id="wantgrid"></div>
     <div class="panel" id="askpanel">
       <textarea id="q" placeholder="speak, or write it here…"></textarea>
       <div class="row">
         <button class="micorb" id="mic" title="speak to the turtle">🎙</button>
         <button id="offer">Offer it to the Turtle</button>
       </div>
+      <!-- cloud: the Turtle's three guesses, and the right to refuse the question -->
+      <div id="chiprow"></div>
+      <div class="row"><button class="ghost" id="passq">let it be</button></div>
     </div>
     <div class="panel" id="giftrow" style="text-align:center">
       <div style="font-size:1.3rem;margin-bottom:12px">🎁</div>
@@ -289,6 +348,9 @@ const $=id=>document.getElementById(id);
 const SLOTS=["roots","trunk","branches"];
 const SLOTCAP={roots:"Face",trunk:"Stand",branches:"Reach"};
 let SID=null, SPOKEN=true, VOICE=null, IDLE=null, CARD_IDS="", SESSION_GEN=0;
+/* cloud: the reading is revealed once. A refinement comes back through the same stage
+   with the same cards already on the table, and must not replay it. */
+let READ_SHOWN=false;
 /* Which station this tablet is, from ?kiosk=1 — routes the print to its own printer. */
 const KIOSK=new URLSearchParams(location.search).get("kiosk")||"";
 const SESSION_KEY="turtle-oracle.session"+(KIOSK?"."+KIOSK:"");
@@ -303,21 +365,38 @@ function forgetStep(){ try{ localStorage.removeItem(SESSION_KEY); }catch(err){} 
 function restoreStep(){
   let saved=null;
   try{ saved=JSON.parse(localStorage.getItem(SESSION_KEY)||"null"); }catch(err){ forgetStep(); }
-  const stages=["naming","tale_naming","tale_listening","tale_told","weather","stem","stones","proposed","accepted"];
+  const stages=["naming","tale_naming","tale_listening","tale_told","door","listening",
+    "weather","stones","wanting","asking","proposed","accepted"];
   if(!saved||!saved.sid||!saved.step||saved.step.session!==saved.sid
       ||!stages.includes(saved.step.stage)||(saved.step.stage==="accepted"&&!saved.step.quest)){
     forgetStep(); return false;
   }
   SID=saved.sid; SESSION_GEN++;
   show("seance"); resetSeance();
-  // cloud: a reload after the seal shows the parchment again, but does not perform the
-  // reveal a second time — no spoken line, no fanfare, just the quest, still there.
-  if(saved.step.stage==="accepted"&&saved.step.quest) renderQuest(saved.step,true);
-  else {
-    handle(saved.step);
-    if(["naming","tale_naming","tale_listening"].includes(saved.step.stage))
-      $('askpanel').classList.add("on");
+  const step=saved.step;
+  /* cloud: a restore RE-RENDERS the screen the seeker was on. It never replays a reveal —
+     no veil, no dealing animation, no spoken line, no chanting the reading a second time.
+     The three stages that have a reveal (accepted, asking, proposed) are drawn flat. */
+  if(step.stage==="accepted"&&step.quest){ renderQuest(step,true); return true; }
+  if(step.stage==="asking"&&step.cards){
+    CARD_IDS=SLOTS.map(s=>step.cards[s].id).join(",");
+    dealSpread(step,{instant:true});
+    $('says').textContent=step.question||step.say||"";
+    renderAnswer(step);
+    return true;
   }
+  if(step.stage==="proposed"&&step.cards){
+    CARD_IDS=SLOTS.map(s=>step.cards[s].id).join(","); READ_SHOWN=true;
+    dealSpread(step,{instant:true});
+    $('says').textContent=step.say||"";
+    $('h-read').classList.add("on"); $('reading').textContent=step.reading||"";
+    $('h-adv').classList.add("on"); $('adventure').textContent=step.adventure||"";
+    $('decide').style.display="flex";
+    return true;
+  }
+  handle(step);
+  if(["naming","tale_naming","tale_listening"].includes(step.stage))
+    $('askpanel').classList.add("on");
   return true;
 }
 
@@ -340,12 +419,65 @@ function pickVoice(){
 }
 if("speechSynthesis" in window){ pickVoice(); speechSynthesis.onvoiceschanged=pickVoice; }
 let SERVER_AUDIO=null, SERVER_AUDIO_URL=null, SPEAK_GEN=0, SPEAK_DONE=null;
+/* cloud: iOS Safari will not play audio a page created outside a user gesture, and it
+   fails by REJECTING the play() promise rather than by erroring — so the old code sat
+   through its own 20s guard timer on every line and the séance appeared to hang. Three
+   things fix it, all of them here:
+     1. one <audio> element, unlocked inside the attract tap and reused for every line.
+        iOS unlocks the ELEMENT, not the page, so a fresh `new Audio()` per line is a
+        fresh lock every line.
+     2. AudioContext.resume() in the same gesture, which is what browser TTS needs.
+     3. if it is still blocked, say so: the 🔊 chip becomes a visible offer to replay.
+   Sound stays ON by default — this is a rescue, not a preference. */
+let AUDIO_EL=null, AC=null, AUDIO_BLOCKED=false, SPEAK_STARTED=false, LAST_LINE="";
+/* A second of 8-bit silence, as a blob: URL — the CSP allows blob: media and not data:. */
+function silentUrl(){
+  const n=2000, buf=new ArrayBuffer(44+n), v=new DataView(buf);
+  const put=(o,s)=>{ for(let i=0;i<s.length;i++) v.setUint8(o+i,s.charCodeAt(i)); };
+  put(0,"RIFF"); v.setUint32(4,36+n,true); put(8,"WAVEfmt "); v.setUint32(16,16,true);
+  v.setUint16(20,1,true); v.setUint16(22,1,true); v.setUint32(24,8000,true);
+  v.setUint32(28,8000,true); v.setUint16(32,1,true); v.setUint16(34,8,true);
+  put(36,"data"); v.setUint32(40,n,true);
+  new Uint8Array(buf,44).fill(128);   // 0x80 is silence in unsigned 8-bit PCM
+  return URL.createObjectURL(new Blob([buf],{type:"audio/wav"}));
+}
+/* Must be called synchronously inside a real tap. Never awaits before it plays. */
+function primeAudio(){
+  try{
+    const Ctx=window.AudioContext||window.webkitAudioContext;
+    if(Ctx&&!AC) AC=new Ctx();
+    if(AC&&AC.state==="suspended") AC.resume();
+  }catch(err){}
+  try{
+    if(!AUDIO_EL&&"Audio" in window){
+      AUDIO_EL=new Audio();
+      AUDIO_EL.preload="auto";
+      AUDIO_EL.src=silentUrl();
+    }
+    if(AUDIO_EL){ const p=AUDIO_EL.play(); if(p&&p.catch) p.catch(()=>{}); }
+  }catch(err){}
+  // iOS also gates speechSynthesis behind one gesture-time utterance
+  try{
+    if("speechSynthesis" in window){
+      const u=new SpeechSynthesisUtterance(" "); u.volume=0; speechSynthesis.speak(u);
+    }
+  }catch(err){}
+}
+/* The voice was refused. Do not keep pretending — hand the seeker the tap that fixes it. */
+function audioBlocked(){
+  if(AUDIO_BLOCKED) return;
+  AUDIO_BLOCKED=true; SPOKEN=false;
+  $('snd').textContent="🔈 tap to hear the Turtle";
+  $('snd').classList.add("blocked");
+}
 function speechParts(text){
   return (text.replace(/[“”"]/g,"").match(/[^.!?…]+[.!?…]+['”]?|[^.!?…]+$/g)||[text])
     .map(s=>s.trim()).filter(Boolean);
 }
 function releaseAudio(){
-  if(SERVER_AUDIO){ SERVER_AUDIO.pause(); SERVER_AUDIO.src=""; SERVER_AUDIO=null; }
+  /* cloud: the unlocked element is kept — only its source is dropped. Nulling it out
+     would throw away the iOS gesture that made it playable in the first place. */
+  if(SERVER_AUDIO){ try{ SERVER_AUDIO.pause(); }catch(err){} SERVER_AUDIO.removeAttribute("src"); SERVER_AUDIO=null; }
   if(SERVER_AUDIO_URL){ URL.revokeObjectURL(SERVER_AUDIO_URL); SERVER_AUDIO_URL=null; }
 }
 function stopVoice(){
@@ -361,6 +493,7 @@ function browserSpeak(parts,token,finish){
   parts.forEach((p,i)=>{
     const u=new SpeechSynthesisUtterance(p);
     u.rate=.87; u.pitch=.62; if(VOICE)u.voice=VOICE;
+    u.onstart=()=>{ SPEAK_STARTED=true; };
     if(i===parts.length-1) u.onend=u.onerror=finish;
     speechSynthesis.speak(u);
   });
@@ -377,14 +510,22 @@ async function playServerLine(line,token){
     const blob=await r.blob();
     if(token!==SPEAK_GEN||!SPOKEN) return true;
     SERVER_AUDIO_URL=URL.createObjectURL(blob);
-    SERVER_AUDIO=new Audio(SERVER_AUDIO_URL);
+    /* cloud: the element unlocked by the attract tap, reused. A new Audio() here is a
+       new lock on iOS, and iOS refuses it every time. */
+    if(!AUDIO_EL&&"Audio" in window) AUDIO_EL=new Audio();
+    SERVER_AUDIO=AUDIO_EL;
+    SERVER_AUDIO.src=SERVER_AUDIO_URL;
     const played=await new Promise(resolve=>{
       let settled=false;
       const guard=setTimeout(()=>end(false),Math.max(20000,line.split(/\s+/).length*800+5000));
       const end=ok=>{ if(settled)return; settled=true; clearTimeout(guard); resolve(ok); };
       SERVER_AUDIO.onended=()=>end(true); SERVER_AUDIO.onerror=()=>end(false);
       const started=SERVER_AUDIO.play();
-      if(started&&started.catch) started.catch(()=>end(false));
+      /* cloud: a rejected play() is a BLOCKED phone, not a broken line. Say so once and
+         drop straight through — the old code waited out its own 20s guard here. */
+      if(started&&started.then) started.then(()=>{ SPEAK_STARTED=true; },
+        ()=>{ audioBlocked(); end(false); });
+      else SPEAK_STARTED=true;
     });
     releaseAudio(); return played;
   }catch(err){ return false; }
@@ -392,6 +533,7 @@ async function playServerLine(line,token){
 }
 async function speak(text,cb){
   stopVoice();
+  LAST_LINE=text||LAST_LINE;
   if(!SPOKEN){ if(cb)cb(); return; }
   const token=SPEAK_GEN, parts=speechParts(text);
   document.body.classList.add("speaking");
@@ -409,8 +551,19 @@ async function speak(text,cb){
   if(i<parts.length) browserSpeak(parts.slice(i),token,finish);
   else finish();
 }
-$('snd').addEventListener('click',()=>{ SPOKEN=!SPOKEN; $('snd').textContent=SPOKEN?"🔊":"🔇";
-  if(!SPOKEN) stopVoice(); });
+$('snd').addEventListener('click',()=>{
+  /* cloud: while the chip is the "tap to hear" affordance, the tap is a rescue — it is a
+     real user gesture, so it primes the audio and replays the line the seeker missed. */
+  if(AUDIO_BLOCKED){
+    AUDIO_BLOCKED=false; SPOKEN=true;
+    $('snd').classList.remove("blocked"); $('snd').textContent="🔊";
+    primeAudio();
+    if(LAST_LINE) speak(LAST_LINE);
+    return;
+  }
+  SPOKEN=!SPOKEN; $('snd').textContent=SPOKEN?"🔊":"🔇";
+  if(!SPOKEN) stopVoice();
+});
 
 /* ---------- word-by-word incantation ---------- */
 function incant(el,text,msPerWord=120){
@@ -467,10 +620,11 @@ async function wake(mode){
 function resetSeance(){
   $('says').innerHTML=""; $('askpanel').classList.remove("on"); $('q').value="";
   $('q').placeholder="speak, or write it here…";
+  $('talkpanel').classList.remove("on"); $('story').value=""; resetRing();
   $('spread').innerHTML=""; $('reading').innerHTML=""; $('adventure').innerHTML="";
   $('h-read').classList.remove("on"); $('h-adv').classList.remove("on");
   $('decide').style.display="none"; $('giftrow').classList.remove("on"); CARD_IDS="";
-  hideAux(); T_ASK=Date.now();
+  READ_SHOWN=false; hideAux(); T_ASK=Date.now();
 }
 
 function taleTold(e){
@@ -500,8 +654,9 @@ function metaNow(){
   const m={ms:Date.now()-T_ASK, input:USED_MIC?"voice":"text", audio_secs:AUDIO_SECS};
   AUDIO_SECS=0; USED_MIC=false; return m;
 }
-function hideAux(){ $('wgrid').classList.remove("on"); $('stemline').classList.remove("on");
-  $('stonesrow').classList.remove("on"); }
+function hideAux(){ $('wgrid').classList.remove("on"); $('doorrow').classList.remove("on");
+  $('stonesrow').classList.remove("on"); $('wantgrid').classList.remove("on");
+  $('chiprow').classList.remove("on"); $('passq').style.display="none"; }
 
 /* one router for every séance event */
 async function handle(e){
@@ -511,12 +666,83 @@ async function handle(e){
     return toast(e.error);
   }
   rememberStep(e);
+  if(e.stage==="door") return renderDoor(e);
+  if(e.stage==="listening") return renderListening(e);
   if(e.stage==="weather") return renderWeather(e);
-  if(e.stage==="stem") return renderStem(e);
   if(e.stage==="stones") return renderStones(e);
-  if(e.stage==="proposed"){ $('askpanel').classList.remove("on"); hideAux(); return thePull(e); }
+  if(e.stage==="wanting") return renderWanting(e);
+  if(e.stage==="asking") return theAsking(e);
+  if(e.stage==="proposed"){ $('askpanel').classList.remove("on"); hideAux(); return theReading(e); }
   if(e.stage==="tale_told") return taleTold(e);
   incant($('says'),e.say,110); speak(e.say);
+}
+
+/* Post a tap and hand the answer back to the router, with the Turtle visibly pondering
+   in between — the draw is two model stages in one request and shows nothing otherwise. */
+async function tap(body,onFail){
+  ponder();
+  document.body.classList.add("speaking");
+  try{ await handle(await post("say",Object.assign({session:SID,meta:metaNow()},body))); }
+  catch(err){ if(onFail) onFail(); toast(whyLost(err,"The Turtle lost the thread — touch it again.")); }
+  document.body.classList.remove("speaking");
+}
+
+/* ---------- the door: talk, or touch ---------- */
+function renderDoor(e){
+  $('askpanel').classList.remove("on"); $('talkpanel').classList.remove("on"); hideAux();
+  incant($('says'),e.say,110); speak(e.say);
+  $('doorrow').innerHTML=(e.doors||[]).map(d=>{
+    const bits=String(d.label||d.id).split("—");
+    const head=bits.shift().trim(), sub=bits.join("—").trim();
+    return `<button class="doorbtn" data-id="${esc(d.id)}"><span class="dhead">${esc(head)}</span>`
+      +(sub?`<span class="dsub">${esc(sub)}</span>`:"")+`</button>`;
+  }).join("");
+  $('doorrow').classList.add("on");
+  let tapped=false;
+  $('doorrow').querySelectorAll('.doorbtn').forEach(b=>b.addEventListener('click',async()=>{
+    if(tapped) return; tapped=true;
+    await tap({door:b.dataset.id},()=>{ tapped=false; });
+  }));
+}
+
+/* ---------- the talk door ---------- */
+function renderListening(e){
+  $('askpanel').classList.remove("on"); hideAux();
+  incant($('says'),e.say,110); speak(e.say);
+  $('story').value=""; resetRing();
+  $('talkpanel').classList.add("on");
+}
+async function offerStory(){
+  const text=$('story').value.trim();
+  if(!text){ $('story').focus(); return; }
+  if(LISTENING||TRANSCRIBE) return;
+  $('offerstory').disabled=true; $('rec').disabled=true;
+  ponder(); document.body.classList.add("speaking");
+  try{
+    const e=await post("say",{session:SID,text,meta:metaNow()});
+    document.body.classList.remove("speaking");
+    if(!e.error){ $('story').value=""; $('talkpanel').classList.remove("on"); }
+    await handle(e);
+  }catch(err){ toast(whyLost(err)); }
+  document.body.classList.remove("speaking");
+  $('offerstory').disabled=false; $('rec').disabled=false;
+}
+
+/* ---------- the third touch screen: what you came out here for ---------- */
+function renderWanting(e){
+  $('askpanel').classList.remove("on"); hideAux();
+  incant($('says'),e.say,110); speak(e.say);
+  $('wantgrid').innerHTML=(e.wantings||[]).map(w=>`
+    <div class="wtile want" data-id="${esc(w.id)}">
+      <div class="wname">${esc(w.name)}</div>
+      <div class="wline">${esc(w.line)}</div>
+    </div>`).join("");
+  $('wantgrid').classList.add("on");
+  let tapped=false;
+  $('wantgrid').querySelectorAll('.wtile').forEach(t=>t.addEventListener('click',async()=>{
+    if(tapped) return; tapped=true;
+    await tap({wanting:t.dataset.id},()=>{ tapped=false; });
+  }));
 }
 
 function renderWeather(e){
@@ -531,22 +757,8 @@ function renderWeather(e){
   let tapped=false;
   $('wgrid').querySelectorAll('.wtile').forEach(t=>t.addEventListener('click',async()=>{
     if(tapped) return; tapped=true;
-    ponder();
-    document.body.classList.add("speaking");
-    try{ const ev=await post("say",{session:SID,weather:t.dataset.id,meta:metaNow()}); await handle(ev); }
-    catch(err){ tapped=false; toast(whyLost(err,"The Turtle lost the thread — touch it again.")); }
-    document.body.classList.remove("speaking");
+    await tap({weather:t.dataset.id},()=>{ tapped=false; });
   }));
-}
-
-function renderStem(e){
-  hideAux();
-  incant($('says'),e.say,110);
-  $('stemline').textContent="“"+e.stem+"”";
-  $('stemline').classList.add("on");
-  $('q').placeholder=e.stem+" …";
-  speak(e.say+" "+e.stem);
-  $('askpanel').classList.add("on");
 }
 
 function renderStones(e){
@@ -564,11 +776,7 @@ function renderStones(e){
   }));
   $('stonesdone').addEventListener('click',async()=>{
     $('stonesdone').disabled=true;
-    ponder();
-    document.body.classList.add("speaking");
-    try{ const ev=await post("say",{session:SID,stones:[...sel],meta:metaNow()}); await handle(ev); }
-    catch(err){ $('stonesdone').disabled=false; toast(whyLost(err,"Once more, slowly.")); }
-    document.body.classList.remove("speaking");
+    await tap({stones:[...sel]},()=>{ $('stonesdone').disabled=false; });
   });
 }
 
@@ -590,11 +798,21 @@ async function offer(){
   document.body.classList.remove("speaking");
   $('offer').disabled=false; $('mic').disabled=false;
 }
-/* wait on the spoken voice when sound is on, else on the written reveal */
+/* wait on the spoken voice when sound is on, else on the written reveal.
+   cloud: "sound is on" is not the same as "sound is playing". A phone that refused the
+   audio never calls back, and the séance used to sit through ~40s of guard timers before
+   moving. So the fallback cap runs alongside the voice and fires whenever nothing
+   actually started playing — and there is an absolute roof behind that, for the case
+   where playback started and then died without an onended. */
 function speakOr(text,fallbackMs){
   return new Promise(res=>{
-    if(SPOKEN) speak(text,res);
-    else setTimeout(res,fallbackMs);
+    if(!SPOKEN){ setTimeout(res,fallbackMs); return; }
+    let done=false;
+    const fin=()=>{ if(done)return; done=true; res(); };
+    SPEAK_STARTED=false;
+    speak(text,fin);
+    setTimeout(()=>{ if(!SPEAK_STARTED) fin(); },fallbackMs);
+    setTimeout(fin,fallbackMs+45000);
   });
 }
 
@@ -604,29 +822,69 @@ function shuffleCards(){
   for(let i=0;i<5;i++){ const d=document.createElement("div"); d.className="sc";
     d.innerHTML='<img src="/med/back.jpg" alt="">'; $('shufflebox').appendChild(d); }
 }
-async function thePull(e){
-  const ids=SLOTS.map(s=>e.cards[s].id).join(",");
-  const isRefine=CARD_IDS && ids===CARD_IDS;
+/* cloud: THE ASKING. The Tree draws, the cards come up FACE UP, and then the Turtle asks
+   one open question about them — before there is any reading. That is the order an oracle
+   works in, and it is the difference between a séance and an intake form. */
+async function theAsking(e){
+  $('askpanel').classList.remove("on"); $('talkpanel').classList.remove("on"); hideAux();
   $('decide').style.display="none";
-  if(!isRefine){
-    shuffleCards();
-    $('veil').classList.add("on");
-    incant($('says'),e.say,110); speak(e.say);
-    await sleep(2600);
-    $('veil').classList.remove("on");
-    CARD_IDS=ids;
-    await dealSpread(e);   // resolves after the seeker has turned all three cards
-    // the reading, chanted to its end
+  shuffleCards();
+  $('veil').classList.add("on");
+  incant($('says'),e.say,110); speak(e.say);
+  await sleep(2600);
+  $('veil').classList.remove("on");
+  CARD_IDS=SLOTS.map(s=>e.cards[s].id).join(",");
+  await dealSpread(e);
+  const q=e.question||"And you — what have you not said yet?";
+  const qdur=incant($('says'),q,105);
+  await speakOr(q, Math.min(qdur+1500,14000));
+  renderAnswer(e);
+}
+/* The answer row: their voice, their typing, the Turtle's three guesses, or nothing. */
+function renderAnswer(e){
+  $('q').value=""; $('q').placeholder="speak, or write it here…";
+  $('chiprow').innerHTML=(e.chips||[]).map(c=>
+    `<button class="answerchip" data-chip="${esc(c)}">${esc(c)}</button>`).join("");
+  $('chiprow').classList.toggle("on",Boolean((e.chips||[]).length));
+  $('passq').style.display="";
+  $('chiprow').querySelectorAll('.answerchip').forEach(b=>b.addEventListener('click',async()=>{
+    $('chiprow').classList.remove("on"); $('passq').style.display="none";
+    $('askpanel').classList.remove("on");
+    await tap({chip:b.dataset.chip});
+  }));
+  $('askpanel').classList.add("on");
+  $('askpanel').scrollIntoView({behavior:"smooth",block:"nearest"});
+}
+$('passq').addEventListener('click', async ()=>{
+  $('passq').disabled=true;
+  $('chiprow').classList.remove("on"); $('askpanel').classList.remove("on");
+  await tap({pass:true},()=>{ $('askpanel').classList.add("on"); });
+  $('passq').disabled=false;
+});
+
+/* cloud: THE READING. The cards are already on the table by the time this runs, so there
+   is no veil and no deal — the Turtle speaks the echoes over the spread it already dealt,
+   then the reading, then the quest. A refinement lands here too, with READ_SHOWN set. */
+async function theReading(e){
+  $('decide').style.display="none";
+  const ids=SLOTS.map(s=>e.cards[s].id).join(",");
+  // the offline refinement genuinely re-scores the cards: if they changed, re-deal
+  if(ids!==CARD_IDS){ CARD_IDS=ids; await dealSpread(e,{instant:true}); }
+  if(!READ_SHOWN){
+    READ_SHOWN=true;
+    incant($('says'),e.say,110);
+    await speakOr(e.say, 2600);
+    await echoPass(e);
     $('h-read').classList.add("on");
     const rdur=incant($('reading'),e.reading,105);
     await speakOr(e.reading, Math.min(rdur,26000));
   } else {
-    // a refinement: same cards — just acknowledge and re-offer the quest
+    // a refinement: acknowledge, and re-offer. The fallback path rewrites the reading too.
     incant($('says'),e.say,110);
     await speakOr(e.say, 2200);
+    if(e.reading&&e.modes&&e.modes.refine==="fallback") incant($('reading'),e.reading,105);
     $('adventure').innerHTML="";
   }
-  // the quest offer
   $('h-adv').classList.add("on");
   const adur=incant($('adventure'),e.adventure,105);
   await speakOr(e.adventure, Math.min(adur,22000));
@@ -634,12 +892,24 @@ async function thePull(e){
   $('decide').style.display="flex";
   $('decide').scrollIntoView({behavior:"smooth",block:"nearest"});
 }
-/* Three cards land face-down. The SEEKER turns them — in order, by hand.
-   Each turn, the Turtle speaks the echo: their own words, heard back. */
-function dealSpread(e){
+/* One card at a time: the Turtle says what it heard in that card. Their words, back. */
+async function echoPass(e){
+  for(const slot of SLOTS){
+    const echo=(e.echoes||{})[slot];
+    if(!echo) continue;
+    const f=$(`flip-${slot}`);
+    if(f) f.classList.add("heard");
+    const dur=incant($('says'),echo,95);
+    await speakOr(echo, Math.min(dur+900,9000));
+    if(f) f.classList.remove("heard");
+  }
+}
+/* Three cards, dealt face up. `instant` skips the animation entirely — that is the
+   localStorage restore, which must re-render the screen and never replay the reveal. */
+function dealSpread(e,opts){
+  opts=opts||{};
   return new Promise(done=>{
     $('spread').innerHTML="";
-    let next=0; const flips=[];
     SLOTS.forEach((slot,i)=>{
       const c=e.cards[slot];
       // roughly one séance in ten, a Shell card substitutes into a slot — the Tree's own
@@ -654,35 +924,22 @@ function dealSpread(e){
                over a megabyte of art nobody can see the resolution of. Nothing in this
                kiosk ever shows a card larger than the spread; if that changes, the
                large view wants c.image. -->
-          <div class="face front"><img src="${c.thumb}" alt="${c.name}"></div>
+          <div class="face front"><img src="${c.thumb}" alt="${esc(c.name)}"></div>
         </div>
         <div class="cardcap${isAxis?" axis":""}" id="cap-${slot}">
-          <div class="cslot">${isAxis?"◆ The Axis Speaks":`${SLOTCAP[slot]} · ${c.slot}`}</div>
-          <div class="cname">${c.name}</div>
-          ${c.shadow?`<div class="cbite">the bite: ${c.shadow}</div>`:""}
-          ${c.location&&c.location.directions?`<div class="cwhere">📍 ${c.location.directions}</div>`:""}
+          <div class="cslot">${isAxis?"◆ The Axis Speaks":`${SLOTCAP[slot]} · ${esc(c.slot)}`}</div>
+          <div class="cname">${esc(c.name)}</div>
+          ${c.shadow?`<div class="cbite">the bite: ${esc(c.shadow)}</div>`:""}
+          ${c.location&&c.location.directions?`<div class="cwhere">📍 ${esc(c.location.directions)}</div>`:""}
         </div>`;
       $('spread').appendChild(cell);
       const f=cell.querySelector('.flip');
-      flips.push(f);
-      setTimeout(()=>f.classList.add("dealt"), 150+i*220);
-      f.addEventListener('click',()=>{
-        if(i!==next||f.classList.contains('flipped')) return;
-        f.classList.remove('yourturn');
-        f.classList.add('flipped');
-        $(`cap-${slot}`).classList.add('on');
-        const echo=(e.echoes||{})[slot];
-        if(echo){ incant($('says'),echo,95); speak(echo); }
-        next++;
-        if(next<3) flips[next].classList.add('yourturn');
-        else setTimeout(done, 1600);
-      });
+      const reveal=()=>{ f.classList.add("dealt","flipped"); $(`cap-${slot}`).classList.add("on"); };
+      if(opts.instant) reveal();
+      else setTimeout(reveal, 150+i*260);
     });
-    setTimeout(()=>{
-      flips[0].classList.add('yourturn');
-      const line="Three cards, face down. Turn them yourself — slowly, in order.";
-      incant($('says'),line,110); speak(line);
-    }, 150+3*220+400);
+    if(opts.instant) done();
+    else setTimeout(done, 150+3*260+1500);
   });
 }
 
@@ -791,6 +1048,63 @@ $('again').addEventListener('click', resetAll);
 
 /* ---------- listening: the Turtle's own ears (local whisper on the camp brain) ---------- */
 let REC=null, REC_STREAM=null, TRANSCRIBE=null, CHUNKS=[], LISTENING=false;
+/* cloud: one recorder, two buttons. The little mic orb in the ask panel writes into #q
+   and stops itself at 60s; the big orb on the talk screen writes into #story, runs for
+   two minutes with a ring around it, and sends the moment it has the transcript. */
+let REC_INTO="q", REC_BTN="mic", REC_MS=60000, REC_TICK=null, REC_LEVEL=null;
+const RING=2*Math.PI*92;
+/* The ring belongs to the talk screen alone, so it always shows the talk screen's two
+   minutes — never the 60s the little ask-panel mic runs on. */
+const TALK_MS=120000;
+function resetRing(){
+  $('recburn').style.strokeDasharray=RING;
+  $('recburn').style.strokeDashoffset=RING;
+  $('rectime').textContent=fmtSecs(TALK_MS/1000);
+}
+function fmtSecs(s){ s=Math.max(0,Math.round(s)); return Math.floor(s/60)+":"+String(s%60).padStart(2,"0"); }
+function startRing(){
+  clearInterval(REC_TICK);
+  $('recburn').style.strokeDasharray=RING;
+  REC_TICK=setInterval(()=>{
+    const left=Math.max(0,REC_MS-(Date.now()-(micToggle._t0||Date.now())));
+    $('rectime').textContent=fmtSecs(left/1000);
+    $('recburn').style.strokeDashoffset=RING*(left/REC_MS);
+  },200);
+}
+function stopRing(){ clearInterval(REC_TICK); REC_TICK=null; }
+/* The level cue, off the same AudioContext the attract tap already resumed. If any of it
+   is unavailable the orb simply does not pulse — it is a nicety, not a control. */
+function startLevel(stream){
+  try{
+    const Ctx=window.AudioContext||window.webkitAudioContext;
+    if(!Ctx) return;
+    if(!AC) AC=new Ctx();
+    if(AC.state==="suspended") AC.resume();
+    const src=AC.createMediaStreamSource(stream), an=AC.createAnalyser();
+    an.fftSize=256; src.connect(an);
+    const buf=new Uint8Array(an.frequencyBinCount);
+    REC_LEVEL={src,stop:false};
+    const loop=()=>{
+      if(!REC_LEVEL||REC_LEVEL.stop) return;
+      an.getByteTimeDomainData(buf);
+      let peak=0;
+      for(let i=0;i<buf.length;i++) peak=Math.max(peak,Math.abs(buf[i]-128)/128);
+      $(REC_BTN).style.setProperty("--lvl",Math.min(1,peak*2.2).toFixed(2));
+      requestAnimationFrame(loop);
+    };
+    loop();
+  }catch(err){}
+}
+function stopLevel(){
+  if(REC_LEVEL){ REC_LEVEL.stop=true; try{ REC_LEVEL.src.disconnect(); }catch(err){} REC_LEVEL=null; }
+  $('rec').style.setProperty("--lvl",0); $('mic').style.setProperty("--lvl",0);
+}
+function recIdle(){
+  $('mic').classList.remove("listening"); $('mic').textContent="🎙";
+  $('rec').classList.remove("listening"); $('recface').textContent="🎙";
+  $('reclabel').textContent="hold nothing — just talk";
+  stopRing(); stopLevel();
+}
 function discardRecording(){
   clearTimeout(micToggle._guard);
   if(TRANSCRIBE){ TRANSCRIBE.abort(); TRANSCRIBE=null; }
@@ -800,7 +1114,7 @@ function discardRecording(){
   }
   if(REC_STREAM) REC_STREAM.getTracks().forEach(t=>t.stop());
   REC=null; REC_STREAM=null; CHUNKS=[]; LISTENING=false;
-  $('mic').classList.remove("listening"); $('mic').textContent="🎙";
+  recIdle(); resetRing();
 }
 async function micToggle(){
   if(LISTENING){ try{REC.stop();}catch(e){} return; }
@@ -817,16 +1131,20 @@ async function micToggle(){
     REC=recorder; REC_STREAM=stream;
     CHUNKS=[];
     recorder.ondataavailable=e=>{ if(e.data&&e.data.size)CHUNKS.push(e.data); };
+    const into=REC_INTO, btn=REC_BTN, talking=(REC_INTO==="story");
     recorder.onstop=async()=>{
       clearTimeout(micToggle._guard);
       stream.getTracks().forEach(t=>t.stop());
       if(REC===recorder){ REC=null; REC_STREAM=null; }
-      LISTENING=false; $('mic').classList.remove("listening");
-      if(sid!==SID||generation!==SESSION_GEN) return;
+      LISTENING=false; stopRing(); stopLevel();
+      $(btn).classList.remove("listening");
+      if(sid!==SID||generation!==SESSION_GEN){ recIdle(); return; }
       AUDIO_SECS=(Date.now()-(micToggle._t0||Date.now()))/1000; USED_MIC=true;
       const blob=new Blob(CHUNKS,{type:(recorder.mimeType||"audio/webm")});
-      if(blob.size<1500){ $('mic').textContent="🎙"; return; }
-      $('mic').textContent="…";
+      if(blob.size<1500){ recIdle(); return; }
+      if(talking){ $('recface').textContent="…"; $('reclabel').textContent="the shell is listening back"; }
+      else $('mic').textContent="…";
+      let heard=false;
       let controller=null;
       try{
         controller=new AbortController(); TRANSCRIBE=controller;
@@ -834,28 +1152,46 @@ async function micToggle(){
           headers:{"Content-Type":blob.type.split(";")[0]},body:blob,signal:controller.signal});
         const d=await r.json();
         if(TRANSCRIBE===controller) TRANSCRIBE=null;
-        if(sid!==SID||generation!==SESSION_GEN) return;
-        if(d.text) $('q').value=($('q').value+" "+d.text).trim();
-        else toast("The Turtle couldn't make out the words — write them instead.");
+        if(sid!==SID||generation!==SESSION_GEN){ recIdle(); return; }
+        if(d.text){ $(into).value=($(into).value+" "+d.text).trim(); heard=true; }
+        else toast(r.status===413
+          ? "That was more than the shell can hold — say the shorter version."
+          : "The Turtle couldn't make out the words — write them instead.");
       }catch(e){
         if(TRANSCRIBE===controller) TRANSCRIBE=null;
         if(e.name!=="AbortError"&&sid===SID&&generation===SESSION_GEN)
           toast("The Turtle's ears are unreachable — write it instead.");
       }
-      $('mic').textContent="🎙";
+      recIdle(); resetRing();
+      /* cloud: on the talk screen the seeker has just spent two minutes talking — they
+         are not going to hunt for a second button. The transcript lands in the box,
+         visibly, and goes. If it failed, the box is still there to type into. */
+      if(talking&&heard) offerStory();
     };
     recorder.start(); LISTENING=true; micToggle._t0=Date.now();
-    $('mic').classList.add("listening"); $('mic').textContent="■";
+    $(btn).classList.add("listening");
+    if(talking){ $('recface').textContent="■"; $('reclabel').textContent="tap when you are done"; startRing(); startLevel(stream); }
+    else $('mic').textContent="■";
     clearTimeout(micToggle._guard);
-    micToggle._guard=setTimeout(()=>{ if(LISTENING) try{REC.stop();}catch(e){} },60000);
+    micToggle._guard=setTimeout(()=>{ if(LISTENING) try{REC.stop();}catch(e){} },REC_MS);
   }catch(e){ toast("The Turtle needs permission to listen — or write it instead."); }
 }
-$('mic').addEventListener('click', micToggle);
+$('mic').addEventListener('click', ()=>{ REC_INTO="q"; REC_BTN="mic"; REC_MS=60000; micToggle(); });
+/* cloud: two minutes. The server's own roof is 4MB of audio, which is about the same. */
+$('rec').addEventListener('click', ()=>{ REC_INTO="story"; REC_BTN="rec"; REC_MS=TALK_MS;
+  if(!LISTENING) resetRing();
+  micToggle(); });
+$('offerstory').addEventListener('click', offerStory);
 
 /* ---------- wiring ---------- */
 function sleep(ms){ return new Promise(r=>setTimeout(r,ms)); }
-$('attract').addEventListener('click', ()=>wake("seek"));
-$('returned').addEventListener('click', ev=>{ ev.stopPropagation(); wake("tale"); });
+/* cloud: the attract tap is the ONE user gesture the whole séance is guaranteed to get,
+   so the audio is unlocked inside it — synchronously, before wake() awaits anything. */
+$('attract').addEventListener('click', ()=>{ primeAudio(); wake("seek"); });
+$('returned').addEventListener('click', ev=>{ ev.stopPropagation(); primeAudio(); wake("tale"); });
+/* cloud: "I have returned" is for a turtle standing at the shell with a gift to hand
+   over. On a stranger's phone it is a dead end, so it only exists at a station. */
+if(!KIOSK) $('returned').style.display="none";
 $('taledone').addEventListener('click', ev=>{ ev.stopPropagation(); resetAll(); });
 $('offer').addEventListener('click', offer);
 if(!restoreStep()) loadLore();
