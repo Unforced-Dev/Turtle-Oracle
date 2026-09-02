@@ -1331,6 +1331,60 @@ section("the ears will not open without a séance");
   );
 }
 
+/* ---- 10b. the look gets a second roll ---------------------------------------------- */
+
+/* The look is the READING now — most seekers will hear nothing else — so a refused one is
+ * worth one more roll before the template takes the turn. Measured on staging 2026-09-02:
+ * the model handed back 34-40 words in three pulls out of six. */
+
+section("a refused look is asked for again, once");
+{
+  const short = { look: "Three cards. You are tired. Something waits.", question: "What did you put down?", chips: ["a", "b", "c"] };
+  const full = {
+    look: "word ".repeat(70).trim(),
+    question: "What did you put down to get here?",
+    chips: ["My phone", "A whole year", "Nothing yet"],
+  };
+  const notes = [];
+  const twice = (answers) => ({
+    available: () => true,
+    async generate(prompt, opts = {}) {
+      if (opts.stage !== "ask") return goodLlm().generate(prompt, opts);
+      notes.push(prompt.includes("thrown away"));
+      return JSON.stringify(answers[Math.min(notes.length - 1, answers.length - 1)]);
+    },
+  });
+  {
+    const { sess } = start("seek");
+    const e = await hear(sess, { text: "Wren" }, ctxWith(twice([short, full])));
+    check(
+      "a caption is thrown back once, with the reason named to the model",
+      notes.length === 2 && notes[0] === false && notes[1] === true,
+      JSON.stringify(notes),
+    );
+    check(
+      "and the second, whole one is the reading the seeker sees",
+      e.modes.look === "llm" && e.look.split(/\s+/).length === 70 && e.question === full.question,
+      `${e.modes.look} ${String(e.look).split(/\s+/).length}w`,
+    );
+  }
+  {
+    notes.length = 0;
+    const { sess } = start("seek");
+    const e = await hear(sess, { text: "Wren" }, ctxWith(twice([short])));
+    check(
+      "a model that only writes captions falls to the template, and the event says why",
+      notes.length === 2 && e.modes.ask === "llm" && /^template \(too short/.test(e.modes.look),
+      String(e.modes.look),
+    );
+    check(
+      "…and its question is still used, because the question was fine",
+      e.question === short.question && e.look.startsWith("Three cards, and here is what they say."),
+      e.question,
+    );
+  }
+}
+
 /* ---- 11b. the reading has a roof --------------------------------------------------- */
 
 /* A reading anchored in the seeker's own words runs out on its own. Asked to read three

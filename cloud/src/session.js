@@ -758,11 +758,17 @@ async function askLlm(sess, llm, tShort) {
         told.map((s) => `- ${s}`).join("\n") +
         "\n\n"
       : "") +
+    "THE SEEKER IS ALREADY LOOKING AT THE TABLE. Each card is in front of them with its name " +
+    "and its essence line printed under it, and they have read all three. So never say those " +
+    "lines back: no “X says…”, no “X is…”, no essence restated in slightly different words, and " +
+    "nothing about the picture on a card. What they cannot see is what the three of them mean " +
+    "TOGETHER, tonight — that is the only thing you are for.\n" +
     "FIRST, READ THE SPREAD — the whole table, the way an oracle reads it before it asks " +
-    "anything. Write 60-100 words in whole spoken sentences. Name each card once, and in the " +
-    "same breath say what it is in plain words, so a stranger who has never seen “the Heartwood” " +
-    "knows what just landed in front of them. Then let the three run as ONE thought: what to " +
-    "face, where they stand, what they reach for. " +
+    "anything. Write 60-100 words in whole spoken sentences: six or seven of them, not three. " +
+    "Three lines is a fortune cookie, and this is the only reading most seekers will hear. Name " +
+    "each card once, in passing, inside a sentence that is about the seeker and not about the " +
+    "card. Let the three run as ONE thought: what to face, where they stand, what they reach " +
+    "for. " +
     (told.length
       ? "Tie it to what they told you above — two or three of their own words, for at least two " +
         "of the three cards. "
@@ -773,7 +779,7 @@ async function askLlm(sess, llm, tShort) {
     "Say it the way you would say it across a fire. You are reading what these three MEAN for " +
     "tonight, never describing them: no 'the first card is…', no 'X shows…', no card's name " +
     "followed by a colon or by a string of bare nouns, no 'X says… Y says… Z says…', and never " +
-    "a word about the picture on a card. No question in it, no instruction, no place name, no " +
+    "three sentences in a row that each begin with a card. No question in it, no instruction, no place name, no " +
     "explaining how the cards work. The example in your instructions is about a different " +
     "seeker: never quote it or its ideas. This IS the reading they came for.\n" +
     "THEN ask ONE open question in the Turtle's voice, under 25 words, that follows from what you " +
@@ -782,28 +788,65 @@ async function askLlm(sess, llm, tShort) {
     "yes or no, predicting nothing. Then give three answers a seeker might actually give — in " +
     "THEIR words, not yours, under six words each.\n" +
     'Return JSON only: {"look": "...", "question": "...", "chips": ["...", "...", "..."]}';
-  const resp = await llm.generate(prompt, {
-    system: SYSTEM,
-    asJson: true,
-    timeout: tShort,
-    stage: "ask",
-  });
-  const out = tryJson(resp);
-  if (!out || typeof out !== "object") return null;
-  const question = cleanLine(out.question, 30);
-  if (!question) return null;
-  /* The look is allowed to be a short paragraph, not a line: keep it whole, keep it spoken
-   * (no headings, no bullets), and cap it where the ear stops following. A model that
-   * skipped it, or wrote an essay, gets the plain three-line version instead. */
-  const look = cleanLook(out.look) || lookFallback(sess);
+  /* TWO ROLLS, one budget, exactly as the weave has. The look used to be a caption under a
+   * question and a template in its place cost the seeker very little; it is the READING
+   * now, and on staging 2026-09-02 the model handed back 34-40 words — a fortune cookie —
+   * in three pulls out of six, and the template took four of them. So a refused look buys
+   * one more roll with the reason named, and only while half the stage budget is unspent.
+   * The draw runs under the veil, so the seconds are covered. */
+  const started = Date.now();
+  let kept = null;
+  for (let attempt = 0; attempt < 2; attempt++) {
+    const p = attempt ? prompt + lookRetryNote(kept && kept.refused) : prompt;
+    const resp = await llm.generate(p, {
+      system: SYSTEM,
+      asJson: true,
+      timeout: attempt ? Math.floor(tShort / 2) : tShort,
+      stage: "ask",
+    });
+    const out = tryJson(resp);
+    if (out && typeof out === "object") {
+      const question = cleanLine(out.question, 30);
+      /* The look is a short paragraph, not a line: keep it whole, keep it spoken (no
+       * headings, no bullets), refuse it where the ear stops following. */
+      const look = question ? cleanLook(out.look) : null;
+      if (question && look) {
+        return {
+          look,
+          question,
+          chips: cleanChips(out.chips) || askFallback(sess).chips,
+          mode: "llm",
+          // which of the two wrote the look — the event says so, as it does for the echoes
+          lookMode: "llm",
+        };
+      }
+      // a good question with a refused look is still worth having if the re-roll fails too
+      if (question && !kept) {
+        kept = { question, chips: cleanChips(out.chips), refused: cleanLook.refused };
+      }
+    }
+    if (Date.now() - started > (tShort / 2) * 1000) break;
+  }
+  if (!kept) return null;
   return {
-    look,
-    question,
-    chips: cleanChips(out.chips) || askFallback(sess).chips,
+    look: lookFallback(sess),
+    question: kept.question,
+    chips: kept.chips || askFallback(sess).chips,
     mode: "llm",
-    // which of the two wrote the look — the event says so, as it does for the echoes
-    lookMode: cleanLook.refused ? `template (${cleanLook.refused})` : "llm",
+    lookMode: `template (${kept.refused})`,
   };
+}
+
+/** Why the last look was thrown away, said back to the model on the second roll. */
+function lookRetryNote(why) {
+  return (
+    "\n\nYour last reading of the spread was thrown away" +
+    (why ? ` (${why})` : "") +
+    ". Write it again, and this time: 60-100 words, six or seven short spoken sentences, one " +
+    "connected thought about the seeker. It must NOT end in a question and must contain no " +
+    "question at all — the question is a separate field, and it comes after. Do not restate the " +
+    "cards' own lines; say what the three of them mean together."
+  );
 }
 
 /* ---- the three events that carry a reveal ----------------------------------------- */
