@@ -977,7 +977,8 @@ def _address_in_bearing(s):
     asks the model for "a time of day" in as many words, so a bare hour is the thing being
     ASKED for, and "before 6:00, when the light is grey" would be thrown out as an address.
     A clock is only an address once the city's grid is attached to it."""
-    if re.search(r"\bEsplanade\b|\baddress\b|\bWWW guide\b", s, re.I):
+    if re.search(r"\bEsplanade\b|\b(?:the|its|it's|full|exact|street)\s+address\b|\bWWW guide\b",
+                 s, re.I):
         return True
     return bool(re.search(r"\b[A-L]\s*(?:&|and)\s*\d|\d\s*(?:&|and)\s*[A-L]\b", s))
 

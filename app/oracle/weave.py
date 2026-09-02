@@ -151,8 +151,16 @@ OPEN_WHERE = {
 # A `where` that is an address however it is dressed: a clock, a lettered street, the
 # Esplanade — or "the address is in the WWW guide", which is an address one lookup away and
 # lands on the parchment as an errand. Only a bite at an unmissable landmark may carry one.
+#
+# The word "address" is matched only where it POINTS AT one ("the address is in the WWW
+# guide", "its exact address"). A bare \baddress\b — which is what the cloud port has —
+# also fires on the Turtle's own bearing, "No address for this one.", which is the
+# offline OPEN_WHERE line and the exact opposite of an address: it would burn a re-roll
+# on a good quest and mark the template's own words as the thing the template exists to
+# prevent.
 ADDRESS_LINE = re.compile(
-    r"\b\d{1,2}:\d{2}\b|\bEsplanade\b|\b[A-L]\s*(?:&|and)\s*\d|\baddress\b|\bWWW guide\b", re.I)
+    r"\b\d{1,2}:\d{2}\b|\bEsplanade\b|\b[A-L]\s*(?:&|and)\s*\d"
+    r"|\b(?:the|its|it's|full|exact|street)\s+address\b|\bWWW guide\b", re.I)
 
 
 def names_an_address(text):
