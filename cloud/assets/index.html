@@ -390,7 +390,9 @@ function restoreStep(){
   const step=saved.step;
   /* cloud: a restore RE-RENDERS the screen the seeker was on. It never replays a reveal —
      no veil, no dealing animation, no spoken line, no chanting the reading a second time.
-     The three stages that have a reveal (accepted, asking, proposed) are drawn flat. */
+     The three stages that have a reveal (accepted, asking, proposed) are drawn flat, and
+     every other stage is handed to handle() with `restored` set, which is what stops the
+     other six re-speaking their line at one billed /api/speak POST per sentence. */
   if(step.stage==="accepted"&&step.quest){ renderQuest(step,true); return true; }
   if(step.stage==="asking"&&step.cards){
     CARD_IDS=SLOTS.map(s=>step.cards[s].id).join(",");
@@ -408,7 +410,7 @@ function restoreStep(){
     $('decide').style.display="flex";
     return true;
   }
-  handle(step);
+  handle(step,true);
   if(["naming","tale_naming","tale_listening"].includes(step.stage))
     $('askpanel').classList.add("on");
   return true;
@@ -588,6 +590,17 @@ function incant(el,text,msPerWord=120){
   return words.length*msPerWord+400;
 }
 
+/* cloud: one line said once. A RESTORE re-renders a screen the seeker has already heard
+   — replaying it would post /api/speak once per sentence for a line they did not ask for
+   again, which is billed voice and contradicts the comment restoreStep already carries.
+   The line is still remembered, so the 🔊 chip replays it if they do want it. */
+function sayIt(text,restored,ms){
+  const dur=incant($('says'),text||"",ms||110);
+  if(restored) LAST_LINE=text||LAST_LINE;
+  else speak(text);
+  return dur;
+}
+
 /* ---------- server séance ---------- */
 /* cloud: on the playa the only thing between the tablet and the tent server was a cable,
    so any JSON that came back was a stage event. On a public URL a 429 or a 5xx also
@@ -641,9 +654,9 @@ function resetSeance(){
   READ_SHOWN=false; hideAux(); T_ASK=Date.now();
 }
 
-function taleTold(e){
+function taleTold(e,restored){
   $('askpanel').classList.remove("on");
-  incant($('says'),e.say,110); speak(e.say);
+  sayIt(e.say,restored);
   setTimeout(()=>$('giftrow').classList.add("on"), 1600);
 }
 
@@ -673,7 +686,7 @@ function hideAux(){ $('wgrid').classList.remove("on"); $('doorrow').classList.re
   $('chiprow').classList.remove("on"); $('passq').style.display="none"; }
 
 /* one router for every séance event */
-async function handle(e){
+async function handle(e,restored){
   T_ASK=Date.now();
   if(e&&e.error){
     if(e.stage==="gone") resetAll();
@@ -684,15 +697,15 @@ async function handle(e){
      the spread and then throw halfway through re-rendering it. */
   if(!renderable(e)) return toast("The Turtle lost the thread — touch it again.");
   rememberStep(e);
-  if(e.stage==="door") return renderDoor(e);
-  if(e.stage==="listening") return renderListening(e);
-  if(e.stage==="weather") return renderWeather(e);
-  if(e.stage==="stones") return renderStones(e);
-  if(e.stage==="wanting") return renderWanting(e);
+  if(e.stage==="door") return renderDoor(e,restored);
+  if(e.stage==="listening") return renderListening(e,restored);
+  if(e.stage==="weather") return renderWeather(e,restored);
+  if(e.stage==="stones") return renderStones(e,restored);
+  if(e.stage==="wanting") return renderWanting(e,restored);
   if(e.stage==="asking") return theAsking(e);
   if(e.stage==="proposed"){ $('askpanel').classList.remove("on"); hideAux(); return theReading(e); }
-  if(e.stage==="tale_told") return taleTold(e);
-  incant($('says'),e.say,110); speak(e.say);
+  if(e.stage==="tale_told") return taleTold(e,restored);
+  sayIt(e.say,restored);
 }
 
 /* Post a tap and hand the answer back to the router, with the Turtle visibly pondering
@@ -706,9 +719,9 @@ async function tap(body,onFail){
 }
 
 /* ---------- the door: talk, or touch ---------- */
-function renderDoor(e){
+function renderDoor(e,restored){
   $('askpanel').classList.remove("on"); $('talkpanel').classList.remove("on"); hideAux();
-  incant($('says'),e.say,110); speak(e.say);
+  sayIt(e.say,restored);
   $('doorrow').innerHTML=(e.doors||[]).map(d=>{
     const bits=String(d.label||d.id).split("—");
     const head=bits.shift().trim(), sub=bits.join("—").trim();
@@ -724,9 +737,9 @@ function renderDoor(e){
 }
 
 /* ---------- the talk door ---------- */
-function renderListening(e){
+function renderListening(e,restored){
   $('askpanel').classList.remove("on"); hideAux();
-  incant($('says'),e.say,110); speak(e.say);
+  sayIt(e.say,restored);
   $('story').value=""; resetRing();
   $('talkpanel').classList.add("on");
 }
@@ -747,9 +760,9 @@ async function offerStory(){
 }
 
 /* ---------- the third touch screen: what you came out here for ---------- */
-function renderWanting(e){
+function renderWanting(e,restored){
   $('askpanel').classList.remove("on"); hideAux();
-  incant($('says'),e.say,110); speak(e.say);
+  sayIt(e.say,restored);
   $('wantgrid').innerHTML=(e.wantings||[]).map(w=>`
     <div class="wtile want" data-id="${esc(w.id)}">
       <div class="wname">${esc(w.name)}</div>
@@ -763,9 +776,9 @@ function renderWanting(e){
   }));
 }
 
-function renderWeather(e){
+function renderWeather(e,restored){
   $('askpanel').classList.remove("on"); hideAux();
-  incant($('says'),e.say,110); speak(e.say);
+  sayIt(e.say,restored);
   $('wgrid').innerHTML=(e.weathers||[]).map(w=>`
     <div class="wtile" data-id="${w.id}">
       <img src="${w.tile}" alt="" onerror="this.style.display='none'">
@@ -779,9 +792,9 @@ function renderWeather(e){
   }));
 }
 
-function renderStones(e){
+function renderStones(e,restored){
   $('askpanel').classList.remove("on"); hideAux();
-  incant($('says'),e.say,110); speak(e.say);
+  sayIt(e.say,restored);
   const sel=new Set();
   $('stonesrow').innerHTML=(e.stones||[]).map(s=>
     `<button class="stonechip" data-id="${s.id}">${s.name}</button>`).join("")
