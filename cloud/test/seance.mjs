@@ -20,7 +20,7 @@
  * binding — the only route here that talks to Workers AI without a séance in its body.
  */
 import { start, hear, accept, replayable, __test as S } from "../src/session.js";
-import { biteRealm, landmarkRealm, landmarkWhere } from "../src/weave.js";
+import { biteRealm, landmarkRealm, landmarkWhere, standsSomewhere } from "../src/weave.js";
 import { formatReceipt } from "../src/printer.js";
 import { transcribe, toBase64, MAX_AUDIO_BYTES } from "../src/ears.js";
 import CARDS from "../../data/cards.json" with { type: "json" };
@@ -661,8 +661,10 @@ section("the sealed quest is one bite, with a bearing and a proof");
     };
   };
   let namedItsOwn = 0;
+  let placedRuns = 0;
+  let refusedPrinciple = 0;
   let refusedAnother = 0;
-  for (let i = 0; i < 8; i++) {
+  for (let i = 0; i < 12; i++) {
     const own = await walk("pull", {
       llm: sealsWhere((at) => `${at} — walk toward it`),
       answer: { pass: true },
@@ -672,7 +674,14 @@ section("the sealed quest is one bite, with a bearing and a proof");
       answer: { pass: true },
     });
     const at = own.sess.picks[own.sess.bite].real_2026.name;
-    if (own.sealed.quest.moves[0].where === `${at} — walk toward it`) namedItsOwn++;
+    const sealedWhere = own.sealed.quest.moves[0].where;
+    if (standsSomewhere(own.sess.located[own.sess.bite])) {
+      placedRuns++;
+      if (sealedWhere === `${at} — walk toward it`) namedItsOwn++;
+    } else if (sealedWhere !== `${at} — walk toward it`) {
+      // a principle is not a place: the Turtle's own standing bearing takes the parchment
+      refusedPrinciple++;
+    }
     if (!/Questionmark/.test(other.sealed.quest.moves[0].where)) refusedAnother++;
   }
   /* The 8 draws above are random, so they cannot prove this — and the first version of
@@ -683,7 +692,7 @@ section("the sealed quest is one bite, with a bearing and a proof");
     (c) => !S.usableBearing(`${c.real_2026.name} — walk toward it`, c.real_2026.name),
   );
   check(
-    `every card in the deck may name its own place (${CARDS.cards.length} cards)`,
+    `every card's own place is spellable as a bearing (${CARDS.cards.length} cards)`,
     refused.length === 0,
     JSON.stringify(refused.map((c) => c.real_2026.name)),
   );
@@ -695,8 +704,27 @@ section("the sealed quest is one bite, with a bearing and a proof");
     strangers.every((n) => !S.usableBearing(`walk toward ${n}`, "Kidsville")) &&
       strangers.every((n) => S.usableBearing(`walk toward ${n}`, n)),
   );
-  check("a bearing that names the bite card's own place is sealed", namedItsOwn === 8, String(namedItsOwn));
-  check("a bearing that names any other camp is not", refusedAnother === 8, String(refusedAnother));
+  /* …and only for a card the city actually PUT somewhere. Thirteen of the fifty-two hook
+     onto a principle instead — Communal Effort, Radical Self-Reliance, Leaving No Trace —
+     and staging sealed "Restake a line at Communal Effort", a bearing pointing at an idea. */
+  check(
+    "a principle is not a place, and cannot be named as one",
+    !standsSomewhere({ status: "citywide" }) &&
+      standsSomewhere({ status: "fixed" }) &&
+      standsSomewhere({ status: "zone" }) &&
+      !standsSomewhere({}),
+  );
+  check(
+    `a bearing that names a PLACED bite's own place is sealed (${placedRuns} of 12 draws placed)`,
+    namedItsOwn === placedRuns && placedRuns > 0,
+    `${namedItsOwn} of ${placedRuns}`,
+  );
+  check(
+    `and a principle in that same slot is refused (${12 - placedRuns} of 12)`,
+    refusedPrinciple === 12 - placedRuns,
+    String(refusedPrinciple),
+  );
+  check("a bearing that names any other camp is never sealed", refusedAnother === 12, String(refusedAnother));
 }
 {
   /* The offline quest is the same three parts, stitched from the card: one act, one

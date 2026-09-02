@@ -85,6 +85,18 @@ export function landmarkWhere(loc) {
   return LANDMARK_WHERE[(loc || {}).geo_ref] || "";
 }
 
+/* A CARD DOES NOT ALWAYS STAND SOMEWHERE. Thirteen of the fifty-two hook onto a
+ * PRINCIPLE, or onto a thing that happens all over the city — Communal Effort, Radical
+ * Self-Reliance, Leaving No Trace, the Whiteout, the Sunrise Howl — and the placement
+ * data says so with status "citywide". Invited to name the real place, the model wrote
+ * "Restake a line at Communal Effort" (staging, 2026-09-02): a bearing pointing at an
+ * idea. So only a card the city actually put somewhere may be named out loud; for the
+ * rest the bearing is what it always was, and openWhere already knows what to say. */
+export function standsSomewhere(loc) {
+  const status = String((loc || {}).status || "");
+  return Boolean(status) && status !== "citywide";
+}
+
 /** The realm whose card stands at one of those four, or null — usually null. */
 export function landmarkRealm(located) {
   located = located || {};
@@ -121,6 +133,7 @@ export async function weaveLlm(question, cards, llm, located, context, timeout, 
   const bite = biteRealm(located, cards);
   const biteCard = cards[bite];
   const landmark = landmarkRealm(located) === bite;
+  const placed = standsSomewhere(located[bite]);
   const biteWhere = landmark ? rstrip(landmarkWhere(located[bite]), " .") : "";
   const body = [
     line("WHAT TO FACE (root)", cards.roots, located.roots),
@@ -196,16 +209,23 @@ export async function weaveLlm(question, cards, llm, located, context, timeout, 
      * card stands somewhere real in this year's city. So both are offered now, the model
      * chooses, and roughly half should point at the real place. The line that never moves
      * is the address: a clock and a street is homework however it is dressed. */
-    "- ONE BEARING: say where, in one short phrase, and you have two ways to say it. Either NAME " +
-    `THE PLACE this card stands at in this year's city — ${biteCard.real_2026.name} — with a ` +
-    "rough direction and nothing else pinned to it" +
-    (landmark && biteWhere ? `, said like this: ${biteWhere}` : "") +
-    ". Or give an OPEN BEARING: a kind of place, a kind of person, or a time of day — 'out past " +
-    "the last lamp', 'wherever the music is worst', 'the first person who hands you water', " +
-    "'before the sun is up'. Both are true tonight. Choose by what the act needs, and take the " +
-    "real place about half the time. Either way: NO address, NO clock time, NO lettered street, " +
-    `NO Esplanade, and no camp but ${biteCard.real_2026.name}. It is the burn — what is on the ` +
-    "map moved, and finding it is half the quest.\n" +
+    (placed
+      ? "- ONE BEARING: say where, in one short phrase, and you have two ways to say it. Either " +
+        `NAME THE PLACE this card stands at in this year's city — ${biteCard.real_2026.name} — ` +
+        "with a rough direction and nothing else pinned to it" +
+        (landmark && biteWhere ? `, said like this: ${biteWhere}` : "") +
+        ". Or give an OPEN BEARING: a kind of place, a kind of person, or a time of day — 'out " +
+        "past the last lamp', 'wherever the music is worst', 'the first person who hands you " +
+        "water', 'before the sun is up'. Both are true tonight. Choose by what the act needs, " +
+        "and take the real place about half the time. Either way: NO address, NO clock time, " +
+        `NO lettered street, NO Esplanade, and no camp but ${biteCard.real_2026.name}. It is ` +
+        "the burn — what is on the map moved, and finding it is half the quest.\n"
+      : "- ONE BEARING: say where in one short phrase, and make it a kind of place, a kind of " +
+        "person, or a time of day — 'out past the last lamp', 'wherever the music is worst', " +
+        "'the first person who hands you water', 'before the sun is up'. This card does not " +
+        "stand anywhere in the city — it is everywhere or it is a way of doing things — so " +
+        "there is no place to name, and NO address, NO clock, NO street, NO camp name. It is " +
+        "the burn: what is on the map moved, and finding it is half the quest.\n") +
     "- ONE PROOF: end on the single thing they carry back to the Turtle — 'Bring back what their " +
     "face did.' One line, concrete, theirs. It is the only thing the quest asks them to keep.\n" +
     "- Fit the act to the hour given in CONTEXT (heat, dark, sunrise). If CONTEXT says they are here " +
@@ -230,9 +250,8 @@ export async function weaveLlm(question, cards, llm, located, context, timeout, 
      * retry, so the parity-locked first prompt is untouched — and it names the actual
      * reason, because "you copied the example" is no help to a model that gave a bearing
      * with a street in it. */
-    const p = attempt
-      ? prompt + (reason === "address" ? ADDRESS_NOTE : reason === "long" ? LONG_NOTE : RETRY_NOTE)
-      : prompt;
+    const NOTES = { address: ADDRESS_NOTE, long: LONG_NOTE, short: SHORT_NOTE, example: RETRY_NOTE };
+    const p = attempt ? prompt + (NOTES[reason] || RETRY_NOTE) : prompt;
     const resp = await llm.generate(p, { system: SYSTEM, asJson: true, timeout: t, stage: "weave" });
     const out = tryJson(resp);
     if (out && typeof out === "object" && out.reading && out.adventure) {
@@ -249,9 +268,9 @@ export async function weaveLlm(question, cards, llm, located, context, timeout, 
        * That is not a reading, it is a machine idling, and it is spoken aloud. Generous —
        * a real one runs 60-140 — because a good reading must never be thrown away. */
       const rw = words(reading || "");
-      if (reading && rw > 170) {
-        reason = "long";
-        console.log(`weave: the reading ran to ${rw}w, re-rolling`);
+      if (reading && (rw > 170 || rw < 45)) {
+        reason = rw > 170 ? "long" : "short";
+        console.log(`weave: the reading was ${rw}w, re-rolling`);
       } else if (reading && !QUEST_EXAMPLE_RE.test(adventure)) {
         if (!namesAnAddress(adventure)) return { reading, adventure };
         reason = "address";
@@ -290,6 +309,13 @@ const LONG_NOTE =
   "\n\nYour last reading ran far too long and said the same thing over and over in new " +
   "metaphors. Write it ONCE, in under 120 words, and stop. Three cards, one thought, no list " +
   "of 'it is not X, it is Y' reversals. End by handing them a choice.";
+
+/* The other end of the same fault. A reading with nothing under it can stop too early as
+ * well as never — 40 words of aphorism, three cards and no thread (staging, 2026-09-02). */
+const SHORT_NOTE =
+  "\n\nYour last reading was too short — it read as three fortune-cookie lines, not as one " +
+  "reading. Write it again at 70-110 words: one connected thought that moves from what to face, " +
+  "to how to stand, to what to reach for, in concrete images. End by handing them a choice.";
 
 /* ADDITION, not in weave.py — measured on staging 2026-09-02, thinking mode on: 3 of 4
  * readings OPENED with the SYSTEM prompt's own example, word for word ("You built all

@@ -28,6 +28,7 @@ import {
   landmarkRealm,
   namesAnAddress,
   openWhere,
+  standsSomewhere,
   proofFor, landmarkWhere } from "./weave.js";
 import { locateSpread, directionsLines, COMPASS_ROSE } from "./geo.js";
 import { tryJson } from "./llm.js";
@@ -769,10 +770,12 @@ async function askLlm(sess, llm, tShort) {
         "that anyone in this city tonight could find themselves in it, and concrete enough to be " +
         "about something — an image, an hour, a weight, a thing you can hold. Never a horoscope, " +
         "never a guess about their life, never 'you said', never a fact you invented for them. ") +
-    "Say it the way you would say it across a fire — never a card's name followed by a colon and " +
-    "a list of words, never 'X says… Y says… Z says…'. No question in it, no instruction, no " +
-    "place name, no explaining how the cards work. The example in your instructions is about a " +
-    "different seeker: never quote it or its ideas. This IS the reading they came for.\n" +
+    "Say it the way you would say it across a fire. You are reading what these three MEAN for " +
+    "tonight, never describing them: no 'the first card is…', no 'X shows…', no card's name " +
+    "followed by a colon or by a string of bare nouns, no 'X says… Y says… Z says…', and never " +
+    "a word about the picture on a card. No question in it, no instruction, no place name, no " +
+    "explaining how the cards work. The example in your instructions is about a different " +
+    "seeker: never quote it or its ideas. This IS the reading they came for.\n" +
     "THEN ask ONE open question in the Turtle's voice, under 25 words, that follows from what you " +
     "just said. It invites them to say something and never requires it — they may well let the " +
     "cards speak instead, and that is a whole answer. Answerable out loud in one sentence, never " +
@@ -981,9 +984,12 @@ async function refineLlm(sess, llm, tLong) {
     "sing). REPLACE the act, do not reword it: put the new truth in its own words, don't just " +
     "gesture at it. If the new truth is something they are keeping secret, the act is telling one " +
     "person. Keep the shape it was spoken in: 20-40 words, one act, imperative, verb first, then " +
-    `one bearing — either the place this card stands at (${c.real_2026.name}) with a rough ` +
-    "direction, or a kind of place, a kind of person, or a time of day; never an address, a clock " +
-    "or a lettered street — and one proof to bring back to the Turtle. No second chore, no 'stay until…' " +
+    "one bearing — " +
+    (standsSomewhere(located[bite] || {})
+      ? `either the place this card stands at (${c.real_2026.name}) with a rough direction, or `
+      : "") +
+    "a kind of place, a kind of person, or a time of day; never an address, a clock or a " +
+    "lettered street — and one proof to bring back to the Turtle. No second chore, no 'stay until…' " +
     "interior door, no First and Second and Third, no headings or bullets. Also write one short " +
     "acknowledgement line (under 20 words) the Turtle says first, naming the new truth.\n" +
     'Return JSON only: {"say": "...", "adventure": "..."}';
@@ -1395,14 +1401,20 @@ async function sealLlm(sess, llm, tLong) {
     "to the shell, concrete and personal to their words). leave is optional and usually empty: " +
     "fill it only when the act itself leaves something behind, and then it is that same act, not " +
     "another one. Nothing risky, nothing without consent.\n" +
-    "THE BEARING: two ways, and KEEP the one the quest above already spoke. Either the place " +
-    `this card stands at — ${c.real_2026.name} — with a rough direction and nothing else pinned` +
-    (landmark ? `, said like this: ${bearingFor(bite, located)}` : "") +
-    ". Or a bearing that is a direction, a kind of place, a kind of person, or a time of day " +
-    "('out past the last lamp', 'wherever the music is worst', 'the first person who hands you " +
-    "water', 'before the sun is up'). Either way the where must NOT be an address: no clock, no " +
-    `lettered street, no Esplanade, and no camp but ${c.real_2026.name}. It is the burn: what is ` +
-    "on the map moved, and finding it is half the quest.\n" +
+    "THE BEARING: KEEP the one the quest above already spoke. " +
+    (standsSomewhere(loc)
+      ? "It may be either of two things. The place this card stands at — " +
+        `${c.real_2026.name} — with a rough direction and nothing else pinned` +
+        (landmark ? `, said like this: ${bearingFor(bite, located)}` : "") +
+        ". Or a bearing: a direction, a kind of place, a kind of person, or a time of day " +
+        "('out past the last lamp', 'wherever the music is worst', 'the first person who hands " +
+        "you water', 'before the sun is up'). Either way it must NOT be an address: no clock, " +
+        `no lettered street, no Esplanade, and no camp but ${c.real_2026.name}.\n`
+      : "This card does not stand anywhere in the city, so there is no place to name: the where " +
+        "must NOT be an address, a clock, a street, or a camp. It is a bearing — a direction, a " +
+        "kind of place, a kind of person, or a time of day ('out past the last lamp', 'wherever " +
+        "the music is worst', 'the first person who hands you water', 'before the sun is up'). " +
+        "It is the burn: what is on the map moved, and finding it is half the quest.\n") +
     'Return JSON only: {"move": {"task":"","where":"","proof":"","leave":""}}';
   const resp = await llm.generate(prompt, {
     system: SYSTEM,
@@ -1504,13 +1516,14 @@ export async function accept(sess, ctx) {
   const mWhere = sealed ? String(sealed.where || "").trim() : "";
   /* the model's bearing when it is one (a landmark's name passes usableBearing; a
    * clock-and-street line does not), else the Turtle's standing line for this bite */
-  const where = usableBearing(mWhere, c.real_2026.name) ? mWhere : standing;
+  const canName = standsSomewhere(loc) ? c.real_2026.name : null;
+  const where = usableBearing(mWhere, canName) ? mWhere : standing;
   /* No seal: the parchment still has to say the quest the seeker HEARD. Offline the spoken
    * quest was stitched from the dare, so the dare is that quest; on the model path it is
    * whatever the model spoke, and the canned dare would be a second, different quest. */
   const heardTask = String(sess.adventure || "").includes(c.turtle_dare.trim())
     ? c.turtle_dare
-    : spokenTask(sess.adventure, standing, c.real_2026.name) || c.turtle_dare;
+    : spokenTask(sess.adventure, standing, canName) || c.turtle_dare;
   const moves = [
     {
       slot: SLOT_TITLES[bite],

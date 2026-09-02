@@ -20,7 +20,7 @@ import path from "node:path";
 
 import { BY_REALM } from "../src/deck.js";
 import { locateSpread } from "../src/geo.js";
-import { SYSTEM, weaveLlm, weaveFallback, biteRealm, landmarkRealm } from "../src/weave.js";
+import { SYSTEM, weaveLlm, weaveFallback, biteRealm, landmarkRealm, standsSomewhere } from "../src/weave.js";
 import { __test as S } from "../src/session.js";
 
 const HERE = path.dirname(fileURLToPath(import.meta.url));
@@ -362,21 +362,47 @@ check(
 );
 /* ONE BEARING opened up on feat/pull-first: the bite may name the place ITS OWN card
  * stands at, with a rough direction, or stay metaphorical — the model chooses, and about
- * half should point at the real place. The line that did not move is the address. */
+ * half should point at the real place. Two things did not move: the address, and the
+ * thirteen cards that hook onto a PRINCIPLE rather than a place. This fixture's bite is
+ * one of those thirteen, so it is the control for the closed half of the rule; the two
+ * open ones are built by hand below. */
 check(
-  "quest prompt offers both bearings — the card's own place, or an open one",
-  cw.p.includes("- ONE BEARING: say where, in one short phrase, and you have two ways to say it") &&
-    cw.p.includes(`NAME THE PLACE this card stands at in this year's city — ${picks[BITE].real_2026.name} —`) &&
-    cw.p.includes("Or give an OPEN BEARING: a kind of place, a kind of person, or a time of day") &&
-    cw.p.includes("take the real place about half the time") &&
-    cw.p.includes(`no camp but ${picks[BITE].real_2026.name}`),
+  "the fixture's bite is still a card that stands nowhere in the city",
+  standsSomewhere(located[BITE]) === false,
+  spread() + " — the bearing checks below need a citywide bite; repick CARD_IDS.",
+);
+check(
+  "a bite on a card that stands nowhere gets the open bearing, and no place to name",
+  cw.p.includes("This card does not stand anywhere in the city") &&
+    cw.p.includes("NO address, NO clock, NO street, NO camp name.") &&
+    !cw.p.includes("NAME THE PLACE"),
   spread(),
 );
 check(
-  "quest prompt still refuses an address, and still asks for one proof",
-  cw.p.includes("NO address, NO clock time, NO lettered street, NO Esplanade") &&
-    cw.p.includes("- ONE PROOF: end on the single thing they carry back to the Turtle") &&
+  "quest prompt still asks for one proof and no interior door",
+  cw.p.includes("- ONE PROOF: end on the single thing they carry back to the Turtle") &&
     cw.p.includes("no 'stay until…'"),
+);
+/* A bite the city DID put somewhere, and not at one of the four unmissable landmarks: the
+ * two ways are offered, and only the landmark case is told how to phrase it. */
+const fxPicks = { ...picks, roots: BY_REALM.roots.find((c) => c.id === "roots-02") };
+const fxLocated = locateSpread(fxPicks);
+const fxCap = new Cap();
+await weaveLlm(told, fxPicks, fxCap, fxLocated, ctx, 1);
+const FXBITE = biteRealm(fxLocated, fxPicks);
+check(
+  "a placed bite is offered both bearings — its own place, or an open one",
+  standsSomewhere(fxLocated[FXBITE]) &&
+    fxCap.p.includes("- ONE BEARING: say where, in one short phrase, and you have two ways") &&
+    fxCap.p.includes(
+      `NAME THE PLACE this card stands at in this year's city — ${fxPicks[FXBITE].real_2026.name} —`,
+    ) &&
+    fxCap.p.includes("Or give an OPEN BEARING: a kind of place, a kind of person, or a time of day") &&
+    fxCap.p.includes("take the real place about half the time") &&
+    fxCap.p.includes(`no camp but ${fxPicks[FXBITE].real_2026.name}`) &&
+    fxCap.p.includes("NO address, NO clock time, NO lettered street, NO Esplanade") &&
+    !fxCap.p.includes("said like this:"),
+  `placed draw bites ${FXBITE} (${fxPicks[FXBITE].name} at ${fxPicks[FXBITE].real_2026.name})`,
 );
 /* The control for the check above: every bite may now name its own place, but a bite at
  * one of the four UNMISSABLE landmarks is the one that is also told HOW to say it — by its
@@ -442,8 +468,8 @@ check(
   cs.p.includes("Seal this quest into ONE BITE: one act, one bearing, one proof.") &&
     cs.p.includes(`card="${picks[BITE].name}"`) &&
     !cs.p.includes(picks[BITE === "roots" ? "trunk" : "roots"].name) &&
-    cs.p.includes("THE BEARING: two ways, and KEEP the one the quest above already spoke") &&
-    cs.p.includes(`no camp but ${picks[BITE].real_2026.name}`) &&
+    cs.p.includes("THE BEARING: KEEP the one the quest above already spoke") &&
+    cs.p.includes("This card does not stand anywhere in the city, so there is no place to name") &&
     cs.p.includes('{"move": {"task":"","where":"","proof":"","leave":""}}'),
   spread(),
 );
