@@ -360,31 +360,45 @@ check(
   cw.p.includes("- THE CROSSING: the act is the thing the seeker confessed they avoid") &&
     cw.p.includes("- THE SACRIFICE, when it falls out of that on its own"),
 );
+/* ONE BEARING opened up on feat/pull-first: the bite may name the place ITS OWN card
+ * stands at, with a rough direction, or stay metaphorical — the model chooses, and about
+ * half should point at the real place. The line that did not move is the address. */
 check(
-  "quest prompt asks for one bearing and one proof, and no interior door",
-  cw.p.includes("- ONE BEARING: say where in one short phrase") &&
-    cw.p.includes("Give them a bearing, not an address.") &&
-    cw.p.includes("NO address, NO clock, NO street, NO camp name.") &&
+  "quest prompt offers both bearings — the card's own place, or an open one",
+  cw.p.includes("- ONE BEARING: say where, in one short phrase, and you have two ways to say it") &&
+    cw.p.includes(`NAME THE PLACE this card stands at in this year's city — ${picks[BITE].real_2026.name} —`) &&
+    cw.p.includes("Or give an OPEN BEARING: a kind of place, a kind of person, or a time of day") &&
+    cw.p.includes("take the real place about half the time") &&
+    cw.p.includes(`no camp but ${picks[BITE].real_2026.name}`),
+  spread(),
+);
+check(
+  "quest prompt still refuses an address, and still asks for one proof",
+  cw.p.includes("NO address, NO clock time, NO lettered street, NO Esplanade") &&
     cw.p.includes("- ONE PROOF: end on the single thing they carry back to the Turtle") &&
     cw.p.includes("no 'stay until…'"),
 );
-/* The control for the check above: the landmark exception is the ONE case where the quest
- * may name a place, and this fixture has no landmark in it — so a draw that does is built
- * by hand, and the same prompt has to change its mind. If this ever comes back identical to
- * the bearing-only prompt, the exception has stopped existing. */
+/* The control for the check above: every bite may now name its own place, but a bite at
+ * one of the four UNMISSABLE landmarks is the one that is also told HOW to say it — by its
+ * name and a direction, never by its clock-and-street line. A draw that stands at one is
+ * built by hand, because which cards resolve where is data, not a constant. */
 const lmPicks = { ...picks, trunk: BY_REALM.trunk.find((c) => c.id === "trunk-05") };
 const lmLocated = locateSpread(lmPicks);
 const lmCap = new Cap();
 await weaveLlm(told, lmPicks, lmCap, lmLocated, ctx, 1);
 check(
-  "a draw that DOES stand at a landmark may name it, and only it",
+  "a bite at a landmark is told to name it by its name and a direction",
   landmarkRealm(lmLocated) === "trunk" &&
     biteRealm(lmLocated, lmPicks) === "trunk" &&
     lmCap.p.includes(
-      "The one exception, and it is live tonight: this card stands at Center Camp, which nobody " +
-        "can miss — you may name that place, and only that.",
+      "NAME THE PLACE this card stands at in this year's city — Center Camp — with a rough " +
+        "direction and nothing else pinned to it, said like this: Center Camp — the heart of " +
+        "the city. Walk toward the center.",
     ) &&
-    !cw.p.includes("The one exception"),
+    // the card's own data line still carries the clock-and-street address; the BEARING
+    // the Turtle is told to speak must not, which is the whole point of LANDMARK_WHERE
+    !lmCap.p.slice(lmCap.p.indexOf("- ONE BEARING")).includes("Esplanade)") &&
+    !cw.p.includes("said like this:"),
   `landmark draw bites ${biteRealm(lmLocated, lmPicks)}`,
 );
 /* The pull: a séance where the seeker said nothing must still get a real reading and a
@@ -428,7 +442,8 @@ check(
   cs.p.includes("Seal this quest into ONE BITE: one act, one bearing, one proof.") &&
     cs.p.includes(`card="${picks[BITE].name}"`) &&
     !cs.p.includes(picks[BITE === "roots" ? "trunk" : "roots"].name) &&
-    cs.p.includes("the where must NOT name an address, a clock, a street, or a camp") &&
+    cs.p.includes("THE BEARING: two ways, and KEEP the one the quest above already spoke") &&
+    cs.p.includes(`no camp but ${picks[BITE].real_2026.name}`) &&
     cs.p.includes('{"move": {"task":"","where":"","proof":"","leave":""}}'),
   spread(),
 );

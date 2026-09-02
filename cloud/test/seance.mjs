@@ -619,6 +619,64 @@ section("the sealed quest is one bite, with a bearing and a proof");
   check("and a camp address it invented never does", refusedCamp === 6, String(refusedCamp));
 }
 {
+  /* THE QUEST OPENED UP. A bite may now say where by naming the place ITS OWN card stands
+     at — the quest prompt offers that as half of what a bearing may be — so the parchment
+     has to accept the same thing the seeker just heard. Every OTHER camp is still a
+     placement in disguise, and an address is still an address. */
+  check(
+    "the bite card's own place is a bearing",
+    S.usableBearing("Fractal Nation — walk toward the loud edge", "Fractal Nation") &&
+      S.usableBearing("Kidsville, at the quiet end of the city", "Kidsville") &&
+      S.usableBearing("out past the last lamp", "Fractal Nation"),
+  );
+  check(
+    "another camp's name still is not, however the card is placed",
+    !S.usableBearing("Camp Questionmark, past the loud edge", "Fractal Nation") &&
+      !S.usableBearing("Ashram Galactica — ask at the desk", "Fractal Nation") &&
+      !S.usableBearing("Kidsville", "Fractal Nation"),
+  );
+  check(
+    "and the card's own place with an address on it is still an address",
+    !S.usableBearing("Fractal Nation at 7:30 & E", "Fractal Nation") &&
+      !S.usableBearing("Fractal Nation, 3:00 & Esplanade", "Fractal Nation"),
+  );
+  /* End to end on real draws: the fake model reads the bite card's place out of the seal
+     prompt itself, so this works whatever the Tree happens to choose. */
+  const sealsWhere = (build) => {
+    const base = goodLlm();
+    return {
+      seen: base.seen,
+      available: () => true,
+      async generate(prompt, opts = {}) {
+        if (opts.stage === "seal") {
+          const at = (prompt.match(/at="([^"]*)"/) || [])[1] || "";
+          return JSON.stringify({
+            move: { task: "Say it to one face.", where: build(at), proof: "what their face did" },
+          });
+        }
+        return base.generate(prompt, opts);
+      },
+    };
+  };
+  let namedItsOwn = 0;
+  let refusedAnother = 0;
+  for (let i = 0; i < 8; i++) {
+    const own = await walk("pull", {
+      llm: sealsWhere((at) => `${at} — walk toward it`),
+      answer: { pass: true },
+    });
+    const other = await walk("pull", {
+      llm: sealsWhere(() => "Camp Questionmark — ask at the desk"),
+      answer: { pass: true },
+    });
+    const at = own.sess.picks[own.sess.bite].real_2026.name;
+    if (own.sealed.quest.moves[0].where === `${at} — walk toward it`) namedItsOwn++;
+    if (!/Questionmark/.test(other.sealed.quest.moves[0].where)) refusedAnother++;
+  }
+  check("a bearing that names the bite card's own place is sealed", namedItsOwn === 8, String(namedItsOwn));
+  check("a bearing that names any other camp is not", refusedAnother === 8, String(refusedAnother));
+}
+{
   /* The offline quest is the same three parts, stitched from the card: one act, one
    * bearing, one proof — and nothing that reads as an itinerary. */
   const { sess, proposed } = await walk("touch", { llm: deadLlm, answer: { pass: true } });

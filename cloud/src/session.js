@@ -981,8 +981,9 @@ async function refineLlm(sess, llm, tLong) {
     "sing). REPLACE the act, do not reword it: put the new truth in its own words, don't just " +
     "gesture at it. If the new truth is something they are keeping secret, the act is telling one " +
     "person. Keep the shape it was spoken in: 20-40 words, one act, imperative, verb first, then " +
-    "one bearing (a kind of place, a kind of person, or a time of day — no address, no clock, no " +
-    "camp name) and one proof to bring back to the Turtle. No second chore, no 'stay until…' " +
+    `one bearing — either the place this card stands at (${c.real_2026.name}) with a rough ` +
+    "direction, or a kind of place, a kind of person, or a time of day; never an address, a clock " +
+    "or a lettered street — and one proof to bring back to the Turtle. No second chore, no 'stay until…' " +
     "interior door, no First and Second and Third, no headings or bullets. Also write one short " +
     "acknowledgement line (under 20 words) the Turtle says first, naming the new truth.\n" +
     'Return JSON only: {"say": "...", "adventure": "..."}';
@@ -1340,10 +1341,20 @@ function addressInBearing(s) {
  *  A capital is forgiven only where a capital is forced — at the start of a SENTENCE, and
  *  a bearing may be two of them ("wherever the music is worst. Before the sun is up"), so
  *  the skip is per sentence, not once for the whole line. A bearing of ONE word has no
- *  sentence to forgive: "Kidsville" is a camp, and skipping it sealed the camp whole. */
-function usableBearing(text) {
+ *  sentence to forgive: "Kidsville" is a camp, and skipping it sealed the camp whole.
+ *
+ *  `place` is the ONE camp or landmark this bite is allowed to name out loud: the bite
+ *  card's own real_2026 name. The quest prompt now offers the model that place as half of
+ *  what a bearing may be, so throwing it out here would have sealed a parchment that
+ *  contradicted the quest the seeker just heard. It is allowed only when the bearing
+ *  actually contains the whole name — "Camp Questionmark" does not become sealable
+ *  because the card happens to stand at "Questionmark Camp". */
+function usableBearing(text, place) {
   const s = String(text || "").trim();
   if (!s || words(s) > 16 || addressInBearing(s)) return false;
+  const name = String(place || "").trim();
+  const named = Boolean(name) && s.toLowerCase().includes(name.toLowerCase());
+  const allowed = new Set(named ? name.toLowerCase().match(/[a-z0-9]+/g) || [] : []);
   const lone = words(s) === 1;
   return s
     .split(/(?<=[.!?…])\s+/)
@@ -1352,7 +1363,8 @@ function usableBearing(text) {
       return lone ? toks : toks.slice(1); // the first word starts a sentence, so it is capitalized
     })
     .filter((w) => /^[“"'(]*[A-Z]/.test(w))
-    .every((w) => BEARING_NAMES.has(w.replace(/[^A-Za-z]/g, "").toLowerCase()));
+    .map((w) => w.replace(/[^A-Za-z0-9]/g, "").toLowerCase())
+    .every((w) => BEARING_NAMES.has(w) || allowed.has(w));
 }
 
 /** Personalize the sealed bite (task/where/proof, and a leave if the act leaves one). */
@@ -1375,14 +1387,14 @@ async function sealLlm(sess, llm, tLong) {
     "to the shell, concrete and personal to their words). leave is optional and usually empty: " +
     "fill it only when the act itself leaves something behind, and then it is that same act, not " +
     "another one. Nothing risky, nothing without consent.\n" +
-    "THE BEARING: " +
-    (landmark
-      ? `this card stands at ${c.real_2026.name}, which nobody can miss, so the where is that ` +
-        "place and its line above — no other address, and nothing else pinned.\n"
-      : "the where must NOT name an address, a clock, a street, or a camp. It is a bearing — a " +
-        "direction, a kind of place, a kind of person, or a time of day ('out past the last lamp', " +
-        "'wherever the music is worst', 'the first person who hands you water', 'before the sun is " +
-        "up'). It is the burn: what is on the map moved, and finding it is half the quest.\n") +
+    "THE BEARING: two ways, and KEEP the one the quest above already spoke. Either the place " +
+    `this card stands at — ${c.real_2026.name} — with a rough direction and nothing else pinned` +
+    (landmark ? `, said like this: ${bearingFor(bite, located)}` : "") +
+    ". Or a bearing that is a direction, a kind of place, a kind of person, or a time of day " +
+    "('out past the last lamp', 'wherever the music is worst', 'the first person who hands you " +
+    "water', 'before the sun is up'). Either way the where must NOT be an address: no clock, no " +
+    `lettered street, no Esplanade, and no camp but ${c.real_2026.name}. It is the burn: what is ` +
+    "on the map moved, and finding it is half the quest.\n" +
     'Return JSON only: {"move": {"task":"","where":"","proof":"","leave":""}}';
   const resp = await llm.generate(prompt, {
     system: SYSTEM,
@@ -1422,7 +1434,7 @@ function spokenProof(adventure) {
 
 /** The one act out of the spoken quest: its sentences up to the bearing and the proof —
  *  the whole of what is left when that is already a bite, else its first two sentences. */
-function spokenTask(adventure, where) {
+function spokenTask(adventure, where, place) {
   const w = String(where || "");
   const kept = String(adventure || "")
     .split(/(?<=[.!?…])\s+/)
@@ -1433,7 +1445,12 @@ function spokenTask(adventure, where) {
     .filter((x) => !/^bring back\b/i.test(x) && !(x.length > 3 && w.includes(rstrip(x, " ."))));
   // a short last sentence that is itself a bearing is the WHERE the model spoke, not the act
   const last = kept[kept.length - 1];
-  if (kept.length > 1 && words(last) <= 8 && usableBearing(last) && words(kept.slice(0, -1).join(" ")) >= 10) {
+  if (
+    kept.length > 1 &&
+    words(last) <= 8 &&
+    usableBearing(last, place) &&
+    words(kept.slice(0, -1).join(" ")) >= 10
+  ) {
     kept.pop();
   }
   if (!kept.length) return "";
@@ -1479,13 +1496,13 @@ export async function accept(sess, ctx) {
   const mWhere = sealed ? String(sealed.where || "").trim() : "";
   /* the model's bearing when it is one (a landmark's name passes usableBearing; a
    * clock-and-street line does not), else the Turtle's standing line for this bite */
-  const where = usableBearing(mWhere) ? mWhere : standing;
+  const where = usableBearing(mWhere, c.real_2026.name) ? mWhere : standing;
   /* No seal: the parchment still has to say the quest the seeker HEARD. Offline the spoken
    * quest was stitched from the dare, so the dare is that quest; on the model path it is
    * whatever the model spoke, and the canned dare would be a second, different quest. */
   const heardTask = String(sess.adventure || "").includes(c.turtle_dare.trim())
     ? c.turtle_dare
-    : spokenTask(sess.adventure, standing) || c.turtle_dare;
+    : spokenTask(sess.adventure, standing, c.real_2026.name) || c.turtle_dare;
   const moves = [
     {
       slot: SLOT_TITLES[bite],

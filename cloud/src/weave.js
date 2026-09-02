@@ -188,18 +188,22 @@ export async function weaveLlm(question, cards, llm, located, context, timeout, 
         "secretly want. Not visit it. Not think about it. Do it.\n") +
     "- THE SACRIFICE, when it falls out of that on its own: the act leaves something behind — a " +
     "written word, an object, a habit named out loud — left, not kept. Never bolted on.\n" +
-    "- ONE BEARING: say where in one short phrase, and make it a kind of place, a kind of person, or " +
-    "a time of day — 'out past the last lamp', 'wherever the music is worst', 'the first person who " +
-    "hands you water', 'before the sun is up'. NO address, NO clock, NO street, NO camp name. It is " +
-    "the burn: what is on the map moved, and finding it is half the quest. Give them a bearing, not " +
-    "an address." +
-    (landmark
-      ? ` The one exception, and it is live tonight: this card stands at ` +
-        `${biteCard.real_2026.name}, which nobody can miss — you may name that place, and only ` +
-        "that." +
-        (biteWhere ? ` Say it like this: ${biteWhere}.` : "") +
-        "\n"
-      : "\n") +
+    /* ONE BEARING, opened up. The rule used to be "never a camp name", with the four
+     * unmissable landmarks as its only exception — and it made every quest metaphorical,
+     * which is beautiful and which throws away the one thing the deck actually knows: this
+     * card stands somewhere real in this year's city. So both are offered now, the model
+     * chooses, and roughly half should point at the real place. The line that never moves
+     * is the address: a clock and a street is homework however it is dressed. */
+    "- ONE BEARING: say where, in one short phrase, and you have two ways to say it. Either NAME " +
+    `THE PLACE this card stands at in this year's city — ${biteCard.real_2026.name} — with a ` +
+    "rough direction and nothing else pinned to it" +
+    (landmark && biteWhere ? `, said like this: ${biteWhere}` : "") +
+    ". Or give an OPEN BEARING: a kind of place, a kind of person, or a time of day — 'out past " +
+    "the last lamp', 'wherever the music is worst', 'the first person who hands you water', " +
+    "'before the sun is up'. Both are true tonight. Choose by what the act needs, and take the " +
+    "real place about half the time. Either way: NO address, NO clock time, NO lettered street, " +
+    `NO Esplanade, and no camp but ${biteCard.real_2026.name}. It is the burn — what is on the ` +
+    "map moved, and finding it is half the quest.\n" +
     "- ONE PROOF: end on the single thing they carry back to the Turtle — 'Bring back what their " +
     "face did.' One line, concrete, theirs. It is the only thing the quest asks them to keep.\n" +
     "- Fit the act to the hour given in CONTEXT (heat, dark, sunrise). If CONTEXT says they are here " +
@@ -260,11 +264,11 @@ const RETRY_NOTE =
  * 2026-09-02 on the seal side; the spoken quest has the same habit, and it is the half the
  * seeker actually hears. */
 const ADDRESS_NOTE =
-  "\n\nYour last quest gave an ADDRESS — a clock time, a lettered street, the Esplanade, or a " +
-  "camp name. That is homework, not a quest. Write the quest again with a BEARING in place of " +
-  "it: a kind of place, a kind of person, or a time of day — 'out past the last lamp', " +
-  "'wherever the music is worst', 'the first person who hands you water'. Finding it is half " +
-  "the quest.";
+  "\n\nYour last quest gave an ADDRESS — a clock time, a lettered street, or the Esplanade. That " +
+  "is homework, not a quest. Write the quest again and say where the other way: name the place " +
+  "this card stands at, with a rough direction and no address on it, or give a bearing — a kind " +
+  "of place, a kind of person, or a time of day ('out past the last lamp', 'wherever the music " +
+  "is worst', 'the first person who hands you water'). Finding it is half the quest.";
 
 /* ADDITION, not in weave.py — measured on staging 2026-09-02, thinking mode on: 3 of 4
  * readings OPENED with the SYSTEM prompt's own example, word for word ("You built all
