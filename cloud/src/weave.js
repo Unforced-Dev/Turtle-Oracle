@@ -7,7 +7,7 @@
  */
 import CARD_LORE from "../../data/card_lore.json" with { type: "json" };
 import { tryJson } from "./llm.js";
-import { brcNow, firstSentence, shortWords, rstrip } from "./util.js";
+import { brcNow, firstSentence, shortWords, rstrip, words } from "./util.js";
 
 export function cardLore() {
   return CARD_LORE;
@@ -138,9 +138,29 @@ export async function weaveLlm(question, cards, llm, located, context, timeout) 
   const resp = await llm.generate(prompt, { system: SYSTEM, asJson: true, timeout, stage: "weave" });
   const out = tryJson(resp);
   if (out && typeof out === "object" && out.reading && out.adventure) {
-    return { reading: String(out.reading).trim(), adventure: String(out.adventure).trim() };
+    const reading = unquoteExample(String(out.reading).trim());
+    if (!reading) return null;
+    return { reading, adventure: String(out.adventure).trim() };
   }
   return null;
+}
+
+/* ADDITION, not in weave.py — measured on staging 2026-09-02, thinking mode on: 3 of 4
+ * readings OPENED with the SYSTEM prompt's own example, word for word ("You built all
+ * year for other people. That is a fine way to disappear."), and then went on in the
+ * seeker's words. Every seeker would hear the same two sentences first. The prompt is
+ * parity-locked to the Python, so the cure is on the way out: drop the copied sentences
+ * and keep the rest, which is the model's real reading. If what is left is too short to
+ * be a reading, the whole thing is refused and the template takes the turn. */
+const EXAMPLE_RE =
+  /(you )?built all year for other people|(that is )?a fine way to disappear|tonight nobody needs you|where the map runs out|^(then )?bite it[.!]?$|walk out past the man/i;
+export function unquoteExample(reading) {
+  const parts = reading.split(/(?<=[.!?…])\s+/);
+  const kept = parts.filter((sentence) => !EXAMPLE_RE.test(sentence));
+  if (kept.length === parts.length) return reading;
+  const cleaned = kept.join(" ").trim();
+  console.log(`weave: dropped ${parts.length - kept.length} example sentence(s), ${words(cleaned)}w left`);
+  return words(cleaned) >= 40 ? cleaned : null;
 }
 
 /** Time-aware first words for the offline quest. */
