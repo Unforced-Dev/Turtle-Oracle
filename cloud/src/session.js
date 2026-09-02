@@ -28,8 +28,7 @@ import {
   landmarkRealm,
   namesAnAddress,
   openWhere,
-  proofFor,
-} from "./weave.js";
+  proofFor, landmarkWhere } from "./weave.js";
 import { locateSpread, directionsLines, COMPASS_ROSE } from "./geo.js";
 import { tryJson } from "./llm.js";
 import * as lore from "./lore.js";
@@ -929,7 +928,7 @@ async function refineLlm(sess, llm, tLong) {
   const lo = cardLore()[c.id] || {};
   const card =
     `${c.name}: dare="${c.turtle_dare}" seed="${lo.seed || ""}" ` +
-    `real_2026="${c.real_2026.name}" where="${(located[bite] || {}).directions || ""}"`;
+    `real_2026="${c.real_2026.name}" where="${bearingFor(bite, located)}"`;
   const prompt =
     "The seeker has heard their reading and wants the quest tuned before accepting.\n" +
     "What they shared earlier:\n" +
@@ -1268,6 +1267,14 @@ const BEARING_NAMES = new Set(["man", "temple", "center", "camp", "playa", "blac
 /** Is the model's own bearing safe to seal? Short, no address, no proper noun but those.
  *  Worth taking when it passes: it is the bearing the seeker just HEARD, and the Turtle's
  *  standing line is the same three sentences every séance. */
+/** The bearing the Turtle itself would say for this bite: the landmark line at one of the
+ *  four unmissable placements, else the open bearing. The prompts, the fallback and the
+ *  parchment all read from here so they never disagree. */
+function bearingFor(bite, located) {
+  const loc = (located || {})[bite] || {};
+  return landmarkRealm(located) === bite && landmarkWhere(loc) ? landmarkWhere(loc) : openWhere(bite, loc);
+}
+
 function usableBearing(text) {
   const s = String(text || "").trim();
   if (!s || words(s) > 16 || namesAnAddress(s)) return false;
@@ -1291,7 +1298,7 @@ async function sealLlm(sess, llm, tLong) {
     "The seeker's words:\n" +
     sess.shares.map((s) => `- ${s}`).join("\n") +
     `\n\nThe accepted quest:\n${sess.adventure}\n\nThe card it was bitten from:\n` +
-    `card="${c.name}" at="${c.real_2026.name}" where="${loc.directions || ""}"\n\n` +
+    `card="${c.name}" at="${c.real_2026.name}" where="${bearingFor(bite, located)}"\n\n` +
     "Give: task (the ONE act, in one or two sentences, imperative and verb first, taken straight " +
     "from the quest as it was spoken — no second chore, no 'stay until…' or 'leave when you have…' " +
     "interior door), where (short — see THE BEARING below), proof (the ONE thing they carry back " +
@@ -1353,16 +1360,11 @@ export async function accept(sess, ctx) {
    * and only when it adds something. Everywhere else the bearing the seeker actually heard
    * is worth keeping — but only when it is a bearing: usableBearing throws out the camp
    * names and the addresses the model puts there however it is asked not to. */
-  const standing = landmark
-    ? loc.directions || "Somewhere out there — ask Playa Info."
-    : openWhere(bite, loc);
+  const standing = bearingFor(bite, located);
   const mWhere = sealed ? String(sealed.where || "").trim() : "";
-  let where = standing;
-  if (landmark && mWhere && mWhere.toLowerCase() !== standing.toLowerCase()) {
-    where = `${standing} — ${mWhere}`;
-  } else if (!landmark && usableBearing(mWhere)) {
-    where = mWhere;
-  }
+  /* the model's bearing when it is one (a landmark's name passes usableBearing; a
+   * clock-and-street line does not), else the Turtle's standing line for this bite */
+  const where = usableBearing(mWhere) ? mWhere : standing;
   const moves = [
     {
       slot: SLOT_TITLES[bite],

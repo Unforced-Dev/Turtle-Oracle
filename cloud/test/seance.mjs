@@ -20,7 +20,7 @@
  * binding — the only route here that talks to Workers AI without a séance in its body.
  */
 import { start, hear, accept, replayable, __test as S } from "../src/session.js";
-import { landmarkRealm } from "../src/weave.js";
+import { landmarkRealm, landmarkWhere } from "../src/weave.js";
 import { transcribe, toBase64, MAX_AUDIO_BYTES } from "../src/ears.js";
 
 let failures = 0;
@@ -401,8 +401,10 @@ section("the sealed quest is one bite, with a bearing and a proof");
     if (m.proof && m.task) carriedAProof++;
     if (landmarkRealm(sess.located) === sess.bite) {
       landmarks++;
-      // the one draw where a place may be named: it is named from the real BRC geo
-      if (m.where.startsWith((sess.located[sess.bite].directions || "").trim())) woreABearing++;
+      // the one draw where a place may be named: by its name and a direction, never by
+      // the placement data's clock-and-street line (that leaked onto staging 2026-09-02)
+      const lm = landmarkWhere(sess.located[sess.bite]);
+      if (m.where && !ADDRESSY.test(m.where) && (llm === deadLlm ? m.where === lm : true)) woreABearing++;
     } else if (m.where && !ADDRESSY.test(m.where)) {
       woreABearing++;
     }
@@ -462,8 +464,8 @@ section("the sealed quest is one bite, with a bearing and a proof");
     JSON.stringify(drop.filter(S.usableBearing)),
   );
   /* End to end, on real draws: the model's clean bearing is the one sealed, and the camp
-   * address it invented instead is thrown away for the Turtle's own line. At a landmark
-   * draw both are pinned to the real BRC geo, which is the point of the exception. */
+   * address it invented instead is thrown away for the Turtle's own line — at a landmark
+   * draw too, where the Turtle's line is the landmark's name and a direction. */
   const camped = () =>
     goodLlm({
       seal: JSON.stringify({
@@ -477,12 +479,9 @@ section("the sealed quest is one bite, with a bearing and a proof");
     const b = await walk("talk", { llm: camped(), answer: { text: "I have not said it yet." } });
     const aWhere = a.sealed.quest.moves[0].where;
     const bWhere = b.sealed.quest.moves[0].where;
-    const aPinned = landmarkRealm(a.sess.located) === a.sess.bite;
-    const bPinned = landmarkRealm(b.sess.located) === b.sess.bite;
-    if (aPinned ? aWhere.includes("out past the last lamp") : aWhere === "out past the last lamp") {
-      sealedBearing++;
-    }
-    if (bPinned ? /Camp Questionmark/.test(bWhere) : !/Camp Questionmark|7:30/.test(bWhere)) refusedCamp++;
+    if (aWhere === "out past the last lamp") sealedBearing++;
+    // the Turtle's own "No address for this one." must not trip an address check here
+    if (!/Camp Questionmark|7:30|\d{1,2}:\d{2}|Esplanade|\b[A-L]\s*(?:&|and)\s*\d/.test(bWhere)) refusedCamp++;
   }
   check("the model's bearing reaches the parchment when it is one", sealedBearing === 6, String(sealedBearing));
   check("and a camp address it invented never does", refusedCamp === 6, String(refusedCamp));
@@ -500,10 +499,10 @@ section("the sealed quest is one bite, with a bearing and a proof");
   );
   /* the bearing it speaks is the one the parchment will seal — the card's own citywide
      line when that is a kind of place, the Turtle's standing line when it is not, and the
-     map line on the rare draw that stands at a landmark */
+     landmark's name and direction on the rare draw that stands at one */
   const bearing =
     landmarkRealm(sess.located) === sess.bite
-      ? "The map says "
+      ? landmarkWhere(sess.located[sess.bite])
       : S.openWhere(sess.bite, sess.located[sess.bite]);
   check(
     "it says where, and what to bring back",

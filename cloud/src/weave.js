@@ -69,6 +69,22 @@ const REALMS = ["roots", "trunk", "branches"];
  * turns it into homework. */
 const UNMISSABLE = new Set(["the_man", "temple", "center_camp", "trash_fence"]);
 
+/* What the Turtle says for those four. The placement data carries the clock-and-street
+ * line ("Playa Info is in Center Camp (6:00 & Esplanade)…"), and on staging 2026-09-02 that
+ * line went straight onto the parchment — an address in a quest that had just been rebuilt
+ * to have none. A landmark is named by its name and a direction, never by its address. */
+const LANDMARK_WHERE = {
+  the_man: "The Man — the center of everything. Walk toward the light.",
+  temple: "The Temple — out past the Man, where the city goes quiet.",
+  center_camp: "Center Camp — the heart of the city. Walk toward the center.",
+  trash_fence: "The trash fence — walk any direction until the city ends.",
+};
+
+/** The short bearing for a placement at one of the four landmarks, else "". */
+export function landmarkWhere(loc) {
+  return LANDMARK_WHERE[(loc || {}).geo_ref] || "";
+}
+
 /** The realm whose card stands at one of those four, or null — usually null. */
 export function landmarkRealm(located) {
   located = located || {};
@@ -97,7 +113,7 @@ export async function weaveLlm(question, cards, llm, located, context, timeout) 
   const bite = biteRealm(located, cards);
   const biteCard = cards[bite];
   const landmark = landmarkRealm(located) === bite;
-  const biteWhere = rstrip((located[bite] || {}).directions || "", " .");
+  const biteWhere = landmark ? rstrip(landmarkWhere(located[bite]), " .") : "";
   const body = [
     line("WHAT TO FACE (root)", cards.roots, located.roots),
     line("WHERE YOU STAND (trunk)", cards.trunk, located.trunk),
@@ -144,7 +160,7 @@ export async function weaveLlm(question, cards, llm, located, context, timeout) 
       ? ` The one exception, and it is live tonight: this card stands at ` +
         `${biteCard.real_2026.name}, which nobody can miss — you may name that place, and only ` +
         "that." +
-        (biteWhere ? ` Its directions: ${biteWhere}.` : "") +
+        (biteWhere ? ` Say it like this: ${biteWhere}.` : "") +
         "\n"
       : "\n") +
     "- ONE PROOF: end on the single thing they carry back to the Turtle — 'Bring back what their " +
@@ -305,9 +321,8 @@ export function weaveFallback(question, cards, located) {
    * and what to bring home. */
   const c = cards[bite];
   const loc = located[bite] || {};
-  const dir = rstrip((loc.directions || "").replace(/&/g, "and"), " .");
   const where =
-    bite === landmarkRealm(located) && dir ? `The map says ${dir}.` : openWhere(bite, loc);
+    bite === landmarkRealm(located) && landmarkWhere(loc) ? landmarkWhere(loc) : openWhere(bite, loc);
   const adventure = `${opener()} ${c.turtle_dare.trim()} ${where} ${proofFor(bite, c)}`;
   return { reading, adventure };
 }
