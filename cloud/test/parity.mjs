@@ -210,10 +210,15 @@ check("SYSTEM voice", SYSTEM === py.system, firstDiff(py.system, SYSTEM));
  * reading half of the prompt, and every other prompt, still match byte for byte — so the
  * rest of this diff is worth keeping, and only this one string is skipped. */
 skip("weave prompt (quest rules: one anchor + two open moves)", AHEAD);
+/* The seal prompt diverged for the same reason the weave prompt did, one stage later: the
+ * playa turtle tells the model to take every move's `where` from its card, the cloud
+ * turtle marks the ONE placed move and forbids an address on the other two, so the sealed
+ * parchment says what the spoken quest said. Retire this skip by porting the same
+ * paragraph into app/oracle/session.py's _seal_llm. */
+skip("seal prompt (one placed move, two bearings)", AHEAD);
 for (const [label, a, b] of [
   ["echoes prompt", py.echoes, ce.p],
   ["refine prompt", py.refine, cr.p],
-  ["seal prompt", py.seal, cs.p],
 ]) {
   const A = normalise(a);
   const B = normalise(b);
@@ -328,6 +333,13 @@ check(
   (jsWf.adventure.match(/The map says /g) || []).length === 1 &&
     (jsWf.adventure.match(/No address for this one\./g) || []).length === 2,
   jsWf.adventure,
+);
+check(
+  "seal prompt marks the one placed move and forbids an address on the other two",
+  (cs.p.match(/<- THE PLACED MOVE/g) || []).length === 1 &&
+    cs.p.includes("THE ANCHOR: exactly ONE of the three — the REACH move") &&
+    cs.p.includes("must NOT name an address, a clock, a street, or a camp"),
+  "the fixture's only placed card is the branches card, at E & 6:15",
 );
 check(
   "refine prompt preserves the spoken three-move shape",

@@ -19,7 +19,7 @@
 import WEATHER from "../../data/weather.json" with { type: "json" };
 import { BY_REALM, SPREAD_REALMS, drawSpread, cardPayload } from "./deck.js";
 import { selectFallback, tokens } from "./select.js";
-import { weave, weaveFallback, SYSTEM, cardLore } from "./weave.js";
+import { weave, weaveFallback, SYSTEM, cardLore, anchorRealm, OPEN_WHERE } from "./weave.js";
 import { locateSpread, directionsLines, COMPASS_ROSE } from "./geo.js";
 import { tryJson } from "./llm.js";
 import * as lore from "./lore.js";
@@ -376,6 +376,7 @@ export function start(mode = "seek") {
     ground: 0.0,
     picks: null,
     located: null,
+    anchor: null,
     reading: null,
     adventure: null,
     axis_slot: null,
@@ -624,6 +625,12 @@ async function drawStep(sess, ctx) {
   const located = locateSpread(picks);
   sess.picks = picks;
   sess.located = located;
+  /* THE ANCHOR, decided once and carried: weave.js pins exactly one move to a real 2026
+   * placement, and the seal has to pin the SAME one or the parchment contradicts the
+   * quest the seeker just heard. It is derived from `located`, so it is recomputed
+   * wherever `located` is (refineFallback), and re-derived defensively in accept() for a
+   * session that started before this field existed. */
+  sess.anchor = anchorRealm(located);
   sess.axis_slot = axisSlot;
   sess.stage = "asking";
   const ask =
@@ -775,6 +782,7 @@ function refineFallback(sess) {
   const out = weaveFallback(told, picks, located);
   sess.picks = picks;
   sess.located = located;
+  sess.anchor = anchorRealm(located);
   sess.reading = out.reading;
   sess.echoes = echoesFallback(sess);
   return { say: choice(REFINE_ACKS), adventure: out.adventure, reading: out.reading };
@@ -1052,17 +1060,39 @@ export async function hear(sess, body, ctx) {
   return { error: "the Turtle is confused", stage: sess.stage };
 }
 
+/* A `where` that is an address however it is dressed: a clock, a lettered street, the
+ * Esplanade — or "the address is in the WWW guide", which is an address one lookup away
+ * and lands on the parchment as an errand. Only the placed move may carry one. */
+const ADDRESS_LINE = /\b\d{1,2}:\d{2}\b|\bEsplanade\b|\b[A-L]\s*(?:&|and)\s*\d|\baddress\b|\bWWW guide\b/i;
+
+function namesAnAddress(text) {
+  return ADDRESS_LINE.test(String(text || ""));
+}
+
+/** What an unpinned move seals with instead of an address: the card's own citywide line
+ *  when that line is a kind of place rather than a lookup ("Anywhere the playa is open
+ *  under you"), else the Turtle's standing bearing for that realm, the same words
+ *  weaveFallback speaks. Never the model's `where` — it was told to give a bearing, but
+ *  it names camps anyway, and a camp is an address with the numbers filed off. */
+function openWhere(realm, loc) {
+  const line = String((loc || {}).directions || "").trim();
+  if ((loc || {}).status === "citywide" && line && !namesAnAddress(line)) return line;
+  return OPEN_WHERE[realm];
+}
+
 /** Personalize the three sealed moves (task/where/proof + one leave) from the final quest. */
 async function sealLlm(sess, llm, tLong) {
   const picks = sess.picks;
   const located = sess.located;
+  const anchor = sess.anchor || anchorRealm(located);
   const lines = [];
   for (const realm of ["roots", "trunk", "branches"]) {
     const c = picks[realm];
     const loc = located[realm] || {};
     lines.push(
       `${SLOT_TITLES[realm]}: card="${c.name}" at="${c.real_2026.name}" ` +
-        `where="${loc.directions || ""}"`,
+        `where="${loc.directions || ""}"` +
+        (realm === anchor ? "   <- THE PLACED MOVE" : ""),
     );
   }
   const prompt =
@@ -1074,10 +1104,16 @@ async function sealLlm(sess, llm, tLong) {
     "\n\nFor each move give: task (1-2 concrete sentences drawn from the quest; EVERY task must " +
     "pair a physical action with an open interior door — 'stay until…', 'leave when you have…', " +
     "'ask until someone…' — specific on the outside, open on the inside, since that openness is " +
-    "where the seeker finds themselves), where (short, from the card's where), proof (ONE specific " +
+    "where the seeker finds themselves), where (short — see THE ANCHOR below), proof (ONE specific " +
     "thing to bring back to the shell, personal to their words). EXACTLY ONE move also gets leave: " +
     "one small thing left behind there. FACE is done alone with a hard truth; STAND is presence at " +
     "a place; REACH involves another human. Nothing risky, nothing without consent.\n" +
+    `THE ANCHOR: exactly ONE of the three — the ${SLOT_TITLES[anchor]} move, marked THE PLACED ` +
+    "MOVE above — stands at a real place, and its where comes from that card's where line. The " +
+    "other two must NOT name an address, a clock, a street, or a camp: their where is a bearing — " +
+    "a direction, a kind of place, a kind of person, or a time of day ('out past the last lamp', " +
+    "'wherever the music is worst', 'the first person who hands you water', 'before the sun is " +
+    "up'). It is the burn: what is on the map moved, and finding it is half the quest.\n" +
     'Return JSON only: {"moves": [{"task":"","where":"","proof":"","leave":""}, {...}, {...}]}';
   const resp = await llm.generate(prompt, {
     system: SYSTEM,
@@ -1132,17 +1168,27 @@ export async function accept(sess, ctx) {
   const moves = [];
   const leaveAt = randRange(3);
   const realms = ["roots", "trunk", "branches"];
+  /* ONE address, two bearings — the same split the spoken quest was written to. */
+  const anchor = sess.anchor || anchorRealm(located);
   realms.forEach((realm, i) => {
     const c = picks[realm];
     const loc = located[realm] || {};
-    const where = loc.directions || "Somewhere out there — ask Playa Info.";
+    const where =
+      realm === anchor
+        ? loc.directions || "Somewhere out there — ask Playa Info."
+        : openWhere(realm, loc);
     if (sealed) {
       const m = sealed[i];
-      // Real BRC geo wins over whatever the model invented; its guess only
-      // rides along as a suffix, and only when it actually adds something.
+      // Real BRC geo wins over whatever the model invented; its guess only rides along as
+      // a suffix on the PLACED move, and only when it actually adds something. On the
+      // other two the model's `where` is dropped entirely: it was told to give a bearing
+      // and it names camps anyway, the same way it cannot be trusted with the count of
+      // `leave` below.
       const mWhere = String(m.where || "").trim();
       const mergedWhere =
-        mWhere && mWhere.toLowerCase() !== where.toLowerCase() ? `${where} — ${mWhere}` : where;
+        realm === anchor && mWhere && mWhere.toLowerCase() !== where.toLowerCase()
+          ? `${where} — ${mWhere}`
+          : where;
       moves.push({
         slot: SLOT_TITLES[realm],
         card: c.name,
@@ -1202,13 +1248,6 @@ export async function accept(sess, ctx) {
     title: sess.quest.title,
     cards: SPREAD_REALMS.map((x) => picks[x].id),
   });
-  /* A KNOWN SEAM, left open deliberately on feat/cloud-seance-v2. weave.js now pins
-   * exactly ONE move to a real placement and gives the other two a bearing, but the
-   * loop above still writes `loc.directions` into the `where` of all three — so the
-   * sealed parchment is more address-heavy than the spoken quest that led to it. The
-   * fix is to carry the anchor realm from the weave onto the session and let the two
-   * open moves seal with their bearing instead; it touches sealLlm's prompt, which is
-   * still byte-parity with app/oracle, so it wants its own change and its own skip. */
   return {
     session: sess.id,
     stage: "accepted",
@@ -1241,4 +1280,6 @@ export const __test = {
   timeContext,
   context,
   isSameQuest,
+  openWhere,
+  namesAnAddress,
 };

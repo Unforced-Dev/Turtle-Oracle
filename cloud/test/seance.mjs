@@ -326,5 +326,63 @@ section("the stem stage is gone");
   check("no event on either path carries a stem", after.expects === "stones");
 }
 
+/* ---- 7. the sealed parchment: one address, two bearings --------------------------- */
+
+/* The quest is spoken with ONE move pinned to a real 2026 placement and two given a
+ * bearing (weave.js: THE ANCHOR / THE OPEN TWO). The parchment used to put the card's
+ * directions on all three, so a move that said "lie flat somewhere quiet" sealed with a
+ * street address. These walk real random draws — the spread is drawn blind, so this runs
+ * enough séances to hit citywide, pending and fixed cards. */
+
+section("the sealed parchment carries one address and two bearings");
+{
+  const REALMS = ["roots", "trunk", "branches"];
+  /* A clock, a lettered street, the Esplanade, or a pointer at the WWW guide, which is an
+   * address one lookup away. Deliberately NOT the bare word "address" — the Turtle's own
+   * bearing says "No address for this one" out loud, and that is the opposite of one. */
+  const ADDRESSY = /\d{1,2}:\d{2}|Esplanade|\b[A-L]\s*(?:&|and)\s*\d|WWW guide/i;
+  let pinnedRight = 0;
+  let bearingsClean = 0;
+  let atMostOneAddress = 0;
+  let sawAnchorLine = 0;
+  const runs = [];
+  for (let i = 0; i < 12; i++) {
+    const llm = i % 4 === 0 ? goodLlm() : deadLlm;
+    const { sess, sealed } = await walk(i % 2 ? "talk" : "touch", {
+      llm,
+      answer: { text: "I have not said the thing I came here to say." },
+    });
+    const ai = REALMS.indexOf(sess.anchor);
+    const anchorLine = sess.located[sess.anchor].directions || "Somewhere out there";
+    const wheres = sealed.quest.moves.map((m) => m.where);
+    const open = wheres.filter((_, j) => j !== ai);
+    if (ai >= 0 && wheres[ai].startsWith(anchorLine)) pinnedRight++;
+    if (open.every((w) => w && !ADDRESSY.test(w))) bearingsClean++;
+    if (wheres.filter((w) => ADDRESSY.test(w)).length <= 1) atMostOneAddress++;
+    if (wheres.filter((w) => anchorLine && w.startsWith(anchorLine)).length === 1) sawAnchorLine++;
+    runs.push(wheres);
+  }
+  check("the placed move seals with its own card's directions", pinnedRight === 12, JSON.stringify(runs[0]));
+  check("exactly one move carries the anchor's directions line", sawAnchorLine === 12, JSON.stringify(runs));
+  check("the other two seal with a bearing, never an address", bearingsClean === 12, JSON.stringify(runs));
+  check("no sealed quest carries more than one address", atMostOneAddress === 12, JSON.stringify(runs));
+}
+{
+  // the bearing itself: the card's own citywide line when that line is a kind of place,
+  // and the Turtle's standing bearing when it is a lookup
+  const clean = S.openWhere("roots", {
+    status: "citywide",
+    directions: "Anywhere the playa is open under you — lie down and let it mark you.",
+  });
+  const lookup = S.openWhere("roots", {
+    status: "citywide",
+    directions: "Dozens run daily citywide — check the WWW guide for a time and place near you.",
+  });
+  const placed = S.openWhere("branches", { status: "fixed", directions: "E & 6:15 (mid-block facing man)." });
+  check("a citywide line that is a kind of place becomes the bearing", /^Anywhere the playa is open/.test(clean), clean);
+  check("a citywide line that is really a lookup does not", /^No address for this one\./.test(lookup), lookup);
+  check("a placed card's line is never handed to an open move", /^No address for this one\./.test(placed), placed);
+}
+
 console.log(failures ? `\n${failures} FAILED` : "\nALL PASS");
 process.exit(failures ? 1 : 0);

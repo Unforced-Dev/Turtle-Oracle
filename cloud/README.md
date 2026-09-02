@@ -15,10 +15,10 @@ proves it by building each prompt on both sides and diffing them byte for byte. 
 change a prompt in one place, that test fails until you change it in both.
 
 As of `feat/cloud-seance-v2` the cloud turtle is **ahead of the Spark in two places, on
-purpose** — the séance flow, and the quest's rules about real places. Those two prompt
-diffs print as `skip` in the parity test rather than `ok`, each with a note saying to port
-them back to `app/oracle/` when the Spark is reachable and then restore the byte-diff.
-Everything else still diffs, and still has to match.
+purpose** — the séance flow, and how specific a quest is allowed to be. Every string that
+diverged prints as `skip` in the parity test rather than `ok`, each with a note saying what
+moved and to port it back to `app/oracle/` when the Spark is reachable, then restore the
+byte-diff. Everything else still diffs, and still has to match.
 
 ## Run it
 
@@ -106,9 +106,15 @@ person, a time of day. The pinned one is chosen from the located cards: the one 
 `live_hook` actually resolved to a placed thing, preferring one the gates data gives an
 address or a clock for. `weaveFallback` follows the same rule offline.
 
-The **seal** (`POST /api/session/accept`) still puts a `where` on all three moves from the
-card's own geo, so the sealed parchment is more address-heavy than the spoken quest that
-led to it. That is a known seam, not a decision — see the note at the end of `accept()`.
+The **seal** (`POST /api/session/accept`) obeys the same split, so the parchment says what
+the quest said out loud. The anchor realm is decided once when the cards are drawn and
+carried on the session (`sess.anchor`); the placed move seals with its card's real
+directions, and the other two seal with a bearing — the card's own citywide line when that
+line is a kind of place ("Anywhere the playa is open under you"), otherwise the realm's
+`OPEN_WHERE` from `weave.js`. The seal prompt marks which move is the placed one and
+forbids an address on the other two; `accept()` drops the model's own `where` on those two
+anyway, because told to give a bearing it still names a camp, and a camp is an address with
+the numbers filed off.
 
 ## What changed from the playa app, and why
 

@@ -62,7 +62,7 @@ const SLOT_TITLES = { roots: "FACE", trunk: "STAND", branches: "REACH" };
  * direction and a quality. This picks the pin: the card whose live_hook actually
  * resolved to a placed thing (geo.locate gives status "citywide" when it did not), and
  * best of all one with a real address or clock behind it. */
-function anchorRealm(located) {
+export function anchorRealm(located) {
   const rank = (realm) => {
     const loc = located[realm] || {};
     if (!loc.directions) return 0;
@@ -155,8 +155,9 @@ function opener() {
 }
 
 /* The offline half of THE ANCHOR: what the two unpinned moves say instead of an address.
- * A bearing and a quality, in the Turtle's mouth — never a street. */
-const OPEN_WHERE = {
+ * A bearing and a quality, in the Turtle's mouth — never a street. Exported because the
+ * seal has to say the same thing on the parchment that the quest said out loud. */
+export const OPEN_WHERE = {
   roots: "No address for this one. Walk until the sound thins and you can hear your own feet.",
   trunk: "No address for this one. It is wherever you already stand — your camp, your street, your hour.",
   branches:
