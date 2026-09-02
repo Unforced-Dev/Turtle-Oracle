@@ -27,10 +27,22 @@ const HERE = path.dirname(fileURLToPath(import.meta.url));
 const REPO = path.resolve(HERE, "..", "..");
 
 let failures = 0;
+let skipped = 0;
 function check(label, ok, detail = "") {
   console.log((ok ? "  ok   " : "  FAIL ") + label + (ok || !detail ? "" : "\n         " + detail));
   if (!ok) failures++;
 }
+
+/* A prompt the cloud has deliberately moved ahead on. NOT a failure and NOT a pass: the
+ * two turtles genuinely say different words here, on purpose, and the byte-diff would
+ * only ever fail. Every skip names what diverged and what has to happen to retire it. */
+function skip(label, why) {
+  console.log("  skip " + label + "\n         " + why);
+  skipped++;
+}
+const AHEAD =
+  "cloud is ahead of the Spark as of feat/cloud-seance-v2 — port back when the Spark " +
+  "is reachable, then restore the byte-diff.";
 
 /** Both sides write "It is Sunday, 4:19 PM in Black Rock City: ..." — pin the minute. */
 function normalise(s) {
@@ -192,8 +204,13 @@ await S.sealLlm(sess, cs, 1);
 
 console.log("\nprompt parity with app/oracle (byte for byte):");
 check("SYSTEM voice", SYSTEM === py.system, firstDiff(py.system, SYSTEM));
+/* The weave prompt's quest rules diverged on feat/cloud-seance-v2: the playa turtle tells
+ * the model to name real 2026 places for all three moves, the cloud turtle pins exactly
+ * ONE move to a placement and gives the other two a bearing instead of an address. The
+ * reading half of the prompt, and every other prompt, still match byte for byte — so the
+ * rest of this diff is worth keeping, and only this one string is skipped. */
+skip("weave prompt (quest rules: one anchor + two open moves)", AHEAD);
 for (const [label, a, b] of [
-  ["weave prompt", py.weave, cw.p],
   ["echoes prompt", py.echoes, ce.p],
   ["refine prompt", py.refine, cr.p],
   ["seal prompt", py.seal, cs.p],
@@ -234,11 +251,10 @@ check(
   jsWf.reading === py.weave_fallback.reading,
   firstDiff(py.weave_fallback.reading, jsWf.reading),
 );
-check(
-  "fallback quest",
-  jsWf.adventure === py.weave_fallback.adventure,
-  firstDiff(py.weave_fallback.adventure, jsWf.adventure),
-);
+/* Same divergence, offline half: the Python appends "The map says <directions>." to all
+ * three moves, the cloud appends it to the anchor move only. The reading above is
+ * untouched by that and still diffs. */
+skip("fallback quest (anchor move keeps the map line, the other two do not)", AHEAD);
 
 /* ---- 3. the structural guarantees tools/test_spoken_readings.py makes ------------ */
 
@@ -292,6 +308,27 @@ check(
   "system voice bans prose that reads poorly aloud",
   SYSTEM.includes("spoken aloud") && SYSTEM.includes("no semicolons"),
 );
+
+/* The two skips above are only safe if SOMETHING still guards the diverged strings. This
+ * is that something: the cloud's own rule, checked on the cloud's own side. */
+check(
+  "quest prompt pins exactly one move to a placement",
+  (cw.p.match(/- THE ANCHOR: exactly ONE move/g) || []).length === 1 &&
+    cw.p.includes("the REACH move") &&
+    cw.p.includes("Terrible Turtle Camp"),
+  "the fixture's only non-citywide card is the branches card, at E & 6:15",
+);
+check(
+  "quest prompt tells the other two moves to give a bearing, not an address",
+  cw.p.includes("the other two moves name NO address and NO camp") &&
+    cw.p.includes("Give them a bearing, not an address."),
+);
+check(
+  "fallback quest carries the map line exactly once",
+  (jsWf.adventure.match(/The map says /g) || []).length === 1 &&
+    (jsWf.adventure.match(/No address for this one\./g) || []).length === 2,
+  jsWf.adventure,
+);
 check(
   "refine prompt preserves the spoken three-move shape",
   cr.p.includes("75-110 words") && cr.p.includes("First, Second, Third"),
@@ -309,5 +346,6 @@ const parrot = {
 };
 check("refine rejects the old quest handed back unchanged", (await S.refineLlm(sess, parrot, 1)) === null);
 
-console.log(failures ? `\n${failures} FAILED` : "\nALL PASS");
+const tail = skipped ? ` (${skipped} skipped — cloud ahead of the Spark)` : "";
+console.log(failures ? `\n${failures} FAILED${tail}` : `\nALL PASS${tail}`);
 process.exit(failures ? 1 : 0);
