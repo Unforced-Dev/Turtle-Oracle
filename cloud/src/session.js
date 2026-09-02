@@ -35,21 +35,57 @@ const NAME_ASKS = [
   "Mm. The Tree said someone was coming. Sit. Tell me the name you go by in this city.",
 ];
 
-const STEM_ASKS = [
-  "Mm. Then finish this, out loud, and only this:",
-  "The Turtle believes you. Now finish this sentence — nothing more:",
-  "Good. One sentence is enough, if it is true. Finish this:",
+/* THE DOOR — the one branch the whole séance turns on. A seeker deep in their burn is
+ * not going to complete the sentence "I want to keep…", and the old flow made them.
+ * So: talk, or touch. Nobody has to type to be read. */
+const DOOR_ASK_TAIL = "Now: will you talk to the Turtle, or touch?";
+const DOORS = [
+  { id: "talk", label: "Talk — tell the Turtle about your burn" },
+  { id: "touch", label: "Touch — no words needed" },
+];
+const DOOR_RETRY = "One or the other, traveler. Talk, or touch.";
+
+const LISTEN_INVITES = [
+  "Tell the Turtle about your burn so far. Whatever comes — the good, the strange, " +
+    "the thing you have not said yet. Take your time.",
+  "Then talk. Your burn so far, out loud — the good, the strange, the thing you have " +
+    "not told anyone. The shell has all night.",
 ];
 
 const STONES_ASK =
   "Words are hard tonight. No matter — the shell reads weight. " +
   "Touch what you are carrying. Leave the rest in the dust.";
 
+/* The third touch screen. Weather is how they arrived, stones are what they carry, and
+ * this is what they are out here FOR — the one thing a quest can actually aim at. Six
+ * tiles, no text box; `line` is what the tile says under its name and also what the
+ * shell hands the model, so a wordless séance still has words in it. */
+const WANTING_ASK = "Last touch. What did you come out here for tonight?";
+const WANTINGS = [
+  { id: "person", name: "A person", line: "someone out here, or someone who is not" },
+  { id: "fire", name: "A fire", line: "something loud enough to burn the year off" },
+  { id: "quiet", name: "Quiet", line: "less city, fewer voices, more dust" },
+  { id: "lost", name: "A lost thing", line: "something I had and put down somewhere" },
+  { id: "dance", name: "A dance", line: "to move until my legs stop arguing" },
+  { id: "unknown", name: "Nothing yet", line: "I came out here to find out" },
+];
+const WANTING_RETRY = "Touch one, traveler. Even “nothing yet” is an answer.";
+
 const DRAWN_LINES = [
   "Enough. The Turtle has heard you. Watch — the Tree is choosing.",
   "The shell hums. Three cards rise for you: what to face, where you stand, what to reach for.",
   "Good. That is enough truth to pull on. The Tree is choosing your three.",
 ];
+
+/* Spoken when the reading finally arrives. The cards were already turned at `asking`,
+ * so the old DRAWN_LINES cannot do this job twice. */
+const WOVEN_LINES = [
+  "Mm. Now the Turtle can see it. Hear what the three of them say together.",
+  "Enough. The shell has what it needs. This is what rose for you.",
+  "Good. That is the shape of it. Hear it whole.",
+];
+
+const ASK_RETRY = "The Turtle heard only wind. Say it again, or let it be.";
 
 // Spoken instead of the usual line when a Shell card substitutes into a slot — roughly
 // one séance in ten. The Turtle interrupting its own format is the whole point.
@@ -130,8 +166,17 @@ const SLOT_TITLES = { roots: "FACE", trunk: "STAND", branches: "REACH" };
 /* Bounds the playa server never needed, because there the seeker was standing in front of
  * a turtle and the GPU was ours. Here every share is re-sent to a metered model. */
 const MAX_TEXT = 1000; // one spoken confession; nobody says more into a shell
+/* …except at `listening`, which is the whole point of the talk door: two minutes of
+ * voice, transcribed. Whisper gives back ~300 words a minute, so 2000 leaves room. */
+const MAX_STORY_TEXT = 2000;
 const MAX_SHARES = 12; // the seal prompt quotes them all back
 const MAX_REFINES = 3; // each refinement is a fresh LLM call on an already-good quest
+
+/* Touch-path shares carry this marker. They are things the seeker PRESSED, not things
+ * they said, so they must reach the weave (a wordless séance still needs words) without
+ * ever becoming a quoted echo — the same rule "I am carrying:" already enforces for the
+ * stones. seekerWords() drops them; toldFrom() and context() keep them. */
+const TAP_PREFIX = "The shell reads: ";
 
 const SETTLED_LINE =
   "The Turtle has heard enough. The Tree has settled — it will not turn again tonight. " +
@@ -259,6 +304,17 @@ function context(sess) {
         "'you said' or quote a stone's name back to them as if they spoke it.",
     );
   }
+  /* Only ever present on the touch path, so a talking séance builds the same CONTEXT the
+   * Spark does — which is what cloud/test/parity.mjs diffs. */
+  const taps = tapPhrases(sess);
+  if (taps.length) {
+    parts.push(
+      "They came in by touch, not by talking. What they pressed: " +
+        taps.join(" ") +
+        " These are tiles they chose, not sentences they spoke — never write 'you said' " +
+        "about them and never read one back as a quotation.",
+    );
+  }
   if ((sess.ground || 0) >= 0.5) {
     parts.push(
       "IMPORTANT — the seeker is far from shore tonight (altered, exhausted, or " +
@@ -311,10 +367,13 @@ export function start(mode = "seek") {
     name: null,
     prior_line: null,
     shares: [],
+    door: null,
     weather: null,
     stones: [],
+    wanting: null,
+    question: null,
+    chips: null,
     ground: 0.0,
-    stem_tried: false,
     picks: null,
     located: null,
     reading: null,
@@ -329,16 +388,36 @@ export function start(mode = "seek") {
   return { sess, event: { session: sid, stage: sess.stage, say, expects: "name" } };
 }
 
+/** The words the seeker actually SAID — the only text an echo may quote. */
 function seekerWords(sess) {
+  /* The cloud flow has no stem stage any more, but app/oracle/session.py still does and
+   * this function is diffed against it. Keep the strip: it costs one line, it makes a
+   * session started before v2 read correctly, and removing it breaks parity for nothing. */
   const stem = ((WEATHERS[sess.weather] || {}).stem || "").trim();
   const spoken = [];
   for (const share of sess.shares || []) {
     let text = (share || "").trim();
     if (text.startsWith("I am carrying:")) continue;
+    if (text.startsWith(TAP_PREFIX)) continue;
     if (stem && text.startsWith(stem)) text = text.slice(stem.length).trim();
     if (text) spoken.push(text);
   }
   return spoken;
+}
+
+/** What the seeker TOUCHED, without the marker — never quotable, always readable. */
+function tapPhrases(sess) {
+  return (sess.shares || [])
+    .map((s) => String(s || "").trim())
+    .filter((s) => s.startsWith(TAP_PREFIX))
+    .map((s) => s.slice(TAP_PREFIX.length).trim())
+    .filter(Boolean);
+}
+
+/** Everything the Turtle has to go on, spoken and tapped, as one line for the weave. */
+function toldFrom(sess) {
+  const parts = [...tapPhrases(sess), ...seekerWords(sess)];
+  return parts.join(" ") || "The seeker could not put it into words.";
 }
 
 function quoteTokens(text) {
@@ -443,16 +522,138 @@ function overlapCount(a, b) {
   return n;
 }
 
+/* ---- the asking: cards first, then one open question ------------------------------ */
+
+/* An oracle turns the cards and then asks you something. Doing it in that order is the
+ * difference between an intake form and a reading — the cards are on the table, they are
+ * strange, and the question the Turtle asks about them is the one a seeker will actually
+ * answer. So the spread is revealed HERE, before any reading exists, and the answer goes
+ * into the weave with everything else. */
+
+/** One open question per realm, built from the card's own name and a keyword. */
+const ASK_FALLBACKS = {
+  roots: (c, kw) =>
+    `“${c.name}” rose for what you have to face, and it carries ${kw}. ` +
+    "What have you been walking around out here?",
+  trunk: (c, kw) =>
+    `“${c.name}” is where you are standing tonight, and it carries ${kw}. ` +
+    "What has been holding you up this week?",
+  branches: (c, kw) =>
+    `“${c.name}” is what you are reaching for, and it carries ${kw}. ` +
+    "What do you want before this city comes down?",
+};
+
+const ASK_CHIPS = {
+  roots: ["Something I keep avoiding", "A person, mostly", "I honestly do not know"],
+  trunk: ["My camp", "Strangers, so far", "Nothing solid yet"],
+  branches: ["To be seen once", "Rest", "Something I cannot name"],
+};
+
+/** Which card the Turtle asks about. The axis, if it spoke; otherwise it rotates. */
+function askRealm(sess) {
+  if (sess.axis_slot) return sess.axis_slot;
+  const n = (sess.picks.roots.number || 1) + (sess.picks.branches.number || 1);
+  return SPREAD_REALMS[n % SPREAD_REALMS.length];
+}
+
+function askFallback(sess) {
+  const realm = askRealm(sess);
+  const card = sess.picks[realm];
+  const kw = (card.keywords || [])[0] || "weight";
+  return { question: ASK_FALLBACKS[realm](card, kw), chips: ASK_CHIPS[realm], mode: "fallback" };
+}
+
+/** Clean the model's three chips: their words, six words each, or none of them. */
+function cleanChips(raw) {
+  if (!Array.isArray(raw)) return null;
+  const out = [];
+  for (const c of raw) {
+    const s = String(c == null ? "" : c)
+      .replace(/^[\s"'“”\-•]+|[\s"'“”]+$/g, "")
+      .trim();
+    if (!s || words(s) > 6 || s.length > 48) continue;
+    if (!out.includes(s)) out.push(s);
+    if (out.length === 3) break;
+  }
+  return out.length === 3 ? out : null;
+}
+
+async function askLlm(sess, llm, tShort) {
+  const picks = sess.picks;
+  const cl = cardLore();
+  const heard = seekerWords(sess);
+  const taps = tapPhrases(sess);
+  const lines = SPREAD_REALMS.map(
+    (r) =>
+      `${SLOT_TITLES[r]} — ${picks[r].name}: keywords=${(picks[r].keywords || []).join(", ")}; ` +
+      `essence="${(cl[picks[r].id] || {}).essence || picks[r].reading || ""}"`,
+  ).join("\n");
+  const prompt =
+    "Three cards are face up on the table. The seeker has NOT heard their reading yet — " +
+    "you are about to ask them one thing, and their answer becomes part of it.\n\n" +
+    `The cards:\n${lines}\n\n` +
+    (heard.length
+      ? "What the seeker has already told you:\n" + heard.map((s) => `- ${s}`).join("\n")
+      : "The seeker has said nothing tonight. They only touched what the shell offered:\n" +
+        taps.map((s) => `- ${s}`).join("\n")) +
+    "\n\nAsk ONE open question in the Turtle's voice, under 25 words. Name one of the cards " +
+    "by name and let it put the question in your mouth. It must be answerable out loud in a " +
+    "sentence, must NOT be answerable yes or no, must not predict anything, and must make them " +
+    "say something they have not said yet. Then give three answers a seeker might actually give " +
+    "— in THEIR words, not yours, under six words each.\n" +
+    'Return JSON only: {"question": "...", "chips": ["...", "...", "..."]}';
+  const resp = await llm.generate(prompt, {
+    system: SYSTEM,
+    asJson: true,
+    timeout: tShort,
+    stage: "ask",
+  });
+  const out = tryJson(resp);
+  if (!out || typeof out !== "object") return null;
+  const question = cleanLine(out.question, 30);
+  if (!question) return null;
+  return { question, chips: cleanChips(out.chips) || askFallback(sess).chips, mode: "llm" };
+}
+
 /** THE PLAYA PULLS: pure chance, one card per realm. The AI's craft is the binding,
- *  not the choosing — meaning is made, not matched. */
-async function draw(sess, ctx) {
-  const told = seekerWords(sess).join(" ") || "The seeker could not put it into words.";
+ *  not the choosing — meaning is made, not matched. The cards are revealed now. */
+async function drawStep(sess, ctx) {
   const { picks, axisSlot } = drawSpread(BY_REALM, ctx.shellChance);
-  const selMode = "playa";
   const located = locateSpread(picks);
   sess.picks = picks;
   sess.located = located;
   sess.axis_slot = axisSlot;
+  sess.stage = "asking";
+  const ask =
+    (ctx.llm && ctx.llm.available() ? await askLlm(sess, ctx.llm, ctx.tShort) : null) ||
+    askFallback(sess);
+  sess.question = ask.question;
+  sess.chips = ask.chips;
+  let say = choice(DRAWN_LINES);
+  if (axisSlot) say = AXIS_LINE.replace("{card}", picks[axisSlot].name);
+  return {
+    session: sess.id,
+    stage: "asking",
+    say,
+    cards: Object.fromEntries(
+      SPREAD_REALMS.map((r) => [r, cardPayload(picks[r], located[r])]),
+    ),
+    // which slot, if any, the Turtle's own axis spoke into — the kiosk marks it
+    axis_slot: axisSlot,
+    map: COMPASS_ROSE,
+    directions: directionsLines(picks, located),
+    question: ask.question,
+    chips: ask.chips,
+    expects: "answer",
+    modes: { ask: ask.mode },
+  };
+}
+
+/** The reading and the quest, from the cards already on the table plus every share. */
+async function weaveStep(sess, ctx) {
+  const told = toldFrom(sess);
+  const picks = sess.picks;
+  const located = sess.located;
   const [out, weaveMode] = await weave(told, picks, ctx.llm, located, context(sess), ctx.tLong);
   const echoes =
     (ctx.llm && ctx.llm.available() ? await echoesLlm(sess, ctx.llm, ctx.tShort) : null) ||
@@ -461,25 +662,22 @@ async function draw(sess, ctx) {
   sess.adventure = out.adventure;
   sess.echoes = echoes;
   sess.stage = "proposed";
-  let say = choice(DRAWN_LINES);
-  if (axisSlot) say = AXIS_LINE.replace("{card}", picks[axisSlot].name);
   return {
     session: sess.id,
     stage: "proposed",
-    say,
+    say: choice(WOVEN_LINES),
     cards: Object.fromEntries(
       SPREAD_REALMS.map((r) => [r, cardPayload(picks[r], located[r])]),
     ),
     echoes,
-    // which slot, if any, the Turtle's own axis spoke into — the kiosk marks it
-    axis_slot: axisSlot,
+    axis_slot: sess.axis_slot,
     reading: out.reading,
     adventure: out.adventure,
     map: COMPASS_ROSE,
     directions: directionsLines(picks, located),
     ask: DECISION_ASK,
     expects: "decision",
-    modes: { select: selMode, weave: weaveMode },
+    modes: { select: "playa", weave: weaveMode },
   };
 }
 
@@ -564,7 +762,7 @@ function isSameQuest(next, prev) {
 
 /** No LLM: re-score the realms against the fuller share; the Tree may reconsider a card. */
 function refineFallback(sess) {
-  const told = seekerWords(sess).join(" ") || "The seeker could not put it into words.";
+  const told = toldFrom(sess);
   const picks = selectFallback(told, BY_REALM);
   // select_fallback only knows the three Tree realms, so a re-score would quietly swap
   // out an axis card the seeker has already been shown. The Turtle does not take that
@@ -596,12 +794,7 @@ async function nameStep(sess, text, tale, ctx) {
       expects: "tale",
     };
   }
-  sess.stage = "weather";
-  const tiles = WEATHER.weathers.map((w) => ({
-    id: w.id,
-    name: w.name,
-    tile: `/tiles/${w.id}.jpg`,
-  }));
+  sess.stage = "door";
   let say;
   if (priorQ) {
     sess.prior_line =
@@ -611,16 +804,35 @@ async function nameStep(sess, text, tale, ctx) {
     say =
       `${name}. The Turtle remembers you — you carried “${priorQ.title}.” ` +
       (priorT ? "Your tale is in the book. " : "The book still waits for that tale. ") +
-      WEATHER_ASK;
+      DOOR_ASK_TAIL;
   } else {
-    say = `${name}. Good — a name the dust can hold. ${WEATHER_ASK}`;
+    say = `${name}. Good — a name the dust can hold. ${DOOR_ASK_TAIL}`;
   }
+  return { session: sess.id, stage: "door", say, doors: DOORS, expects: "door" };
+}
+
+/** The six skies, as the kiosk wants them. */
+function weatherEvent(sess, say) {
   return {
     session: sess.id,
     stage: "weather",
     say,
-    weathers: tiles,
+    weathers: WEATHER.weathers.map((w) => ({
+      id: w.id,
+      name: w.name,
+      tile: `/tiles/${w.id}.jpg`,
+    })),
     expects: "weather",
+  };
+}
+
+function wantingEvent(sess, say) {
+  return {
+    session: sess.id,
+    stage: "wanting",
+    say,
+    wantings: WANTINGS.map((w) => ({ id: w.id, name: w.name, line: w.line })),
+    expects: "wanting",
   };
 }
 
@@ -665,35 +877,42 @@ export async function hear(sess, body, ctx) {
   }
   body = body && typeof body === "object" ? body : { text: body };
   // truncate rather than refuse: a real seeker never notices, and a séance should not
-  // fail on the one thing the seeker was brave enough to say
-  const text = String(body.text || "").trim().slice(0, MAX_TEXT);
+  // fail on the one thing the seeker was brave enough to say. The talk door gets a
+  // bigger cap because two minutes of transcribed voice lands there in one piece.
+  const cap = sess.stage === "listening" ? MAX_STORY_TEXT : MAX_TEXT;
+  const text = String(body.text || "").trim().slice(0, cap);
   const meta = body.meta || {};
   const sid = sess.id;
 
+  /* The wordless stages come first: a tap carries no text, so none of them may fall
+   * through the "the Turtle heard only wind" guard below. */
+  if (sess.stage === "door") {
+    const d = String(body.door || "").trim().toLowerCase();
+    if (d === "talk") {
+      sess.door = "talk";
+      sess.stage = "listening";
+      return { session: sid, stage: "listening", say: choice(LISTEN_INVITES), expects: "story" };
+    }
+    if (d === "touch") {
+      sess.door = "touch";
+      sess.stage = "weather";
+      return weatherEvent(sess, WEATHER_ASK);
+    }
+    return { session: sid, stage: "door", say: DOOR_RETRY, doors: DOORS, expects: "door" };
+  }
   if (sess.stage === "weather") {
     const w = WEATHERS[String(body.weather || "").trim()];
-    if (!w) {
-      return {
-        session: sid,
-        stage: "weather",
-        say: "Touch one of the six skies, traveler.",
-        weathers: WEATHER.weathers.map((x) => ({
-          id: x.id,
-          name: x.name,
-          tile: `/tiles/${x.id}.jpg`,
-        })),
-        expects: "weather",
-      };
-    }
+    if (!w) return weatherEvent(sess, "Touch one of the six skies, traveler.");
     sess.weather = w.id;
     sess.ground = Math.max(sess.ground, w.grounding || 0.0);
-    sess.stage = "stem";
+    pushShare(sess, `${TAP_PREFIX}the weather in me is ${w.name}.`);
+    sess.stage = "stones";
     return {
       session: sid,
-      stage: "stem",
-      say: `${w.name}. ${choice(STEM_ASKS)}`,
-      stem: w.stem,
-      expects: "stem",
+      stage: "stones",
+      say: `${w.name}. ${STONES_ASK}`,
+      stones: STONES,
+      expects: "stones",
     };
   }
   if (sess.stage === "stones") {
@@ -704,7 +923,39 @@ export async function hear(sess, body, ctx) {
       sess,
       "I am carrying: " + (names.length ? names.join(", ") : "nothing I can name") + ".",
     );
-    return await draw(sess, ctx);
+    sess.stage = "wanting";
+    return wantingEvent(sess, WANTING_ASK);
+  }
+  if (sess.stage === "wanting") {
+    const want = WANTINGS.find((w) => w.id === String(body.wanting || "").trim());
+    if (!want) return wantingEvent(sess, WANTING_RETRY);
+    sess.wanting = want.id;
+    pushShare(sess, `${TAP_PREFIX}I came out here for ${want.name.toLowerCase()} — ${want.line}.`);
+    return await drawStep(sess, ctx);
+  }
+  if (sess.stage === "asking") {
+    // three ways to answer: say it, tap one of the Turtle's own guesses, or refuse
+    const chip = String(body.chip || "").trim().slice(0, 120);
+    if (body.pass === true || body.pass === "true") {
+      /* A refusal is an answer. Nothing is pushed — the weave runs on what it already
+       * has, and echoesFallback names the cards instead of quoting words that
+       * were never said. */
+    } else if (chip) {
+      pushShare(sess, chip);
+    } else if (text) {
+      groundSignals(sess, text, meta);
+      pushShare(sess, text);
+    } else {
+      return {
+        session: sid,
+        stage: "asking",
+        say: ASK_RETRY,
+        question: sess.question,
+        chips: sess.chips,
+        expects: "answer",
+      };
+    }
+    return await weaveStep(sess, ctx);
   }
   if (!text) {
     return {
@@ -726,17 +977,12 @@ export async function hear(sess, body, ctx) {
       expects: "done",
     };
   }
-  if (sess.stage === "stem") {
+  /* The talk door: one long share, however long it took to say. No stem, no rescue —
+   * a seeker who chose to talk has already been given the whole night. */
+  if (sess.stage === "listening") {
     groundSignals(sess, text, meta);
-    const stem = (WEATHERS[sess.weather] || {}).stem || "";
-    pushShare(sess, stem ? `${stem} ${text}` : text);
-    // thin answer → the stones rescue: recognition when words won't come
-    if (((text.match(/\S+/g) || []).length) < 4 && !sess.stem_tried) {
-      sess.stem_tried = true;
-      sess.stage = "stones";
-      return { session: sid, stage: "stones", say: STONES_ASK, stones: STONES, expects: "stones" };
-    }
-    return await draw(sess, ctx);
+    pushShare(sess, text);
+    return await drawStep(sess, ctx);
   }
   if (sess.stage === "proposed") {
     pushShare(sess, text);
@@ -970,6 +1216,13 @@ export const __test = {
   cleanLine,
   extractName,
   seekerWords,
+  tapPhrases,
+  toldFrom,
+  askLlm,
+  askFallback,
+  cleanChips,
+  WANTINGS,
+  DOORS,
   quoteWindows,
   validEcho,
   echoesFallback,
