@@ -755,7 +755,7 @@ async function offerStory(){
   try{
     const e=await post("say",{session:SID,text,meta:metaNow()});
     document.body.classList.remove("speaking");
-    if(!e.error){ $('story').value=""; $('talkpanel').classList.remove("on"); }
+    if(!e.error&&renderable(e)){ $('story').value=""; $('talkpanel').classList.remove("on"); }
     await handle(e);
   }catch(err){ toast(whyLost(err)); }
   document.body.classList.remove("speaking");
@@ -829,7 +829,7 @@ async function offer(){
     /* cloud: the box is emptied only once the server has actually taken the turn. It
        used to be cleared before handle(), so a 429 or a refused turn swallowed words
        the seeker may have spent a minute finding. */
-    if(!e.error){ $('q').value=""; $('q').placeholder="speak, or write it here…"; }
+    if(!e.error&&renderable(e)){ $('q').value=""; $('q').placeholder="speak, or write it here…"; }
     await handle(e);
   }catch(err){ toast(whyLost(err)); }
   document.body.classList.remove("speaking");
