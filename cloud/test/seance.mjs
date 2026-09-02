@@ -23,6 +23,8 @@ import { start, hear, accept, replayable, __test as S } from "../src/session.js"
 import { biteRealm, landmarkRealm, landmarkWhere } from "../src/weave.js";
 import { formatReceipt } from "../src/printer.js";
 import { transcribe, toBase64, MAX_AUDIO_BYTES } from "../src/ears.js";
+import CARDS from "../../data/cards.json" with { type: "json" };
+import { voiceText, voiceChoice, TRYOUT_SPEAKERS, TRYOUT_MODELS } from "../src/voice.js";
 
 let failures = 0;
 function check(label, ok, detail = "") {
@@ -673,6 +675,26 @@ section("the sealed quest is one bite, with a bearing and a proof");
     if (own.sealed.quest.moves[0].where === `${at} — walk toward it`) namedItsOwn++;
     if (!/Questionmark/.test(other.sealed.quest.moves[0].where)) refusedAnother++;
   }
+  /* The 8 draws above are random, so they cannot prove this — and the first version of
+     the rule quietly refused three of the deck's own places, because it reduced the
+     bearing's words one way and the place's words another ("Self-Reliance",
+     "Sunrise/Sunset", "El Pulpo Mecánico"). Every card in the deck, every time. */
+  const refused = CARDS.cards.filter(
+    (c) => !S.usableBearing(`${c.real_2026.name} — walk toward it`, c.real_2026.name),
+  );
+  check(
+    `every card in the deck may name its own place (${CARDS.cards.length} cards)`,
+    refused.length === 0,
+    JSON.stringify(refused.map((c) => c.real_2026.name)),
+  );
+  /* …and it opens the door to that ONE place. Said mid-bearing, where no capital is
+     forced, another card's place is still a placement in disguise. */
+  const strangers = ["El Pulpo Mecánico", "Mebuyan Pulse", "Barbie Death Village"];
+  check(
+    "and only to that one — another card's place is still refused",
+    strangers.every((n) => !S.usableBearing(`walk toward ${n}`, "Kidsville")) &&
+      strangers.every((n) => S.usableBearing(`walk toward ${n}`, n)),
+  );
   check("a bearing that names the bite card's own place is sealed", namedItsOwn === 8, String(namedItsOwn));
   check("a bearing that names any other camp is not", refusedAnother === 8, String(refusedAnother));
 }
@@ -1278,6 +1300,81 @@ section("the ears will not open without a séance");
     [0, 1, 2, 3, 47, 49151, 49152, 49153].every(
       (n) => toBase64(bytes.subarray(0, n)) === Buffer.from(bytes.subarray(0, n)).toString("base64"),
     ),
+  );
+}
+
+/* ---- 12b. the voice: what is worth saying aloud ----------------------------------- */
+
+/* The kiosk posts ONE SENTENCE per /api/speak call, so the Turtle's "Mm." reaches the
+ * model on its own and comes back as a groan. src/voice.js is its own module for the same
+ * reason src/ears.js is: index.js re-exports the Durable Object class and cannot be
+ * imported outside the Workers runtime. */
+
+section("the voice skips the Turtle's throat-clearing");
+{
+  const gone = ["Mm.", "Mmm.", "Hm.", "Hmm.", "Ah.", "Ahh.", "mm,", "  Mm…  ", "Mm. Ah. Hmm."];
+  check(
+    "a line that is only a hum is nothing to say aloud",
+    gone.every((t) => voiceText(t) === ""),
+    JSON.stringify(gone.filter((t) => voiceText(t) !== "")),
+  );
+  check(
+    "a leading hum is stripped and the sentence survives",
+    voiceText("Mm. Now the Turtle can see it.") === "Now the Turtle can see it." &&
+      voiceText("Mm, that changes the shape of it.") === "that changes the shape of it." &&
+      voiceText("Ah. A traveler. Come closer.") === "A traveler. Come closer.",
+    JSON.stringify(voiceText("Mm. Now the Turtle can see it.")),
+  );
+  check(
+    "a real sentence is never touched",
+    ["The shell hums.", "Ah yes, the shell hums.", "Move slow and bite things.",
+      "Mmhm is not a word the Turtle says."].every((t) => voiceText(t) === t),
+  );
+  check("and nothing at all is still nothing", voiceText("") === "" && voiceText(null) === "");
+}
+{
+  /* The tryouts are staging-only, and they are an ALLOWLIST because /api/speak is public
+     and unauthenticated: a `model` reaching env.AI.run() unchecked is an open door onto
+     every model on the account. */
+  const prod = { TTS_MODEL: "@cf/deepgram/aura-1", TTS_SPEAKER: "angus" };
+  const stg = { ...prod, TTS_MODEL: "@cf/deepgram/aura-2-en", TTS_SPEAKER: "pluto", VOICE_TRYOUTS: "1" };
+  const body = { speaker: "draco", model: "@cf/deepgram/aura-1" };
+  check(
+    "with no tryouts, the environment's own voice answers whatever the body asks",
+    JSON.stringify(voiceChoice(prod, body)) ===
+      JSON.stringify({ model: "@cf/deepgram/aura-1", speaker: "angus", tryout: false }),
+    JSON.stringify(voiceChoice(prod, body)),
+  );
+  check(
+    "with tryouts on, an allowed speaker and model are taken",
+    JSON.stringify(voiceChoice(stg, body)) ===
+      JSON.stringify({ model: "@cf/deepgram/aura-1", speaker: "draco", tryout: true }),
+    JSON.stringify(voiceChoice(stg, body)),
+  );
+  check(
+    "every allowlisted speaker is reachable, and only those",
+    TRYOUT_SPEAKERS.every((sp) => voiceChoice(stg, { speaker: sp }).speaker === sp) &&
+      TRYOUT_MODELS.every((m) => voiceChoice(stg, { model: m }).model === m),
+  );
+  const bad = [
+    { model: "@cf/meta/llama-3.3-70b-instruct-fp8-fast" },
+    { model: "../../etc/passwd" },
+    { speaker: "angus2" },
+    { speaker: "PLUTO; drop" },
+    { model: null, speaker: [] },
+  ];
+  check(
+    "anything outside the allowlists is ignored in silence",
+    bad.every((b) => {
+      const v = voiceChoice(stg, b);
+      return v.model === "@cf/deepgram/aura-2-en" && v.speaker === "pluto" && v.tryout === false;
+    }),
+    JSON.stringify(bad.map((b) => voiceChoice(stg, b))),
+  );
+  check(
+    "a body that is not an object never reaches the model name",
+    voiceChoice(stg, "pluto").model === "@cf/deepgram/aura-2-en" &&
+      voiceChoice(stg, null).speaker === "pluto",
   );
 }
 

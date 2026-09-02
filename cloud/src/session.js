@@ -1354,7 +1354,10 @@ function usableBearing(text, place) {
   if (!s || words(s) > 16 || addressInBearing(s)) return false;
   const name = String(place || "").trim();
   const named = Boolean(name) && s.toLowerCase().includes(name.toLowerCase());
-  const allowed = new Set(named ? name.toLowerCase().match(/[a-z0-9]+/g) || [] : []);
+  /* Both sides are reduced the SAME way, or a place that is not spelled in plain letters
+   * is not allowed to name itself: "Self-Reliance", "Sunrise/Sunset" and "Mecánico" all
+   * survive one transform and not the other, and all three were thrown out. */
+  const allowed = new Set(named ? name.split(/\s+/).map(bareWord).filter(Boolean) : []);
   const lone = words(s) === 1;
   return s
     .split(/(?<=[.!?…])\s+/)
@@ -1363,8 +1366,13 @@ function usableBearing(text, place) {
       return lone ? toks : toks.slice(1); // the first word starts a sentence, so it is capitalized
     })
     .filter((w) => /^[“"'(]*[A-Z]/.test(w))
-    .map((w) => w.replace(/[^A-Za-z0-9]/g, "").toLowerCase())
+    .map(bareWord)
     .every((w) => BEARING_NAMES.has(w) || allowed.has(w));
+}
+
+/** A word cut down to the letters and digits in it, for comparing one against another. */
+function bareWord(w) {
+  return String(w || "").replace(/[^A-Za-z0-9]/g, "").toLowerCase();
 }
 
 /** Personalize the sealed bite (task/where/proof, and a leave if the act leaves one). */
