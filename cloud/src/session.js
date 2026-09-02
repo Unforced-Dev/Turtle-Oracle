@@ -102,6 +102,15 @@ const REFINE_ACKS = [
 
 const DECISION_ASK = "Do you accept this quest? Or shall the Turtle hear more before it is sealed?";
 
+/* What the Turtle says when the seeker answers the standing decision with something that
+ * is not a refinement — a stray {pass:true} or {chip} from the screen before, or an empty
+ * body from a phone whose reply was lost on LTE and which came back to a screen the
+ * server had already left. Nothing has moved, so the whole decision is offered again. */
+const DECISION_REASK =
+  "The quest stands as it was spoken. Accept it, or tell the Turtle more before it is sealed.";
+
+const ALREADY_SEALED = "The quest is already sealed, traveler. Go live it — the shell will wait.";
+
 const ACCEPT_LINES = [
   "So be it. The quest is sealed. Move slow, bite things, and bring your proofs back to the shell.",
   "Sealed. The Tree will be watching, and trees see everything slowly. Go — and come back with the tale.",
@@ -707,6 +716,85 @@ async function askLlm(sess, llm, tShort) {
   return { question, chips: cleanChips(out.chips) || askFallback(sess).chips, mode: "llm" };
 }
 
+/* ---- the three events that carry a reveal ----------------------------------------- */
+
+/* `asking`, `proposed` and `accepted` are the only stages whose kiosk renderer reaches
+ * INTO the event: theAsking and theReading deal `e.cards[slot].id`, renderQuest walks
+ * `e.quest.moves`. So every event the séance can return at one of those stages is built
+ * here, in one place, whole — the retries included.
+ *
+ * A retry that carried only `say` used to be persisted by the kiosk's rememberStep and
+ * then blow up the next render: TypeError, blank screen, and a localStorage entry that
+ * restores the same blank screen on every reload. On a phone nothing wipes itself, so it
+ * stayed blank. Nothing at these three stages may return a partial event. */
+function spreadPayload(sess) {
+  return Object.fromEntries(
+    SPREAD_REALMS.map((r) => [r, cardPayload(sess.picks[r], sess.located[r])]),
+  );
+}
+
+/** The cards face up on the table, and the one open question asked about them. */
+function askingEvent(sess, say, extra) {
+  return Object.assign(
+    {
+      session: sess.id,
+      stage: "asking",
+      say,
+      cards: spreadPayload(sess),
+      // which slot, if any, the Turtle's own axis spoke into — the kiosk marks it
+      axis_slot: sess.axis_slot,
+      map: COMPASS_ROSE,
+      directions: directionsLines(sess.picks, sess.located),
+      question: sess.question,
+      chips: sess.chips,
+      expects: "answer",
+    },
+    extra || {},
+  );
+}
+
+/** The echoes, the reading, the quest as it stands, and the decision on it. */
+function proposedEvent(sess, say, extra) {
+  return Object.assign(
+    {
+      session: sess.id,
+      stage: "proposed",
+      say,
+      cards: spreadPayload(sess),
+      echoes: sess.echoes,
+      axis_slot: sess.axis_slot,
+      reading: sess.reading,
+      adventure: sess.adventure,
+      map: COMPASS_ROSE,
+      directions: directionsLines(sess.picks, sess.located),
+      ask: DECISION_ASK,
+      expects: "decision",
+    },
+    extra || {},
+  );
+}
+
+/** The sealed quest, spoken or replayed — always the same words, never a second seal. */
+function acceptedEvent(sess, say, extra) {
+  return Object.assign(
+    { session: sess.id, stage: "accepted", say, quest: sess.quest, expects: "done" },
+    extra || {},
+  );
+}
+
+/** True when the session's own stage carries everything that stage's event needs.
+ *  index.js asks this on its error path: a stage that was entered but never finished
+ *  must not be saved, or the seeker's retry lands in a stage whose reveal never
+ *  reached them. A finished one is saved, so the retry replays instead of re-drawing. */
+export function replayable(sess) {
+  if (!sess) return false;
+  if (sess.stage === "asking") return Boolean(sess.picks && sess.located && sess.question);
+  if (sess.stage === "proposed") return Boolean(sess.picks && sess.located && sess.adventure);
+  if (sess.stage === "accepted") return Boolean(sess.quest);
+  // the wordless stages hold nothing a half-finished request could have half-built
+  return true;
+}
+
 /** THE PLAYA PULLS: pure chance, one card per realm. The AI's craft is the binding,
  *  not the choosing — meaning is made, not matched. The cards are revealed now. */
 async function drawStep(sess, ctx) {
@@ -729,22 +817,7 @@ async function drawStep(sess, ctx) {
   sess.chips = ask.chips;
   let say = choice(DRAWN_LINES);
   if (axisSlot) say = AXIS_LINE.replace("{card}", picks[axisSlot].name);
-  return {
-    session: sess.id,
-    stage: "asking",
-    say,
-    cards: Object.fromEntries(
-      SPREAD_REALMS.map((r) => [r, cardPayload(picks[r], located[r])]),
-    ),
-    // which slot, if any, the Turtle's own axis spoke into — the kiosk marks it
-    axis_slot: axisSlot,
-    map: COMPASS_ROSE,
-    directions: directionsLines(picks, located),
-    question: ask.question,
-    chips: ask.chips,
-    expects: "answer",
-    modes: { ask: ask.mode },
-  };
+  return askingEvent(sess, say, { modes: { ask: ask.mode } });
 }
 
 /** The reading and the quest, from the cards already on the table plus every share. */
@@ -764,23 +837,9 @@ async function weaveStep(sess, ctx) {
   sess.adventure = out.adventure;
   sess.echoes = echoes;
   sess.stage = "proposed";
-  return {
-    session: sess.id,
-    stage: "proposed",
-    say: choice(WOVEN_LINES),
-    cards: Object.fromEntries(
-      SPREAD_REALMS.map((r) => [r, cardPayload(picks[r], located[r])]),
-    ),
-    echoes,
-    axis_slot: sess.axis_slot,
-    reading: out.reading,
-    adventure: out.adventure,
-    map: COMPASS_ROSE,
-    directions: directionsLines(picks, located),
-    ask: DECISION_ASK,
-    expects: "decision",
+  return proposedEvent(sess, choice(WOVEN_LINES), {
     modes: { select: "playa", weave: weaveMode, echoes: spokenEchoes ? "llm" : "fallback" },
-  };
+  });
 }
 
 async function refineLlm(sess, llm, tLong) {
@@ -1036,6 +1095,13 @@ export async function hear(sess, body, ctx) {
     pushShare(sess, `${TAP_PREFIX}I came out here for ${want.name.toLowerCase()} — ${want.line}.`);
     return await drawStep(sess, ctx);
   }
+  /* Past the draw the kiosk renders out of the event, so a session that reached one of
+   * these stages without a spread cannot be answered at all. It cannot happen in this
+   * build; a session written by an older one could, and an error the kiosk can toast is
+   * better than a 500 it cannot. */
+  if ((sess.stage === "asking" || sess.stage === "proposed") && !(sess.picks && sess.located)) {
+    return { error: "the Turtle has lost the table — touch the shell to begin again", stage: sess.stage };
+  }
   if (sess.stage === "asking") {
     // three ways to answer: say it, tap one of the Turtle's own guesses, or refuse
     const chip = String(body.chip || "").trim().slice(0, 120);
@@ -1049,16 +1115,27 @@ export async function hear(sess, body, ctx) {
       groundSignals(sess, text, meta);
       pushShare(sess, text);
     } else {
-      return {
-        session: sid,
-        stage: "asking",
-        say: ASK_RETRY,
-        question: sess.question,
-        chips: sess.chips,
-        expects: "answer",
-      };
+      /* Nothing to weave on. The whole asking is sent again — cards included, because
+       * the kiosk's renderer deals them out of this event — marked `retry` so a phone
+       * that is already looking at the spread re-draws only the answer row. */
+      return askingEvent(sess, ASK_RETRY, { retry: true });
     }
     return await weaveStep(sess, ctx);
+  }
+  /* The two stages the seeker can be standing in front of when a reply goes missing.
+   * Both come BEFORE the "heard only wind" guard: at either of them a body with no text
+   * is a normal thing for the kiosk to send (a stale {pass:true}, a chip from the screen
+   * before, an empty retry) and the answer is the standing offer, sent again in full —
+   * never a bare `say` the renderer would tear itself apart on. */
+  if (sess.stage === "proposed") {
+    if (text) return await refineStep(sess, text, ctx);
+    return proposedEvent(sess, DECISION_REASK, { modes: { refine: "standing" } });
+  }
+  if (sess.stage === "accepted") {
+    if (!sess.quest) {
+      return { error: "the Turtle has lost the parchment — touch the shell to begin again", stage: "accepted" };
+    }
+    return acceptedEvent(sess, ALREADY_SEALED);
   }
   if (!text) {
     return {
@@ -1087,70 +1164,27 @@ export async function hear(sess, body, ctx) {
     pushShare(sess, text);
     return await drawStep(sess, ctx);
   }
-  if (sess.stage === "proposed") {
-    pushShare(sess, text);
-    const event = {
-      session: sid,
-      stage: "proposed",
-      map: COMPASS_ROSE,
-      ask: DECISION_ASK,
-      expects: "decision",
-    };
-    // A quest can be tuned a few times and then it is the quest. Past that the Turtle
-    // says so and spends nothing — the seeker's choice is now accept or walk away.
-    if ((sess.refines || 0) >= MAX_REFINES) {
-      Object.assign(event, {
-        say: SETTLED_LINE,
-        adventure: sess.adventure,
-        reading: sess.reading,
-        modes: { refine: "settled" },
-      });
-      event.cards = Object.fromEntries(
-        SPREAD_REALMS.map((r) => [r, cardPayload(sess.picks[r], sess.located[r])]),
-      );
-      event.echoes = sess.echoes;
-      event.directions = directionsLines(sess.picks, sess.located);
-      return event;
-    }
-    sess.refines = (sess.refines || 0) + 1;
-    const ref = ctx.llm && ctx.llm.available() ? await refineLlm(sess, ctx.llm, ctx.tLong) : null;
-    if (ref) {
-      sess.adventure = ref.adventure;
-      Object.assign(event, {
-        say: ref.say,
-        adventure: ref.adventure,
-        reading: sess.reading,
-        modes: { refine: "llm" },
-      });
-    } else {
-      const fb = refineFallback(sess);
-      sess.adventure = fb.adventure;
-      Object.assign(event, {
-        say: fb.say,
-        adventure: fb.adventure,
-        reading: fb.reading,
-        modes: { refine: "fallback" },
-      });
-    }
-    const picks = sess.picks;
-    const located = sess.located;
-    event.cards = Object.fromEntries(
-      SPREAD_REALMS.map((r) => [r, cardPayload(picks[r], located[r])]),
-    );
-    event.echoes = sess.echoes;
-    event.directions = directionsLines(picks, located);
-    return event;
-  }
-  if (sess.stage === "accepted") {
-    return {
-      session: sid,
-      stage: "accepted",
-      quest: sess.quest,
-      say: "The quest is already sealed, traveler. Go live it — the shell will wait.",
-      expects: "done",
-    };
-  }
   return { error: "the Turtle is confused", stage: sess.stage };
+}
+
+/** More truth after the quest was offered: tune it, or say the Tree has settled. */
+async function refineStep(sess, text, ctx) {
+  pushShare(sess, text);
+  // A quest can be tuned a few times and then it is the quest. Past that the Turtle
+  // says so and spends nothing — the seeker's choice is now accept or walk away.
+  if ((sess.refines || 0) >= MAX_REFINES) {
+    return proposedEvent(sess, SETTLED_LINE, { modes: { refine: "settled" } });
+  }
+  sess.refines = (sess.refines || 0) + 1;
+  const ref = ctx.llm && ctx.llm.available() ? await refineLlm(sess, ctx.llm, ctx.tLong) : null;
+  if (ref) {
+    sess.adventure = ref.adventure;
+    return proposedEvent(sess, ref.say, { modes: { refine: "llm" } });
+  }
+  // the offline path genuinely re-scores the cards, so it rewrites the reading too
+  const fb = refineFallback(sess);
+  sess.adventure = fb.adventure;
+  return proposedEvent(sess, fb.say, { modes: { refine: "fallback" } });
 }
 
 /* A `where` that is an address however it is dressed: a clock, a lettered street, the
@@ -1240,13 +1274,7 @@ export async function accept(sess, ctx) {
    * between them); the loser's write is overwritten and every later request replays the
    * one stored answer, which is what makes the race harmless rather than merely rare. */
   if (sess.quest) {
-    return {
-      session: sess.id,
-      stage: "accepted",
-      say: sess.accept_say || choice(ACCEPT_LINES),
-      quest: sess.quest,
-      expects: "done",
-    };
+    return acceptedEvent(sess, sess.accept_say || choice(ACCEPT_LINES));
   }
   if (sess.stage !== "proposed") {
     return { error: "no quest to accept yet", stage: sess.stage };
@@ -1341,14 +1369,7 @@ export async function accept(sess, ctx) {
     title: sess.quest.title,
     cards: SPREAD_REALMS.map((x) => picks[x].id),
   });
-  return {
-    session: sess.id,
-    stage: "accepted",
-    say: sess.accept_say,
-    quest: sess.quest,
-    expects: "done",
-    modes: { seal: sealMode },
-  };
+  return acceptedEvent(sess, sess.accept_say, { modes: { seal: sealMode } });
 }
 
 /* Exported only for cloud/test/parity.mjs, which builds each prompt on both sides of
