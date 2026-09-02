@@ -145,17 +145,29 @@ export async function weaveLlm(question, cards, llm, located, context, timeout) 
   const started = Date.now();
   for (let attempt = 0; attempt < 2; attempt++) {
     const t = attempt ? Math.floor(timeout / 2) : timeout;
-    const resp = await llm.generate(prompt, { system: SYSTEM, asJson: true, timeout: t, stage: "weave" });
+    /* The second roll says why it is happening. On production 2026-09-02 the first roll
+     * came back as the example and nothing else in 3 of 10 séances; a bare re-roll of
+     * the same prompt is the same dice. This line is an ADDITION, only ever sent on the
+     * retry, so the parity-locked first prompt is untouched. */
+    const p = attempt ? prompt + RETRY_NOTE : prompt;
+    const resp = await llm.generate(p, { system: SYSTEM, asJson: true, timeout: t, stage: "weave" });
     const out = tryJson(resp);
     if (out && typeof out === "object" && out.reading && out.adventure) {
       const reading = unquoteExample(String(out.reading).trim());
       const adventure = String(out.adventure).trim();
       if (reading && !QUEST_EXAMPLE_RE.test(adventure)) return { reading, adventure };
     }
-    if (Date.now() - started > timeout / 2) break;
+    /* timeout is in seconds; the clock is in ms (a bare `timeout / 2` compared 19 to
+     * milliseconds and the second roll never ran — production, 2026-09-02) */
+    if (Date.now() - started > (timeout / 2) * 1000) break;
   }
   return null;
 }
+
+const RETRY_NOTE =
+  "\n\nYour last answer repeated the EXAMPLE from your instructions word for word. That example " +
+  "is not this seeker's reading. Write this reading fresh: its first sentence must contain one " +
+  "exact word or phrase the seeker said above, and no sentence may come from the example.";
 
 /* ADDITION, not in weave.py — measured on staging 2026-09-02, thinking mode on: 3 of 4
  * readings OPENED with the SYSTEM prompt's own example, word for word ("You built all
