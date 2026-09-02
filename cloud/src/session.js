@@ -414,9 +414,11 @@ function tapPhrases(sess) {
     .filter(Boolean);
 }
 
-/** Everything the Turtle has to go on, spoken and tapped, as one line for the weave. */
+/** Everything the Turtle has to go on, spoken and tapped, as one line for the weave.
+ *  Spoken first: weaveFallback opens by quoting the first twelve words back, and those
+ *  should be the seeker's own if there are any. */
 function toldFrom(sess) {
-  const parts = [...tapPhrases(sess), ...seekerWords(sess)];
+  const parts = [...seekerWords(sess), ...tapPhrases(sess)];
   return parts.join(" ") || "The seeker could not put it into words.";
 }
 
