@@ -12,8 +12,15 @@
  * `expects` that changes, or a body key the server quietly ignores fails here rather than
  * on a phone in the dust. The fake model is deliberately switchable: a séance that only
  * works when the model answers is a séance that does not work on the playa.
+ *
+ * Sections 9-12 are the ones that came out of the v2 review, and they are about the
+ * séance being answered by a phone rather than by a test: every stage against every body
+ * shape (an event the kiosk cannot draw is the whole bug), a client one stage behind the
+ * server, the caps that truncate rather than refuse, and src/ears.js against a fake AI
+ * binding — the only route here that talks to Workers AI without a séance in its body.
  */
-import { start, hear, accept, __test as S } from "../src/session.js";
+import { start, hear, accept, replayable, __test as S } from "../src/session.js";
+import { transcribe, toBase64, MAX_AUDIO_BYTES } from "../src/ears.js";
 
 let failures = 0;
 function check(label, ok, detail = "") {
@@ -470,6 +477,338 @@ section("the echoes quote a clause the seeker would recognise");
   );
   const { proposed: dead } = await walk("touch", { llm: deadLlm, answer: { pass: true } });
   check("no model at all is reported as fallback too", dead.modes.echoes === "fallback", JSON.stringify(dead.modes));
+}
+
+
+/* ---- 9. every stage, every body the phone can post -------------------------------- */
+
+/* The blast radius of a partial event is the whole séance: the kiosk persists the last
+ * step it was handed, and a `proposed` event with no cards makes its renderer throw on
+ * every render AND on every reload afterwards, because a phone has no idle wipe to clear
+ * the saved copy. So this walks the whole matrix — twelve stages against every body shape
+ * the kiosk has ever posted, plus the shapes a confused client can post — and asks the
+ * one question that matters: could this be drawn?
+ *
+ * `drawable` is assets/index.html's own renderable(), restated. Keep the two in step. */
+
+const REALMS3 = ["roots", "trunk", "branches"];
+function drawable(e) {
+  if (!e || typeof e !== "object" || !e.stage) return false;
+  if (e.error) return true; // an error-marked event is a toast, not a screen
+  const dealt = e.cards && REALMS3.every((r) => e.cards[r] && e.cards[r].id);
+  if (e.stage === "asking") return Boolean(dealt && e.question);
+  if (e.stage === "proposed") return Boolean(dealt && e.adventure);
+  if (e.stage === "accepted") return Boolean(e.quest && e.quest.moves);
+  return Boolean(e.say || e.doors || e.weathers || e.stones || e.wantings);
+}
+
+/** A fresh séance parked at `stage`, so one probe can never contaminate the next. */
+async function seanceAt(stage, ctx) {
+  const { sess } = start(stage.startsWith("tale") ? "tale" : "seek");
+  if (stage === "naming" || stage === "tale_naming") return sess;
+  await hear(sess, { text: "Wren" }, ctx);
+  if (stage === "door" || stage === "tale_listening") return sess;
+  if (stage === "tale_told") {
+    await hear(sess, { text: "I walked out to the fence and I came back changed." }, ctx);
+    return sess;
+  }
+  if (["weather", "stones", "wanting"].includes(stage)) {
+    await hear(sess, { door: "touch" }, ctx);
+    if (stage === "weather") return sess;
+    await hear(sess, { weather: "fog" }, ctx);
+    if (stage === "stones") return sess;
+    await hear(sess, { stones: ["grief"] }, ctx);
+    return sess;
+  }
+  await hear(sess, { door: "talk" }, ctx);
+  if (stage === "listening") return sess;
+  await hear(sess, { text: "I got here Tuesday and I have not slept, and I keep saying I am fine." }, ctx);
+  if (stage === "asking") return sess;
+  await hear(sess, { text: "I put down being the calm one." }, ctx);
+  if (stage === "proposed") return sess;
+  await accept(sess, ctx);
+  return sess;
+}
+
+section("every stage answers every body with something the phone can draw");
+{
+  const ctx = ctxWith(deadLlm);
+  const STAGES = [
+    "naming", "door", "listening", "weather", "stones", "wanting",
+    "asking", "proposed", "accepted", "tale_naming", "tale_listening", "tale_told",
+  ];
+  /* Every body the kiosk posts, plus the ones a client that has fallen a stage behind
+   * posts by accident — which is the real bug: the reply was lost on LTE after the
+   * Durable Object had already moved on, and the seeker taps the screen they still see. */
+  const BODIES = [
+    ["nothing at all", {}],
+    ["a refusal", { pass: true }],
+    ["a refusal as a string", { pass: "true" }],
+    ["a tapped chip", { chip: "A whole year" }],
+    ["a door", { door: "talk" }],
+    ["a sky", { weather: "fog" }],
+    ["stones", { stones: ["grief"] }],
+    ["a wanting", { wanting: "quiet" }],
+    ["words", { text: "here is a thing I have not said" }],
+    ["empty words", { text: "" }],
+    ["only meta", { meta: { ms: 900, input: "voice" } }],
+    ["an unknown key", { shrug: true }],
+    ["a bare string", "just a string"],
+    ["null", null],
+  ];
+  let drew = 0;
+  let missed = [];
+  let visited = new Set();
+  for (const stage of STAGES) {
+    for (const [label, body] of BODIES) {
+      const sess = await seanceAt(stage, ctx);
+      visited.add(sess.stage);
+      if (sess.stage !== stage) { missed.push(`${stage}: parked at ${sess.stage}`); continue; }
+      const e = await hear(sess, body, ctx);
+      if (drawable(e)) drew++;
+      else missed.push(`${stage} + ${label} -> ${JSON.stringify(e).slice(0, 160)}`);
+    }
+  }
+  // the control: if the walker silently failed to reach a stage, the matrix proves nothing
+  check(
+    "the matrix actually visits all twelve stages",
+    STAGES.every((st) => visited.has(st)),
+    STAGES.filter((st) => !visited.has(st)).join(", "),
+  );
+  check(
+    `every stage × body pair is renderable (${drew}/${STAGES.length * BODIES.length})`,
+    missed.length === 0,
+    missed.slice(0, 6).join("\n         "),
+  );
+}
+{
+  // and the two that were actually blowing up the phone, named
+  const ctx = ctxWith(deadLlm);
+  for (const body of [{ pass: true }, { chip: "A whole year" }, {}, { stones: ["grief"] }]) {
+    const sess = await seanceAt("proposed", ctx);
+    const e = await hear(sess, body, ctx);
+    check(
+      "a standing decision answered with " + JSON.stringify(body) + " re-offers the whole quest",
+      drawable(e) && e.stage === "proposed" && !e.error &&
+        Boolean(e.reading && e.ask && e.echoes && e.map),
+      JSON.stringify(Object.keys(e)),
+    );
+  }
+  const asking = await seanceAt("asking", ctx);
+  const retry = await hear(asking, {}, ctx);
+  check(
+    "an empty answer at the asking still carries the cards it is asking about",
+    drawable(retry) && retry.stage === "asking" && retry.retry === true &&
+      retry.question === asking.question && Boolean(retry.map && retry.directions),
+    JSON.stringify(Object.keys(retry)),
+  );
+  const sealed = await seanceAt("accepted", ctx);
+  const after = await hear(sealed, { pass: true }, ctx);
+  check(
+    "a sealed séance replays the parchment rather than saying it heard wind",
+    drawable(after) && after.stage === "accepted" && after.quest.moves.length === 3,
+    JSON.stringify(Object.keys(after)),
+  );
+}
+{
+  // replayable(): what index.js saves when a request throws half-way through
+  const ctx = ctxWith(deadLlm);
+  const asking = await seanceAt("asking", ctx);
+  const half = { ...asking, question: null };
+  check("a finished asking is worth saving", replayable(asking) === true);
+  check("an asking with no question yet is not", replayable(half) === false);
+  const proposed = await seanceAt("proposed", ctx);
+  check("a proposed with a quest on it is", replayable(proposed) === true);
+  check("a proposed with no quest is not", replayable({ ...proposed, adventure: null }) === false);
+  const sealed = await seanceAt("accepted", ctx);
+  check("a sealed séance is", replayable(sealed) === true && replayable({ ...sealed, quest: null }) === false);
+  check("and the stages with nothing to half-build always are", replayable({ stage: "door" }) === true);
+}
+
+/* ---- 10. the phone a stage behind the server -------------------------------------- */
+
+/* The real sequence: the séance answers, the reply dies on LTE, the Durable Object has
+ * already saved `proposed`, the seeker reloads onto the `asking` screen it last saw and
+ * taps "let it be". Every one of those stale bodies has to land somewhere sane, and the
+ * séance still has to end with a sealed quest. */
+
+section("a phone one stage behind the server still reaches a sealed quest");
+{
+  const ctx = ctxWith(deadLlm);
+  const sess = await seanceAt("proposed", ctx);
+  const first = sess.adventure;
+  const stale1 = await hear(sess, { pass: true }, ctx);
+  const stale2 = await hear(sess, { chip: "A whole year" }, ctx);
+  check(
+    "the stale pass and the stale chip both come back as the standing decision",
+    drawable(stale1) && drawable(stale2) &&
+      (stale1.modes || {}).refine === "standing" && (stale2.modes || {}).refine === "standing",
+    JSON.stringify([stale1.modes, stale2.modes]),
+  );
+  check("neither spent a refinement", sess.refines === 0, String(sess.refines));
+  check("neither changed the quest under the seeker", sess.adventure === first);
+  check(
+    "neither became a share the Turtle will quote back",
+    !sess.shares.includes("A whole year"),
+    JSON.stringify(sess.shares),
+  );
+  const sealed = await accept(sess, ctx);
+  check(
+    "and the séance still seals",
+    sealed.stage === "accepted" && sealed.quest.moves.length === 3 && !sealed.error,
+  );
+  // …and the same walk with a REAL refinement in the middle of the stale ones
+  const s2 = await seanceAt("proposed", ctx);
+  await hear(s2, {}, ctx);
+  const refined = await hear(s2, { text: "I have not told my sister I am here." }, ctx);
+  await hear(s2, { pass: true }, ctx);
+  check(
+    "a real refinement between two stale bodies is still taken",
+    (refined.modes || {}).refine === "fallback" && s2.refines === 1 && Boolean(refined.adventure),
+    JSON.stringify(refined.modes) + " refines=" + s2.refines,
+  );
+  check("and a sealed quest still comes out of it", Boolean((await accept(s2, ctx)).quest));
+}
+
+/* ---- 11. the caps: two minutes of voice, twelve shares ---------------------------- */
+
+section("the caps hold, and truncate rather than refuse");
+{
+  const ctx = ctxWith(deadLlm);
+  const sess = await seanceAt("listening", ctx);
+  const story = "I came out here to say a thing and I have not said it yet. ".repeat(90); // ~5300
+  check("the fixture is longer than the cap", story.length > 5000, String(story.length));
+  const e = await hear(sess, story, ctx);
+  check(
+    "a 5000-character transcript is truncated, not refused",
+    e.stage === "asking" && !e.error && sess.shares.length === 1 && sess.shares[0].length === 2000,
+    e.stage + " share=" + (sess.shares[0] || "").length,
+  );
+  check(
+    "and the truncated story still reaches what the weave is given",
+    S.toldFrom(sess).startsWith("I came out here to say a thing") &&
+      S.toldFrom(sess).length >= 2000,
+    String(S.toldFrom(sess).length),
+  );
+  check(
+    "the 2000 is the listening cap only — a share elsewhere is still cut at 1000",
+    (await (async () => {
+      const other = await seanceAt("asking", ctx);
+      await hear(other, { text: story }, ctx);
+      return other.shares[other.shares.length - 1].length;
+    })()) === 1000,
+  );
+}
+{
+  const ctx = ctxWith(deadLlm);
+  const sess = await seanceAt("proposed", ctx);
+  for (let i = 0; i < 3; i++) await hear(sess, { text: "one more true thing, number " + i }, ctx);
+  const settled = await hear(sess, { text: "and one more after that" }, ctx);
+  check(
+    "three refinements, then the Tree has settled — and the settled event is still whole",
+    (settled.modes || {}).refine === "settled" && drawable(settled) &&
+      Boolean(settled.reading && settled.echoes),
+    JSON.stringify(settled.modes),
+  );
+  check(
+    "a full story plus three refines stays inside the twelve-share roof",
+    sess.shares.length <= 12 && sess.shares.length === 6,
+    String(sess.shares.length),
+  );
+  // the roof itself: a séance cannot reach twelve through the API, so push it there
+  sess.shares = Array.from({ length: 12 }, (_, i) => "share " + i);
+  sess.refines = 0;
+  await hear(sess, { text: "the thirteenth thing" }, ctx);
+  check(
+    "the thirteenth share pushes the first one off the shelf",
+    sess.shares.length === 12 && sess.shares[11] === "the thirteenth thing" && sess.shares[0] === "share 1",
+    JSON.stringify(sess.shares.slice(0, 2)) + " … " + JSON.stringify(sess.shares.slice(-1)),
+  );
+}
+
+/* ---- 12. the ears: a séance, or nothing ------------------------------------------- */
+
+/* /api/transcribe used to be a free Whisper endpoint — no séance, no session, 4MB a POST.
+ * src/ears.js is its own module partly so this can run: index.js re-exports the Durable
+ * Object class and cannot be imported outside the Workers runtime. */
+
+section("the ears will not open without a séance");
+{
+  const store = new Map();
+  const fakeStore = {
+    idFromName: (n) => n,
+    get: (id) => ({
+      async load() { return store.get(id) || null; },
+      async save(sess) { store.set(id, sess); },
+    }),
+  };
+  const heard = [];
+  const env = {
+    SESSION_DO: fakeStore,
+    WHISPER_MODEL: "test-whisper",
+    AI: {
+      async run(model, inputs) { heard.push({ model, bytes: (inputs.audio || "").length }); return { text: "  the   transcript  " }; },
+    },
+  };
+  const ears = (sid, bytes) => {
+    const u = new URL("https://turtle.example/api/transcribe");
+    const req = new Request(u, {
+      method: "POST",
+      body: bytes || new Uint8Array([1, 2, 3, 4, 5, 6, 7, 8]),
+      headers: sid ? { "x-seance-session": sid } : {},
+    });
+    return transcribe(req, env, u);
+  };
+
+  const live = await seanceAt("listening", ctxWith(deadLlm));
+  store.set(live.id, live);
+  const tapping = await seanceAt("weather", ctxWith(deadLlm));
+  store.set(tapping.id, tapping);
+
+  const nobody = await (await ears("")).json();
+  check("no session id, no whisper", Boolean(nobody.error) && heard.length === 0, JSON.stringify(nobody));
+  const stranger = await (await ears("deadbeefdead")).json();
+  check("an id that is not a séance, no whisper", Boolean(stranger.error) && heard.length === 0, JSON.stringify(stranger));
+  const tapStage = await (await ears(tapping.id)).json();
+  check(
+    "a séance on a tap screen is not listening for words",
+    Boolean(tapStage.error) && tapStage.stage === "weather" && heard.length === 0,
+    JSON.stringify(tapStage),
+  );
+  const rejected = await ears("");
+  check("and every refusal is a séance-shaped 200, not a status the phone will parrot", rejected.status === 200);
+
+  const ok = await ears(live.id);
+  const got = await ok.json();
+  check(
+    "a live séance at the talk door is heard, and the transcript comes back squeezed",
+    ok.status === 200 && got.text === "the transcript" && heard.length === 1 && heard[0].model === "test-whisper",
+    JSON.stringify(got) + " " + JSON.stringify(heard),
+  );
+
+  const tooMuch = await ears(live.id, new Uint8Array(MAX_AUDIO_BYTES + 1));
+  check(
+    "more than four megabytes is refused with a 413, unheard",
+    tooMuch.status === 413 && heard.length === 1,
+    String(tooMuch.status) + " calls=" + heard.length,
+  );
+  const empty = await ears(live.id, new Uint8Array(0));
+  check("and an empty body never reaches the model either", empty.status === 400 && heard.length === 1);
+}
+{
+  // the base64 the model is handed, built in slices — the join has to be byte-exact
+  const bytes = new Uint8Array(200000);
+  for (let i = 0; i < bytes.length; i++) bytes[i] = (i * 7 + (i >> 5)) & 0xff;
+  check(
+    "the sliced base64 is the same string one btoa would have made",
+    toBase64(bytes) === Buffer.from(bytes).toString("base64"),
+  );
+  check(
+    "including at the lengths that do not divide by three",
+    [0, 1, 2, 3, 47, 49151, 49152, 49153].every(
+      (n) => toBase64(bytes.subarray(0, n)) === Buffer.from(bytes.subarray(0, n)).toString("base64"),
+    ),
+  );
 }
 
 console.log(failures ? `\n${failures} FAILED` : "\nALL PASS");
