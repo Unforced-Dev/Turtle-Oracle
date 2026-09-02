@@ -143,12 +143,47 @@
   .cardcap.axis .cslot{color:var(--gold);animation:axispulse 3.2s ease-in-out infinite}
   @keyframes axispulse{0%,100%{opacity:.65}50%{opacity:1}}
   .cardcap .cname{color:var(--gold);font-size:clamp(.9rem,1.8vw,1.12rem);line-height:1.25}
+  /* one plain line of meaning under the name — a card with a name and no meaning is
+     exactly the "what does the Heartwood even mean" moment */
+  .cardcap .cgloss{color:var(--parch);font-size:.78rem;line-height:1.3;margin-top:4px;opacity:.88}
   .cardcap .cbite{color:#a3743f;font-size:.72rem;font-style:italic;margin-top:3px}
   .cardcap .cwhere{color:var(--parch-dim);font-size:.74rem;font-style:italic;margin-top:3px}
-  .flip{cursor:pointer}
-  .flip.yourturn .face.back{animation:chosepulse 1.5s ease-in-out infinite}
-  @keyframes chosepulse{0%,100%{box-shadow:0 14px 40px rgba(0,0,0,.55)}
-    50%{box-shadow:0 0 34px rgba(232,205,133,.65), 0 14px 40px rgba(0,0,0,.55)}}
+  /* the cards are dealt face up now, so nothing invites a tap — the only glow left marks
+     the card the Turtle is speaking about during the echo pass */
+  .flip.axisglow{box-shadow:0 0 34px rgba(232,205,133,.65), 0 14px 40px rgba(0,0,0,.55)}
+
+  /* ---- the pull screen: the Turtle's read of the table, then its one question ---- */
+  #lookline{width:100%;max-width:720px;margin-top:16px;text-align:center;
+    font-size:clamp(1.05rem,2.1vw,1.28rem);color:var(--parch);
+    opacity:0;transition:opacity .7s}
+  #lookline.on{opacity:1}
+  #lookline .w{opacity:0;animation:wordin .45s ease forwards}
+  #askline{width:100%;max-width:680px;margin-top:18px;text-align:center;
+    font-size:clamp(1.12rem,2.4vw,1.42rem);color:var(--gold2);font-style:italic;
+    opacity:0;transition:opacity .7s}
+  #askline.on{opacity:1}
+  #askline .w{opacity:0;animation:wordin .45s ease forwards}
+  /* THE ANSWER ROW. One big thing to press — letting the cards speak, which is a whole
+     answer and the fast way through — and under it, small, every optional way to feed
+     something in: the mic, the Turtle's three guesses, and the write box behind
+     "write it instead". Nobody has to say anything to be read. */
+  #passrow{display:none;margin-top:0}
+  .panel.pull #passrow{display:flex}
+  #passq{font-size:1.16rem;padding:17px 30px}
+  .panel.pull #q, .panel.pull #offer{display:none}
+  .panel.pull.writing #q, .panel.pull.writing #offer{display:block}
+  .panel.pull.writing #writehere{display:none}
+  .panel.pull #microw{margin-top:14px}
+  .panel.pull #mic{width:52px;height:52px;font-size:1.2rem}
+  #miccap{display:none;color:var(--parch-dim);font-size:.9rem;font-style:italic}
+  .panel.pull #miccap{display:inline}
+  #chiprow{display:none;flex-wrap:wrap;gap:10px;justify-content:center;margin-top:14px}
+  #chiprow.on{display:flex}
+  .answerchip{font:inherit;padding:11px 17px;border-radius:999px;border:1px solid var(--edge);
+    background:transparent;color:var(--parch-dim);font-weight:400;min-height:0;font-size:.95rem}
+  .answerchip:active{transform:scale(.96)}
+  #writehere{display:none;margin:12px auto 0;font-size:.92rem;min-height:0;padding:8px 14px}
+  .panel.pull #writehere{display:block}
 
   /* ---- reading scroll ---- */
   .scroll{width:100%;max-width:720px;margin-top:8px}
@@ -227,11 +262,18 @@
     <div class="stemline" id="stemline"></div>
     <div id="stonesrow"></div>
     <div class="panel" id="askpanel">
+      <!-- THE PULL SCREEN's primary. Letting the cards speak is a whole answer, not a
+           refusal — it is the fast way through, and it is the default. -->
+      <div class="row" id="passrow"><button id="passq">🐢&nbsp; Let the cards speak</button></div>
       <textarea id="q" placeholder="speak, or write it here…"></textarea>
-      <div class="row">
+      <div class="row" id="microw">
         <button class="micorb" id="mic" title="speak to the turtle">🎙</button>
+        <span id="miccap">or tell the Turtle one thing</span>
         <button id="offer">Offer it to the Turtle</button>
       </div>
+      <!-- the Turtle's three guesses at the answer, tapable -->
+      <div id="chiprow"></div>
+      <button class="ghost" id="writehere">write it instead</button>
     </div>
     <div class="panel" id="giftrow" style="text-align:center">
       <div style="font-size:1.3rem;margin-bottom:12px">🎁</div>
@@ -239,6 +281,10 @@
       <div class="row"><button class="ghost" id="taledone">↺&nbsp; The Oracle sleeps</button></div>
     </div>
     <div class="spread" id="spread"></div>
+    <!-- the Turtle's reading of the three, under the cards it is reading -->
+    <div id="lookline"></div>
+    <!-- the Turtle's one question, under the reading it follows from -->
+    <div id="askline"></div>
     <div class="scroll" id="scroll">
       <h2 id="h-read">The Reading</h2><div class="prose" id="reading"></div>
       <h2 id="h-adv">The Quest Offered</h2><div class="prose" id="adventure"></div>
@@ -255,7 +301,12 @@
 <section class="scene" id="quest">
   <div class="parchment" id="parch"></div>
   <div class="row" style="margin-top:22px">
-    <button id="print">🖨&nbsp; Print my quest</button>
+    <!-- There is no thermal printer at camp in 2026. The button is hidden rather than
+         deleted so this stays a small diff and /api/print still returns the formatted
+         receipt for a camp turtle to fetch by hand. The parchment on screen is the
+         artifact now, so there is a way to carry it off the tablet instead. -->
+    <button id="print" style="display:none">🖨&nbsp; Print my quest</button>
+    <button class="ghost" id="share">⧉&nbsp; Take it with you</button>
     <button class="ghost" id="again">↺&nbsp; The Oracle sleeps — wake it again</button>
   </div>
   <footer>return · tell the tale · receive the gift</footer>
@@ -273,6 +324,10 @@ const $=id=>document.getElementById(id);
 const SLOTS=["roots","trunk","branches"];
 const SLOTCAP={roots:"Face",trunk:"Stand",branches:"Reach"};
 let SID=null, SPOKEN=true, VOICE=null, IDLE=null, CARD_IDS="", SESSION_GEN=0;
+/* the reading has already been spoken once — a refinement re-offers the quest only */
+let READ_SHOWN=false;
+/* the stage the kiosk is standing in, so the mic knows whether stop means send */
+let STAGE=null;
 /* Which station this tablet is, from ?kiosk=1 — routes the print to its own printer. */
 const KIOSK=new URLSearchParams(location.search).get("kiosk")||"";
 const SESSION_KEY="turtle-oracle.session"+(KIOSK?"."+KIOSK:"");
@@ -287,19 +342,30 @@ function forgetStep(){ try{ localStorage.removeItem(SESSION_KEY); }catch(err){} 
 function restoreStep(){
   let saved=null;
   try{ saved=JSON.parse(localStorage.getItem(SESSION_KEY)||"null"); }catch(err){ forgetStep(); }
-  const stages=["naming","tale_naming","tale_listening","tale_told","weather","stem","stones","proposed","accepted"];
+  const stages=["naming","tale_naming","tale_listening","tale_told","weather","stones","asking","proposed","accepted"];
   if(!saved||!saved.sid||!saved.step||saved.step.session!==saved.sid
-      ||!stages.includes(saved.step.stage)||(saved.step.stage==="accepted"&&!saved.step.quest)){
+      ||!stages.includes(saved.step.stage)||!renderable(saved.step)){
     forgetStep(); return false;
   }
   SID=saved.sid; SESSION_GEN++;
   show("seance"); resetSeance();
-  if(saved.step.stage==="accepted"&&saved.step.quest) renderQuest(saved.step);
+  if(saved.step.stage==="accepted") renderQuest(saved.step,true);
   else {
-    handle(saved.step);
+    handle(saved.step,{restored:true});
     if(["naming","tale_naming","tale_listening"].includes(saved.step.stage))
       $('askpanel').classList.add("on");
   }
+  return true;
+}
+/* The three stages whose renderer reaches INTO the event — dealSpread deals
+   e.cards[slot], renderQuest walks e.quest.moves. A step saved at one of them without
+   its payload restores as a TypeError and a blank screen, and on a tablet nothing wipes
+   itself, so the same blank screen comes back on every reload. Refuse it instead. */
+function renderable(step){
+  if(!step) return false;
+  if(step.stage==="asking"||step.stage==="proposed")
+    return Boolean(step.cards&&step.cards.roots&&step.cards.trunk&&step.cards.branches);
+  if(step.stage==="accepted") return Boolean(step.quest&&step.quest.moves);
   return true;
 }
 
@@ -322,9 +388,16 @@ function pickVoice(){
 }
 if("speechSynthesis" in window){ pickVoice(); speechSynthesis.onvoiceschanged=pickVoice; }
 let SERVER_AUDIO=null, SERVER_AUDIO_URL=null, SPEAK_GEN=0, SPEAK_DONE=null;
+/* THE TURTLE'S INTERJECTIONS ARE FOR THE EYE, NOT THE EAR. "Mm." and "Hm." are how the
+   Turtle's written lines breathe, and they are all over the copy — but the kiosk speaks
+   one sentence per request, so a lone "Mm." lands as a flat two-letter grunt with a pause
+   on either side, in Kokoro and in the browser voice alike. The screen text is never
+   touched; only what is handed to a voice. Mirrors voice.py's strip_interjections, which
+   catches the same line server-side and answers 204. */
+const INTERJECTION=/^[\s"'“”(\[]*(?:mm+|hm+|ah+|mhm+|hmm+|uh+)[\s.,!?…\-—]*[\s"'“”)\]]*$/i;
 function speechParts(text){
   return (text.replace(/[“”"]/g,"").match(/[^.!?…]+[.!?…]+['”]?|[^.!?…]+$/g)||[text])
-    .map(s=>s.trim()).filter(Boolean);
+    .map(s=>s.trim()).filter(Boolean).filter(s=>!INTERJECTION.test(s));
 }
 function releaseAudio(){
   if(SERVER_AUDIO){ SERVER_AUDIO.pause(); SERVER_AUDIO.src=""; SERVER_AUDIO=null; }
@@ -356,6 +429,9 @@ async function playServerLine(line,token){
     const r=await fetch("/api/speak",{method:"POST",signal:ctl.signal,
       headers:{"Content-Type":"application/json"},body:JSON.stringify({text:line})});
     if(!r.ok) return false;
+    // 204: the shell stripped the whole line (a written breath). Nothing to play, and
+    // NOT a fallback — handing it to the browser voice would say the grunt after all.
+    if(r.status===204) return true;
     const blob=await r.blob();
     if(token!==SPEAK_GEN||!SPOKEN) return true;
     SERVER_AUDIO_URL=URL.createObjectURL(blob);
@@ -431,8 +507,13 @@ function resetSeance(){
   $('says').innerHTML=""; $('askpanel').classList.remove("on"); $('q').value="";
   $('q').placeholder="speak, or write it here…";
   $('spread').innerHTML=""; $('reading').innerHTML=""; $('adventure').innerHTML="";
+  $('lookline').innerHTML=""; $('lookline').classList.remove("on");
+  $('askline').innerHTML=""; $('askline').classList.remove("on");
+  $('chiprow').innerHTML=""; $('chiprow').classList.remove("on");
+  $('askpanel').classList.remove("pull","writing"); $('passq').disabled=false;
   $('h-read').classList.remove("on"); $('h-adv').classList.remove("on");
   $('decide').style.display="none"; $('giftrow').classList.remove("on"); CARD_IDS="";
+  READ_SHOWN=false; LAST_QUEST=null;
   hideAux(); T_ASK=Date.now();
 }
 
@@ -463,17 +544,19 @@ function hideAux(){ $('wgrid').classList.remove("on"); $('stemline').classList.r
   $('stonesrow').classList.remove("on"); }
 
 /* one router for every séance event */
-async function handle(e){
+async function handle(e,opts){
+  opts=opts||{};
   T_ASK=Date.now();
   if(e.error){
     if(e.stage==="gone") resetAll();
     return toast(e.error);
   }
   rememberStep(e);
+  STAGE=e.stage;
   if(e.stage==="weather") return renderWeather(e);
-  if(e.stage==="stem") return renderStem(e);
   if(e.stage==="stones") return renderStones(e);
-  if(e.stage==="proposed"){ $('askpanel').classList.remove("on"); hideAux(); return thePull(e); }
+  if(e.stage==="asking"){ hideAux(); return theAsking(e,opts); }
+  if(e.stage==="proposed"){ $('askpanel').classList.remove("on"); hideAux(); return theReading(e,opts); }
   if(e.stage==="tale_told") return taleTold(e);
   incant($('says'),e.say,110); speak(e.say);
 }
@@ -483,8 +566,8 @@ function renderWeather(e){
   incant($('says'),e.say,110); speak(e.say);
   $('wgrid').innerHTML=(e.weathers||[]).map(w=>`
     <div class="wtile" data-id="${w.id}">
-      <img src="${w.tile}" alt="" onerror="this.style.display='none'">
-      <div class="wname">${w.name}</div>
+      <img src="${esc(w.tile)}" alt="" onerror="this.style.display='none'">
+      <div class="wname">${esc(w.name)}</div>
     </div>`).join("");
   $('wgrid').classList.add("on");
   let tapped=false;
@@ -497,22 +580,12 @@ function renderWeather(e){
   }));
 }
 
-function renderStem(e){
-  hideAux();
-  incant($('says'),e.say,110);
-  $('stemline').textContent="“"+e.stem+"”";
-  $('stemline').classList.add("on");
-  $('q').placeholder=e.stem+" …";
-  speak(e.say+" "+e.stem);
-  $('askpanel').classList.add("on");
-}
-
 function renderStones(e){
   $('askpanel').classList.remove("on"); hideAux();
   incant($('says'),e.say,110); speak(e.say);
   const sel=new Set();
   $('stonesrow').innerHTML=(e.stones||[]).map(s=>
-    `<button class="stonechip" data-id="${s.id}">${s.name}</button>`).join("")
+    `<button class="stonechip" data-id="${esc(s.id)}">${esc(s.name)}</button>`).join("")
     +`<button id="stonesdone">⬢&nbsp; That is all</button>`;
   $('stonesrow').classList.add("on");
   $('stonesrow').querySelectorAll('.stonechip').forEach(c=>c.addEventListener('click',()=>{
@@ -531,6 +604,12 @@ function renderStones(e){
 
 async function offer(){
   const text=$('q').value.trim(); if(!text){ $('q').focus(); return; }
+  if(STAGE==="asking"){
+    $('q').value="";
+    $('chiprow').classList.remove("on");
+    $('askpanel').classList.remove("on","pull","writing");
+    return answerWith({text});
+  }
   $('offer').disabled=true; $('mic').disabled=true;
   // no dead air: the Turtle visibly ponders while the camp brain works
   incant($('says'),PONDER[Math.floor(Math.random()*PONDER.length)],130);
@@ -558,29 +637,131 @@ function shuffleCards(){
   for(let i=0;i<5;i++){ const d=document.createElement("div"); d.className="sc";
     d.innerHTML='<img src="/med/back.jpg" alt="">'; $('shufflebox').appendChild(d); }
 }
-async function thePull(e){
-  const ids=SLOTS.map(s=>e.cards[s].id).join(",");
-  const isRefine=CARD_IDS && ids===CARD_IDS;
+/* THE ASKING. The Tree draws, the cards come up FACE UP, and then the Turtle reads them
+   and asks one open question about them — before there is any reading. That is the order
+   an oracle works in, and it is the difference between a séance and an intake form. */
+async function theAsking(e,opts){
+  opts=opts||{};
+  /* the retry — "the Turtle heard only wind" — is the same three cards and the same
+     question, and the seeker is already looking at them. Say the line, put the answer
+     row back, and never deal a second time. A restore lands here too, with no reveal. */
+  if(opts.restored||(CARD_IDS&&(e.retry||SLOTS.map(s=>e.cards[s].id).join(",")===CARD_IDS))){
+    CARD_IDS=SLOTS.map(s=>e.cards[s].id).join(",");
+    if(opts.restored){ dealSpread(e,{instant:true}); showLook(e); }
+    else { incant($('says'),e.say,110); speak(e.say); }
+    renderAnswer(e);
+    return;
+  }
+  $('askpanel').classList.remove("on","pull","writing"); hideAux();
   $('decide').style.display="none";
-  if(!isRefine){
-    shuffleCards();
-    $('veil').classList.add("on");
-    incant($('says'),e.say,110); speak(e.say);
-    await sleep(2600);
-    $('veil').classList.remove("on");
-    CARD_IDS=ids;
-    await dealSpread(e);   // resolves after the seeker has turned all three cards
-    // the reading, chanted to its end
+  $('lookline').classList.remove("on"); $('askline').classList.remove("on");
+  shuffleCards();
+  $('veil').classList.add("on");
+  incant($('says'),e.say,110); speak(e.say);
+  await sleep(2600);
+  $('veil').classList.remove("on");
+  CARD_IDS=SLOTS.map(s=>e.cards[s].id).join(",");
+  await dealSpread(e);
+  /* THE READING OF THE SPREAD. The three cards are on the table with their names and one
+     plain line each; now the Turtle reads them — and since most seekers will let the
+     cards speak and add nothing, this IS the reading for most séances. It goes under the
+     cards it is about, so the order on screen is the order of the ceremony: the Turtle
+     speaks, the cards turn, the cards are read, and only then is anything asked. */
+  if(e.look){
+    const ldur=incant($('lookline'),e.look,105);
+    $('lookline').classList.add("on");
+    await speakOr(e.look, Math.min(ldur+1500,26000));
+  }
+  const q=e.question||"And you — what have you not said yet?";
+  const qdur=incant($('askline'),q,105);
+  $('askline').classList.add("on");
+  await speakOr(q, Math.min(qdur+1500,14000));
+  renderAnswer(e);
+}
+/* the look and the question, put back without a word of it re-spoken (a restore) */
+function showLook(e){
+  if(e.look){ incant($('lookline'),e.look,0); $('lookline').classList.add("on"); }
+  if(e.question){ incant($('askline'),e.question,0); $('askline').classList.add("on"); }
+}
+/* The answer row on the pull screen. ONE big thing to press — letting the cards speak,
+   which is a whole answer and the fast way through — and under it, small, every optional
+   way to feed something in: the mic, the Turtle's three guesses, and the write box
+   behind "write it instead". Nobody has to say anything to be read. */
+function renderAnswer(e){
+  $('q').value=""; $('q').placeholder="speak, or write it here…";
+  $('chiprow').innerHTML=(e.chips||[]).map(c=>
+    `<button class="answerchip" data-chip="${esc(c)}">${esc(c)}</button>`).join("");
+  $('chiprow').classList.toggle("on",Boolean((e.chips||[]).length));
+  $('chiprow').querySelectorAll('.answerchip').forEach(b=>b.addEventListener('click',async()=>{
+    $('chiprow').classList.remove("on");
+    $('askpanel').classList.remove("on","pull","writing");
+    await answerWith({chip:b.dataset.chip});
+  }));
+  $('passq').disabled=false;
+  $('askpanel').classList.remove("writing");
+  $('askpanel').classList.add("on","pull");
+  $('askpanel').scrollIntoView({behavior:"smooth",block:"nearest"});
+}
+/* one way in for every answer at the asking: a tap, a chip, a transcript, typed words */
+async function answerWith(body){
+  incant($('says'),PONDER[Math.floor(Math.random()*PONDER.length)],130);
+  document.body.classList.add("speaking");
+  try{
+    const e=await post("say",Object.assign({session:SID,meta:metaNow()},body));
+    document.body.classList.remove("speaking");
+    await handle(e);
+  }catch(err){
+    toast("The Turtle lost the thread — try once more.");
+    $('askpanel').classList.add("on","pull"); $('passq').disabled=false;
+  }
+  document.body.classList.remove("speaking");
+}
+/* THE PASS IS THE PRIMARY, and it must not feel like a refusal — it says the cards have
+   spoken, and it goes straight to the weave. Nothing is posted but {pass:true}. */
+$('passq').addEventListener('click', async ()=>{
+  $('passq').disabled=true;
+  $('chiprow').classList.remove("on"); $('askpanel').classList.remove("on","pull","writing");
+  await answerWith({pass:true});
+  $('passq').disabled=false;
+});
+/* the small way in for anyone who would rather type than talk */
+$('writehere').addEventListener('click', ()=>{
+  $('askpanel').classList.add("writing"); $('q').focus();
+});
+
+/* THE READING. The cards are already on the table by the time this runs, so there is no
+   veil and no deal — the Turtle speaks the echoes over the spread it already dealt, then
+   the reading, then the quest. A refinement lands here too, with READ_SHOWN set. */
+async function theReading(e,opts){
+  opts=opts||{};
+  $('decide').style.display="none";
+  $('askline').classList.remove("on"); $('lookline').classList.remove("on");
+  const ids=SLOTS.map(s=>e.cards[s].id).join(",");
+  // the offline refinement genuinely re-scores the cards: if they changed, re-deal
+  if(ids!==CARD_IDS||opts.restored){ CARD_IDS=ids; dealSpread(e,{instant:true}); }
+  if(opts.restored){
+    // a reload mid-reading: put the whole screen back, and buy no voice for it
+    READ_SHOWN=true;
+    $('h-read').classList.add("on"); incant($('reading'),e.reading,0);
+    $('h-adv').classList.add("on"); incant($('adventure'),e.adventure,0);
+    $('decide').style.display="flex";
+    return;
+  }
+  if(!READ_SHOWN){
+    READ_SHOWN=true;
+    incant($('says'),e.say,110);
+    await speakOr(e.say, 2600);
+    await echoPass(e);
     $('h-read').classList.add("on");
     const rdur=incant($('reading'),e.reading,105);
     await speakOr(e.reading, Math.min(rdur,26000));
   } else {
-    // a refinement: same cards — just acknowledge and re-offer the quest
+    // a refinement: acknowledge, and re-offer. The fallback path rewrites the reading too.
     incant($('says'),e.say,110);
     await speakOr(e.say, 2200);
+    if(e.reading&&e.modes&&e.modes.refine==="fallback") incant($('reading'),e.reading,105);
     $('adventure').innerHTML="";
   }
-  // the quest offer
   $('h-adv').classList.add("on");
   const adur=incant($('adventure'),e.adventure,105);
   await speakOr(e.adventure, Math.min(adur,22000));
@@ -588,12 +769,26 @@ async function thePull(e){
   $('decide').style.display="flex";
   $('decide').scrollIntoView({behavior:"smooth",block:"nearest"});
 }
-/* Three cards land face-down. The SEEKER turns them — in order, by hand.
-   Each turn, the Turtle speaks the echo: their own words, heard back. */
-function dealSpread(e){
+/* One card at a time: the Turtle says what it heard in that card. Their words, back. */
+async function echoPass(e){
+  for(const slot of SLOTS){
+    const echo=(e.echoes||{})[slot];
+    if(!echo) continue;
+    const f=$(`flip-${slot}`);
+    if(f) f.classList.add("axisglow");
+    const dur=incant($('says'),echo,95);
+    await speakOr(echo, Math.min(dur+900,9000));
+    if(f) f.classList.remove("axisglow");
+  }
+}
+/* Three cards, dealt FACE UP. The seeker no longer turns them by hand: they are the
+   subject of the question that follows, so they have to be readable before it is asked.
+   `instant` skips the animation entirely — that is the restore, which must re-render the
+   screen and never replay the reveal. */
+function dealSpread(e,opts){
+  opts=opts||{};
   return new Promise(done=>{
     $('spread').innerHTML="";
-    let next=0; const flips=[];
     SLOTS.forEach((slot,i)=>{
       const c=e.cards[slot];
       // roughly one séance in ten, a Shell card substitutes into a slot — the Tree's own
@@ -603,35 +798,23 @@ function dealSpread(e){
       cell.innerHTML=`
         <div class="flip${isAxis?" axis":""}" id="flip-${slot}">
           <div class="face back"><img src="/med/back.jpg" alt=""></div>
-          <div class="face front"><img src="${c.image}" alt="${c.name}"></div>
+          <div class="face front"><img src="${esc(c.image)}" alt="${esc(c.name)}"></div>
         </div>
         <div class="cardcap${isAxis?" axis":""}" id="cap-${slot}">
-          <div class="cslot">${isAxis?"◆ The Axis Speaks":`${SLOTCAP[slot]} · ${c.slot}`}</div>
-          <div class="cname">${c.name}</div>
-          ${c.shadow?`<div class="cbite">the bite: ${c.shadow}</div>`:""}
-          ${c.location&&c.location.directions?`<div class="cwhere">📍 ${c.location.directions}</div>`:""}
+          <div class="cslot">${isAxis?"◆ The Axis Speaks":`${SLOTCAP[slot]} · ${esc(c.slot)}`}</div>
+          <div class="cname">${esc(c.name)}</div>
+          ${c.gloss?`<div class="cgloss">${esc(c.gloss)}</div>`:""}
+          ${c.shadow?`<div class="cbite">the bite: ${esc(c.shadow)}</div>`:""}
+          ${c.location&&c.location.directions?`<div class="cwhere">📍 ${esc(c.location.directions)}</div>`:""}
         </div>`;
       $('spread').appendChild(cell);
       const f=cell.querySelector('.flip');
-      flips.push(f);
-      setTimeout(()=>f.classList.add("dealt"), 150+i*220);
-      f.addEventListener('click',()=>{
-        if(i!==next||f.classList.contains('flipped')) return;
-        f.classList.remove('yourturn');
-        f.classList.add('flipped');
-        $(`cap-${slot}`).classList.add('on');
-        const echo=(e.echoes||{})[slot];
-        if(echo){ incant($('says'),echo,95); speak(echo); }
-        next++;
-        if(next<3) flips[next].classList.add('yourturn');
-        else setTimeout(done, 1600);
-      });
+      const reveal=()=>{ f.classList.add("dealt","flipped"); $(`cap-${slot}`).classList.add("on"); };
+      if(opts.instant) reveal();
+      else setTimeout(reveal, 150+i*260);
     });
-    setTimeout(()=>{
-      flips[0].classList.add('yourturn');
-      const line="Three cards, face down. Turn them yourself — slowly, in order.";
-      incant($('says'),line,110); speak(line);
-    }, 150+3*220+400);
+    if(opts.instant) done();
+    else setTimeout(done, 150+3*260+1500);
   });
 }
 
@@ -641,7 +824,7 @@ $('accept').addEventListener('click', async ()=>{
   $('accept').textContent="⏳  the Turtle seals it…";
   try{
     const e=await post("accept",{session:SID});
-    if(e.quest){ rememberStep(e); renderQuest(e); }
+    if(e.quest&&e.quest.moves){ rememberStep(e); renderQuest(e); }
     else toast(e.error||"The Tree hesitates — try again.");
   }catch(err){ toast("The Turtle lost the thread — try once more."); }
   $('accept').disabled=false;
@@ -649,6 +832,10 @@ $('accept').addEventListener('click', async ()=>{
 });
 $('more').addEventListener('click', ()=>{
   $('decide').style.display="none";
+  // the "hear me further" box is the plain one — no pass button, no chips: at `proposed`
+  // there is nothing to pass on, and the pull screen's primary would seal nothing
+  $('askpanel').classList.remove("pull","writing");
+  $('chiprow').classList.remove("on");
   const line="Then speak. What should the Turtle know before this quest is sealed?";
   incant($('says'),line,110); speak(line);
   $('askpanel').classList.add("on");
@@ -657,30 +844,61 @@ $('more').addEventListener('click', ()=>{
 });
 
 /* ---------- the quest parchment ---------- */
-function renderQuest(e){
+/* The parchment is the one place model text and the seeker's own name reach innerHTML,
+   and it is now the artifact — there is no paper to take away from it. Escape it. */
+function esc(v){ return String(v==null?"":v)
+  .replace(/&/g,"&amp;").replace(/</g,"&lt;").replace(/>/g,"&gt;")
+  .replace(/"/g,"&quot;").replace(/'/g,"&#39;"); }
+let LAST_QUEST=null;
+/* The quest is ONE bite, so a sealed quest normally holds one move and the heading says
+   so. A tablet can still restore an OLDER quest — one sealed before the rebuild, out of
+   localStorage — and those hold three. Three blocks all headed "the one bite" is a lie
+   the seeker can see; number them when there is more than one. Same rule as the paper
+   (printer.py format_receipt). */
+function moveHead(n,i){ return n>1?("move "+(i+1)):"the one bite"; }
+/* The same fields the parchment draws, as plain text a share sheet or a clipboard can
+   carry. Kept next to renderQuest on purpose — they must read the same quest. */
+function questText(e){
+  const q=(e&&e.quest)||{};
+  const L=[q.title||"A quest from the Terrible Turtle Oracle"];
+  if(q.for) L.push("sealed for "+q.for);
+  if(q.charge) L.push("",q.charge);
+  (q.moves||[]).forEach((m,i)=>{
+    L.push("",[moveHead((q.moves||[]).length,i).toUpperCase(),m.card].filter(Boolean).join(" — "));
+    if(m.task) L.push(m.task);
+    if(m.where) L.push("where: "+m.where);
+    if(m.proof) L.push("bring back: "+m.proof);
+    if(m.leave) L.push("leave behind: "+m.leave);
+  });
+  if(q.vow) L.push("","THE VOW",q.vow);
+  if(q.vow_where) L.push(q.vow_where);
+  if(q.chosen) L.push("",q.chosen);
+  return L.join("\n");
+}
+function renderQuest(e,restored){
   const q=e.quest;
+  LAST_QUEST=e;
   $('parch').innerHTML=`
     <div class="rune" style="text-align:center">the tree has spoken · the quest is sealed</div>
-    <h1>${q.title}</h1>
-    ${q.for?`<div class="sealedfor">sealed for ${q.for}</div>`:""}
-    <div class="charge">${q.charge}</div>
+    <h1>${esc(q.title)}</h1>
+    ${q.for?`<div class="sealedfor">sealed for ${esc(q.for)}</div>`:""}
+    <div class="charge">${esc(q.charge)}</div>
     ${q.moves.map((m,i)=>`
       <div class="move">
-        <div class="n">${["I","II","III"][i]}</div>
         <div>
-          <div class="mslot">${m.slot} — ${m.card}</div>
-          <div class="mtask">${m.task}</div>
-          <div class="mwhere">📍 ${m.where}</div>
-          <div class="mproof">⌘ bring back: ${m.proof}</div>
-          ${m.leave?`<div class="mleave">✕ leave behind: ${m.leave}</div>`:""}
+          <div class="mslot">${esc(moveHead(q.moves.length,i))} — ${esc(m.card)}</div>
+          <div class="mtask">${esc(m.task)}</div>
+          <div class="mwhere">📍 ${esc(m.where)}</div>
+          <div class="mproof">⌘ bring back: ${esc(m.proof)}</div>
+          ${m.leave?`<div class="mleave">✕ leave behind: ${esc(m.leave)}</div>`:""}
         </div>
       </div>`).join("")}
-    <div class="vow"><b>THE VOW</b><br>${q.vow}<div class="vwhere">${q.vow_where}</div></div>
-    <div class="qmap">${q.map}</div>
-    ${q.chosen?`<div class="chosen">${q.chosen}</div>`:""}`;
+    <div class="vow"><b>THE VOW</b><br>${esc(q.vow)}<div class="vwhere">${esc(q.vow_where)}</div></div>
+    <div class="qmap">${esc(q.map)}</div>
+    ${q.chosen?`<div class="chosen">${esc(q.chosen)}</div>`:""}`;
   show("quest");
   setTimeout(()=>$('parch').classList.add("on"),80);
-  speak(e.say);
+  if(!restored) speak(e.say);
   pokeIdle();  // a seal gets its own four-minute handoff window, even after a slow LLM call
 }
 $('print').addEventListener('click', async ()=>{
@@ -689,10 +907,25 @@ $('print').addEventListener('click', async ()=>{
     const r=await fetch("/api/print",{method:"POST",
       headers:{"Content-Type":"application/json"},
       body:JSON.stringify({session:SID,kiosk:KIOSK})}).then(r=>r.json());
-    toast(r.status==="printed"?"The shell is printing your quest… take the scroll.":
-      "No printer attached — your quest was saved at the shell.");
+    toast(r.status==="printed"?"The shell is printing your quest.":
+      "No printer at camp — your quest was saved at the shell.");
   }catch(err){ toast("The printer spirit is unreachable."); }
   $('print').disabled=false;
+});
+/* The quest off the tablet. The share sheet if there is one, the clipboard if not; the
+   parchment itself is selectable either way, so there is always a third path. There is no
+   printer at camp, so this is how the words leave the shell. */
+$('share').addEventListener('click', async ev=>{
+  ev.stopPropagation();
+  if(!LAST_QUEST){ toast("There is no sealed quest yet."); return; }
+  const text=questText(LAST_QUEST);
+  const title=(LAST_QUEST.quest&&LAST_QUEST.quest.title)||"The Terrible Turtle Oracle";
+  if(navigator.share){
+    try{ await navigator.share({title,text}); return; }
+    catch(err){ if(err&&err.name==="AbortError") return; }   // they closed the sheet
+  }
+  try{ await navigator.clipboard.writeText(text); toast("copied"); }
+  catch(err){ toast("Hold the parchment to select it — this device will not copy for us."); }
 });
 $('again').addEventListener('click', resetAll);
 
@@ -734,7 +967,7 @@ async function micToggle(){
       const blob=new Blob(CHUNKS,{type:(recorder.mimeType||"audio/webm")});
       if(blob.size<1500){ $('mic').textContent="🎙"; return; }
       $('mic').textContent="…";
-      let controller=null;
+      let heard=false, controller=null;
       try{
         controller=new AbortController(); TRANSCRIBE=controller;
         const r=await fetch("/api/transcribe",{method:"POST",
@@ -742,7 +975,7 @@ async function micToggle(){
         const d=await r.json();
         if(TRANSCRIBE===controller) TRANSCRIBE=null;
         if(sid!==SID||generation!==SESSION_GEN) return;
-        if(d.text) $('q').value=($('q').value+" "+d.text).trim();
+        if(d.text){ $('q').value=($('q').value+" "+d.text).trim(); heard=true; }
         else toast("The Turtle couldn't make out the words — write them instead.");
       }catch(e){
         if(TRANSCRIBE===controller) TRANSCRIBE=null;
@@ -750,6 +983,17 @@ async function micToggle(){
           toast("The Turtle's ears are unreachable — write it instead.");
       }
       $('mic').textContent="🎙";
+      /* STOP MEANS DONE. The seeker has just spoken into a shell; making them then hunt
+         for an "Offer it" button is the intake form coming back in by the side door. At
+         the asking the transcript goes the moment it lands. Anywhere else (the "hear me
+         further" box at `proposed`) it lands in the box for them to finish. */
+      if(heard&&STAGE==="asking"&&$('q').value.trim()){
+        const text=$('q').value.trim();
+        $('q').value="";
+        $('chiprow').classList.remove("on");
+        $('askpanel').classList.remove("on","pull","writing");
+        answerWith({text});
+      }
     };
     recorder.start(); LISTENING=true; micToggle._t0=Date.now();
     $('mic').classList.add("listening"); $('mic').textContent="■";
@@ -778,7 +1022,7 @@ for(let i=0;i<9;i++){ const m=document.createElement("div"); m.className="mote";
 /* idle: the oracle goes back to sleep */
 function resetAll(){ stopVoice(); discardRecording();
   SESSION_GEN++; SID=null; forgetStep(); resetSeance();
-  $('parch').classList.remove("on"); show("attract"); loadLore(); }
+  STAGE=null; $('parch').classList.remove("on"); show("attract"); loadLore(); }
 function pokeIdle(){ clearTimeout(IDLE);
   const wait=$('quest').classList.contains("on")?240000:600000;
   IDLE=setTimeout(()=>{ if(SID) resetAll(); },wait); }
