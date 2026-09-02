@@ -79,8 +79,14 @@ def format_receipt(payload, picks, located, quest=None):
         L.append(_rule("="))
         L.extend(_wrap(quest["charge"]))
         L.append("")
+        # The quest is ONE bite, so a sealed quest normally holds one move and the paper
+        # says so. A receipt can still be asked for an OLDER quest — one sealed before the
+        # rebuild, still live in SESSIONS — and those hold three. Three blocks all headed
+        # "THE ONE BITE" is a lie the seeker can read; number them when there is more
+        # than one.
         for i, m in enumerate(quest["moves"], 1):
-            L.extend(_wrap(f"MOVE {i} [{m['slot']}] {m['card']}"))
+            head = f"MOVE {i}" if len(quest["moves"]) > 1 else "THE ONE BITE"
+            L.extend(_wrap(f"{head} [{m['slot']}] {m['card']}"))
             L.extend(_wrap(m["task"]))
             L.extend(_wrap("@ " + m["where"]))
             L.extend(_wrap("PROOF: " + m["proof"]))

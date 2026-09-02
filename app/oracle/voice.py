@@ -7,11 +7,31 @@ fall back to the tablet's browser voice.
 from collections import OrderedDict
 from io import BytesIO
 import os
+import re
 import threading
 import time
 
 
 SAMPLE_RATE = 24_000
+
+# THE TURTLE'S INTERJECTIONS ARE FOR THE EYE, NOT THE EAR. "Mm." and "Hm." are how the
+# Turtle's written lines breathe, and they are all over the copy — but a TTS engine reads a
+# lone "Mm." as a flat two-letter syllable with no context around it, and the kiosk speaks
+# one sentence per request, so it lands as a bare grunt with a pause on either side. Strip
+# them from what goes to the voice; the screen text is never touched.
+INTERJECTION = re.compile(r"^[\s\"'“”(\[]*(?:mm+|hm+|ah+|mhm+|hmm+|uh+)[\s.,!?…\-—]*[\s\"'“”)\]]*$", re.I)
+
+
+def is_interjection(text):
+    """True when a line is nothing but a spoken breath — never send it to the voice."""
+    return bool(INTERJECTION.match(text or ""))
+
+
+def strip_interjections(text):
+    """Drop standalone interjection sentences from a line bound for the voice."""
+    parts = [p for p in re.split(r"(?<=[.!?…])\s+", (text or "").strip()) if p.strip()]
+    kept = [p for p in parts if not is_interjection(p)]
+    return " ".join(kept).strip()
 
 
 class VoiceUnavailable(RuntimeError):
