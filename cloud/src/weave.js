@@ -394,8 +394,16 @@ export const OPEN_WHERE = {
 /* A `where` that is an address however it is dressed: a clock, a lettered street, the
  * Esplanade — or "the address is in the WWW guide", which is an address one lookup away
  * and lands on the parchment as an errand. Only a bite at an unmissable landmark may
- * carry one. */
-const ADDRESS_LINE = /\b\d{1,2}:\d{2}\b|\bEsplanade\b|\b[A-L]\s*(?:&|and)\s*\d|\baddress\b|\bWWW guide\b/i;
+ * carry one.
+ *
+ * The bare word "address" is NOT one of them, and used to be: the Turtle's own standing
+ * bearing opens "No address for this one." — the opposite of an address — and the gate
+ * read it as one and burned a weave re-roll on a perfectly good quest (found by the Spark
+ * port lane, 2026-09-02). Only a POSSESSED address is an address: the address, its
+ * address, the full or exact or street address. "the address is in the WWW guide" still
+ * trips it, twice over. */
+const ADDRESS_LINE =
+  /\b\d{1,2}:\d{2}\b|\bEsplanade\b|\b[A-L]\s*(?:&|and)\s*\d|\b(?:the|its|it's|full|exact|street)\s+address\b|\bWWW guide\b/i;
 
 export function namesAnAddress(text) {
   return ADDRESS_LINE.test(String(text || ""));

@@ -557,6 +557,37 @@ section("the sealed quest is one bite, with a bearing and a proof");
     directions: "Dozens run daily citywide — check the WWW guide for a time and place near you.",
   });
   const placed = S.openWhere("branches", { status: "fixed", directions: "E & 6:15 (mid-block facing man)." });
+  /* "No address for this one." is the OPPOSITE of an address, and the gate used to read
+     the bare word and burn a weave re-roll on a good quest (Spark port lane, 2026-09-02).
+     Only a possessed address is one; the WWW-guide lookup still is, twice over. */
+  const notAddresses = [
+    "No address for this one. Walk until the sound thins and you can hear your own feet.",
+    ...Object.values(S.OPEN_WHERE || {}),
+    "out past the last lamp",
+    "wherever the music is worst",
+  ].filter(Boolean);
+  const areAddresses = [
+    "the address is in the WWW guide",
+    "Its address is 7:30 & E",
+    "ask a greeter for the exact address",
+    "the street address, then knock",
+    "the Esplanade at 3:00",
+  ];
+  check(
+    "the Turtle's own 'No address for this one' is not an address",
+    notAddresses.every((t) => !S.namesAnAddress(t)),
+    JSON.stringify(notAddresses.filter(S.namesAnAddress)),
+  );
+  check(
+    "…and a possessed address, or a lookup, still is",
+    areAddresses.every((t) => S.namesAnAddress(t)),
+    JSON.stringify(areAddresses.filter((t) => !S.namesAnAddress(t))),
+  );
+  check(
+    "the same narrowing holds inside a bearing",
+    S.usableBearing("No address here — just walk") &&
+      !S.usableBearing("the address is in the WWW guide"),
+  );
   check("a citywide line that is a kind of place becomes the bearing", /^Anywhere the playa is open/.test(clean), clean);
   check("a citywide line that is really a lookup does not", /^No address for this one\./.test(lookup), lookup);
   check("a placed card's line is never handed to an open bite", /^No address for this one\./.test(placed), placed);

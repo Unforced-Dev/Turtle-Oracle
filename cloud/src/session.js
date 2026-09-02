@@ -28,6 +28,7 @@ import {
   landmarkRealm,
   namesAnAddress,
   openWhere,
+  OPEN_WHERE,
   standsSomewhere,
   proofFor, landmarkWhere } from "./weave.js";
 import { locateSpread, directionsLines, COMPASS_ROSE } from "./geo.js";
@@ -1380,7 +1381,9 @@ function bearingFor(bite, located) {
  * (review, 2026-09-02). A clock is only an address once the city's grid is attached to it:
  * a lettered street with an ampersand, the Esplanade, or a pointer at a lookup. */
 function addressInBearing(s) {
-  if (/\bEsplanade\b|\baddress\b|\bWWW guide\b/i.test(s)) return true;
+  /* the bare word "address" is not an address — the Turtle's own bearing says "No address
+   * for this one" out loud; only a possessed one is. Same narrowing as ADDRESS_LINE. */
+  if (/\bEsplanade\b|\b(?:the|its|it's|full|exact|street)\s+address\b|\bWWW guide\b/i.test(s)) return true;
   return /\b[A-L]\s*(?:&|and)\s*\d|\d\s*(?:&|and)\s*[A-L]\b/.test(s);
 }
 
@@ -1636,6 +1639,7 @@ export const __test = {
   context,
   isSameQuest,
   openWhere,
+  OPEN_WHERE,
   namesAnAddress,
   usableBearing,
   spokenTask,
