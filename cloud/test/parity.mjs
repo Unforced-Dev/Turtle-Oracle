@@ -216,10 +216,12 @@ skip("weave prompt (quest rules: one anchor + two open moves)", AHEAD);
  * parchment says what the spoken quest said. Retire this skip by porting the same
  * paragraph into app/oracle/session.py's _seal_llm. */
 skip("seal prompt (one placed move, two bearings)", AHEAD);
-for (const [label, a, b] of [
-  ["echoes prompt", py.echoes, ce.p],
-  ["refine prompt", py.refine, cr.p],
-]) {
+/* The echoes prompt gained one paragraph the Spark does not have yet: what a quotable
+ * phrase IS — a clause with a noun or a verb in it, cut at the seeker's own punctuation.
+ * Everything the Spark's version says is still said, in the same words and the same
+ * order. Retire this skip by porting that paragraph into app/oracle/session.py. */
+skip("echoes prompt (quote a clause, not a word count)", AHEAD);
+for (const [label, a, b] of [["refine prompt", py.refine, cr.p]]) {
   const A = normalise(a);
   const B = normalise(b);
   check(label, A === B, firstDiff(A, B));
@@ -245,11 +247,13 @@ check(
   `py=${JSON.stringify(py.names)}\n         js=${JSON.stringify(NAMES.map(S.extractName))}`,
 );
 const jsEch = S.echoesFallback(sess);
-check(
-  "fallback echoes",
-  JSON.stringify(jsEch) === JSON.stringify(py.echoes_fallback),
-  `py=${JSON.stringify(py.echoes_fallback)}\n         js=${JSON.stringify(jsEch)}`,
-);
+/* The same divergence, in the offline half: the Python cuts fixed seven-word windows out
+ * of what the seeker said, the cloud cuts at their punctuation and trims the edges back to
+ * real words ("out to the trash fence alone and" is what the fixed window gives on a
+ * two-minute story). Both are verbatim and 3-8 words — the structural checks below still
+ * run on the cloud's — but the phrases chosen differ, so the byte-diff cannot. */
+skip("fallback echoes (clause-shaped windows, not fixed-width ones)", AHEAD);
+console.log("         cloud picks: " + JSON.stringify(Object.values(jsEch).map((l) => l.split("“")[1].split("”")[0])));
 const jsWf = weaveFallback(told, picks, located);
 check(
   "fallback reading",
@@ -333,6 +337,12 @@ check(
   (jsWf.adventure.match(/The map says /g) || []).length === 1 &&
     (jsWf.adventure.match(/No address for this one\./g) || []).length === 2,
   jsWf.adventure,
+);
+check(
+  "echoes prompt asks for a clause the seeker would recognise, not a word count",
+  ce.p.includes("Quote a whole clause the seeker would recognise as their own") &&
+    ce.p.includes("never a fragment that begins mid-clause") &&
+    ce.p.includes("3-8 words"),
 );
 check(
   "seal prompt marks the one placed move and forbids an address on the other two",

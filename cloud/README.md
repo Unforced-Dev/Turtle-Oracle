@@ -96,6 +96,13 @@ Two things about that shape are the point:
   spread is dealt face up, and the question the Turtle asks about it is shaped by what it
   drew and what it has heard. `{pass:true}` is a real answer — the séance completes on it,
   and the fallback echoes name the cards rather than inventing a quotation.
+- **An echo quotes a clause, not a word count.** The line each card turns over on quotes
+  3-8 words the seeker actually said, and `validEcho` throws away any the model invented.
+  The candidates are cut at the seeker's own punctuation and trimmed back to words with
+  weight in them, because a fixed-width window over two minutes of voice lands mid-clause
+  — *You said “out to the trash fence alone and”*. The `proposed` event reports
+  `modes.echoes: "llm" | "fallback"`, where `"llm"` means at least one of the model's
+  three lines survived that check.
 
 ## The quest, and how specific it is
 

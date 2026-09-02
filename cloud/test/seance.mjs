@@ -384,5 +384,93 @@ section("the sealed parchment carries one address and two bearings");
   check("a placed card's line is never handed to an open move", /^No address for this one\./.test(placed), placed);
 }
 
+/* ---- 8. the echoes: a clause, not a word count ------------------------------------ */
+
+/* Two minutes of voice used to be cut into fixed seven-word windows, which land wherever
+ * they land: You said “I got here Sunday and I have”. The windows are now cut at the
+ * seeker's own punctuation and trimmed back to words that carry weight. */
+
+section("the echoes quote a clause the seeker would recognise");
+{
+  const STORY =
+    "I got here Sunday and I have not slept, and I keep telling everyone I am fine. " +
+    "I am not fine. I have not said the thing I came out here to say, and last night " +
+    "I walked out to the trash fence alone and stood there for an hour.";
+  const flat = STORY.toLowerCase().match(/[\p{L}\p{N}_’'-]+/gu).join(" ");
+  const windows = S.quoteWindows([STORY]);
+  const OPENERS = /^(and|i have|the|to|of|that|but|so|my|i)\b/i;
+  const ENDERS = /\b(and|i|have|the|to|of|that|but|so|my|is|was)$/i;
+  check("a long story still yields quote candidates", windows.length >= 3, JSON.stringify(windows));
+  check("every window is 3-8 words", windows.every((w) => {
+    const n = w.split(/\s+/).length;
+    return n >= 3 && n <= 8;
+  }), JSON.stringify(windows));
+  check(
+    "no window starts mid-clause on a joining word",
+    windows.every((w) => !OPENERS.test(w)),
+    JSON.stringify(windows),
+  );
+  check("no window trails off on one either", windows.every((w) => !ENDERS.test(w)), JSON.stringify(windows));
+  check(
+    "every window is verbatim in what the seeker said",
+    windows.every((w) => flat.includes(w.toLowerCase())) &&
+      windows.every((w) => S.validEcho(`You said “${w}” — mm.`, [STORY])),
+    JSON.stringify(windows),
+  );
+  check(
+    "the windows are spread across the story, not all cut from its opening",
+    flat.indexOf(windows[windows.length - 1].toLowerCase()) > flat.length / 2,
+    JSON.stringify(windows),
+  );
+}
+{
+  // and the template echoes are cut from exactly those windows, one card each
+  const { sess, proposed } = await walk("talk", {
+    llm: deadLlm,
+    answer: { text: "I put down being the calm one." },
+  });
+  const cut = S.quoteWindows(S.seekerWords(sess));
+  const quoted = ["roots", "trunk", "branches"]
+    .map((r) => (proposed.echoes[r].match(/“([^”]+)”/) || [])[1])
+    .filter(Boolean);
+  check(
+    "the template echoes are cut from those windows, one card each",
+    quoted.length === 3 && new Set(quoted).size === 3 && quoted.every((q) => cut.includes(q)),
+    JSON.stringify(quoted) + "\n         windows: " + JSON.stringify(cut),
+  );
+}
+{
+  // and the event says which of the two wrote them
+  const quoting = goodLlm({
+    echoes: JSON.stringify({
+      roots: "You said “keep telling everyone I am fine” — the dust heard that one.",
+      trunk: "You said “I have not slept” — so stand still first.",
+      branches: "You said “the thing I came out here to say” — say it to a face.",
+    }),
+  });
+  const { proposed } = await walk("talk", { llm: quoting, answer: { text: "I put down being the calm one." } });
+  check(
+    "a model echo that quotes the seeker is reported as llm",
+    proposed.modes.echoes === "llm" && proposed.echoes.trunk.includes("“I have not slept”"),
+    JSON.stringify(proposed.modes) + " " + JSON.stringify(proposed.echoes),
+  );
+  check(
+    "the other modes keys are still there",
+    proposed.modes.select === "playa" && Boolean(proposed.modes.weave),
+    JSON.stringify(proposed.modes),
+  );
+  const { proposed: templated } = await walk("talk", {
+    llm: goodLlm(), // its echoes quote nothing the seeker said
+    answer: { text: "I put down being the calm one." },
+  });
+  check(
+    "echoes that quote nothing the seeker said are reported as fallback",
+    templated.modes.echoes === "fallback" && templated.modes.weave === "llm",
+    JSON.stringify(templated.modes),
+  );
+  const { proposed: dead } = await walk("touch", { llm: deadLlm, answer: { pass: true } });
+  check("no model at all is reported as fallback too", dead.modes.echoes === "fallback", JSON.stringify(dead.modes));
+}
+
 console.log(failures ? `\n${failures} FAILED` : "\nALL PASS");
 process.exit(failures ? 1 : 0);

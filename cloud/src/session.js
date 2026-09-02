@@ -427,8 +427,75 @@ function quoteTokens(text) {
   return (text || "").match(/[\p{L}\p{N}_’'-]+/gu) || [];
 }
 
-/** Make up to three distinct, natural 3-8-word quote candidates per answer. */
-function quoteWindows(spoken) {
+/* Words a quote may not begin or end on, and that never count as its content: the joints
+ * of a sentence rather than its meat. Deliberately small — this is a list of edges, not a
+ * stopword corpus, and a word like "sister" or "swallowing" must never land in it. */
+const EDGE_WORDS = new Set(
+  ("a an the and or but so because if when while as of to in on at for with from by about " +
+    "into out up down over under i im i'm me my we us our you your they them their he she " +
+    "it its that this these those there is am are was were be been being do does did have " +
+    "has had will would can could should not no yes then than just very really too also")
+    .split(" "),
+);
+
+const ECHO_MIN = 3;
+const ECHO_MAX = 8;
+
+/** Trim a candidate back until it starts and ends on a word with weight in it. */
+function trimToWords(toks) {
+  let a = 0;
+  let b = toks.length;
+  while (a < b && EDGE_WORDS.has(toks[a].toLowerCase())) a++;
+  while (b > a && EDGE_WORDS.has(toks[b - 1].toLowerCase())) b--;
+  return toks.slice(a, b);
+}
+
+function hasContent(toks) {
+  return toks.some((t) => !EDGE_WORDS.has(t.toLowerCase()));
+}
+
+/* Up to three quote candidates from one answer, cut at the seeker's OWN punctuation.
+ * A fixed-width window is fine on one sentence and clumsy on a two-minute story: on
+ * staging it produced You said “I got here Sunday and I have” and You said “out to the
+ * trash fence alone and” — the seeker hears the Turtle mis-hearing them. So the answer is
+ * cut into clauses first, then the edges are trimmed back to real words. */
+function clauseWindows(answer) {
+  const clauses = [];
+  for (const clause of String(answer || "").split(/[.,;:!?…]+|\s+[—–-]+\s+/)) {
+    const toks = quoteTokens(clause);
+    if (toks.length < ECHO_MIN) continue;
+    const starts =
+      toks.length <= ECHO_MAX
+        ? [0]
+        : [0, Math.floor((toks.length - ECHO_MAX) / 2), toks.length - ECHO_MAX];
+    const found = [];
+    for (const start of starts) {
+      const win = trimToWords(toks.slice(start, start + ECHO_MAX));
+      if (win.length < ECHO_MIN || !hasContent(win)) continue;
+      const phrase = win.join(" ");
+      if (!found.includes(phrase)) found.push(phrase);
+    }
+    if (found.length) clauses.push(found);
+  }
+  // One from the top of the story, one from the middle, one from the end: two minutes of
+  // voice deserves better than having its opening sentence quoted back three times.
+  const spread =
+    clauses.length >= 3
+      ? [0, Math.floor(clauses.length / 2), clauses.length - 1]
+      : clauses.map((_, i) => i);
+  const out = [];
+  for (const i of spread) if (!out.includes(clauses[i][0])) out.push(clauses[i][0]);
+  for (const found of clauses) {
+    for (const phrase of found) {
+      if (out.length >= 3) return out;
+      if (!out.includes(phrase)) out.push(phrase);
+    }
+  }
+  return out.slice(0, 3);
+}
+
+/** Fixed-width windows — the old cut, kept for an answer with no clause worth taking. */
+function fixedWindows(spoken) {
   const windows = [];
   for (const answer of spoken) {
     const w = quoteTokens(answer);
@@ -441,6 +508,19 @@ function quoteWindows(spoken) {
     }
   }
   return windows;
+}
+
+/** Make up to three distinct, natural 3-8-word quote candidates per answer. */
+function quoteWindows(spoken) {
+  const windows = [];
+  for (const answer of spoken) {
+    for (const phrase of clauseWindows(answer)) {
+      if (!windows.includes(phrase)) windows.push(phrase);
+    }
+  }
+  /* A seeker who answers in fragments ("dust. tired. ok.") leaves no clause worth cutting.
+   * A blunt window is still better than the Turtle quoting nothing at all. */
+  return windows.length ? windows : fixedWindows(spoken);
 }
 
 function validEcho(line, spoken) {
@@ -477,6 +557,10 @@ async function echoesLlm(sess, llm, tShort) {
     "Each line quotes exactly ONE phrase of 3-8 words copied verbatim from SEEKER'S WORDS inside " +
     "curly quotation marks — never words from CARD NOTES — then ties that phrase to the card in plain " +
     "speech. No card mechanics, no fortune-telling.\n" +
+    "Quote a whole clause the seeker would recognise as their own — it carries a noun or a " +
+    "verb, and it neither starts nor ends on a joining word ('and', 'the', 'I', 'to', 'of', " +
+    "'have', 'that'). Cut at their punctuation, not at a word count: never a fragment that " +
+    "begins mid-clause.\n" +
     "Example shape: You said “yes to everyone” — and the tide kept none of it for you.\n" +
     'Return JSON only: {"roots": "...", "trunk": "...", "branches": "..."}';
   const resp = await llm.generate(prompt, { system: SYSTEM, asJson: true, timeout: tShort, stage: "echoes" });
@@ -486,11 +570,16 @@ async function echoesLlm(sess, llm, tShort) {
     // card's echo falls back to the deterministic quote-builder
     const fb = echoesFallback(sess);
     const result = {};
+    let kept = 0;
     for (const r of ["roots", "trunk", "branches"]) {
       const line = cleanLine(out[r], 22);
-      result[r] = line && validEcho(line, spoken) ? line : fb[r];
+      const good = line && validEcho(line, spoken);
+      if (good) kept++;
+      result[r] = good ? line : fb[r];
     }
-    return result;
+    // If nothing the model wrote survived, this IS the fallback — say so, rather than let
+    // the event report `modes.echoes: "llm"` over three template lines.
+    return kept ? result : null;
   }
   return null;
 }
@@ -664,9 +753,13 @@ async function weaveStep(sess, ctx) {
   const picks = sess.picks;
   const located = sess.located;
   const [out, weaveMode] = await weave(told, picks, ctx.llm, located, context(sess), ctx.tLong);
-  const echoes =
-    (ctx.llm && ctx.llm.available() ? await echoesLlm(sess, ctx.llm, ctx.tShort) : null) ||
-    echoesFallback(sess);
+  /* Which of the two wrote the echoes is not visible from the lines themselves — a model
+   * echo and a template echo both read "You said “…” — …" — so the event says it. "llm"
+   * means the model answered; echoesLlm still swaps any single card's line for the
+   * template one when that line quotes something the seeker never said. */
+  const spokenEchoes =
+    ctx.llm && ctx.llm.available() ? await echoesLlm(sess, ctx.llm, ctx.tShort) : null;
+  const echoes = spokenEchoes || echoesFallback(sess);
   sess.reading = out.reading;
   sess.adventure = out.adventure;
   sess.echoes = echoes;
@@ -686,7 +779,7 @@ async function weaveStep(sess, ctx) {
     directions: directionsLines(picks, located),
     ask: DECISION_ASK,
     expects: "decision",
-    modes: { select: "playa", weave: weaveMode },
+    modes: { select: "playa", weave: weaveMode, echoes: spokenEchoes ? "llm" : "fallback" },
   };
 }
 
@@ -1272,6 +1365,7 @@ export const __test = {
   WANTINGS,
   DOORS,
   quoteWindows,
+  clauseWindows,
   validEcho,
   echoesFallback,
   echoesLlm,
