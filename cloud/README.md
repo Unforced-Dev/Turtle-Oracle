@@ -9,10 +9,16 @@ the same ceremony for anyone with a phone and a signal, and the thing that still
 when the Spark is off, the generator is out, or someone wants to show a friend at home
 what the shell does.
 
-It is a **port, not a rewrite**. Every stage, every spoken line, and all five tuned
-prompt strings are copied out of `app/oracle/` unchanged, and `cloud/test/parity.mjs`
-proves it by building each prompt on both sides of the port and diffing them byte for
-byte. If you change a prompt in one place, that test fails until you change it in both.
+It started as a **port, not a rewrite**: every stage, every spoken line and all five
+tuned prompt strings were copied out of `app/oracle/` unchanged, and `cloud/test/parity.mjs`
+proves it by building each prompt on both sides and diffing them byte for byte. If you
+change a prompt in one place, that test fails until you change it in both.
+
+As of `feat/cloud-seance-v2` the cloud turtle is **ahead of the Spark in two places, on
+purpose** — the séance flow, and how specific a quest is allowed to be. Every string that
+diverged prints as `skip` in the parity test rather than `ok`, each with a note saying what
+moved and to port it back to `app/oracle/` when the Spark is reachable, then restore the
+byte-diff. Everything else still diffs, and still has to match.
 
 ## Run it
 
@@ -21,7 +27,9 @@ export CLOUDFLARE_API_TOKEN=...        # never in a file in this repo, never in 
 export CLOUDFLARE_ACCOUNT_ID=<account-id>          # `npx wrangler whoami` prints it
 
 cd cloud
-npm test                    # port parity — needs node 22+ and python3, no network
+TZ=America/Los_Angeles npm test        # both suites — needs node 22+ and python3, no network
+npm run test:seance         # just the state machine (no python3 needed)
+npm run test:parity         # just the prompt diff against app/oracle
 npx wrangler deploy --env staging      # -> turtle-oracle-staging.unforced.workers.dev
 npx wrangler deploy                    # -> turtle-oracle, the custom domain. Review first.
 ```
@@ -41,9 +49,14 @@ cloud/
   assets/index.html    app/web/kiosk.html, with a few marked changes
   src/index.js         the router — app/oracle/server.py
   src/session.js       the séance state machine — app/oracle/session.py
+  src/sessiondo.js     one Durable Object per séance — the state KV could not hold
   src/weave.js         reading + quest — app/oracle/weave.py
   src/llm.js           Workers AI — app/oracle/llm.py
+  src/ears.js          /api/transcribe — app/oracle/ears.py; its own file so a test
+                       can import it without the Workers runtime
   src/deck.js  select.js  geo.js  lore.js  printer.js  util.js
+  test/all.mjs         both suites, both run even when the first fails
+  test/seance.mjs      walks both doors of the séance against a fake model
   test/parity.mjs      builds every prompt on both sides and diffs them
 ```
 
@@ -52,11 +65,83 @@ Static assets (the kiosk, 52 cards at two sizes, the medallion) are served by th
 duplicated into the repo — `prepare-assets.sh` copies it out of `cards/web/` at build
 time and `assets/{med,thumb,tiles,avatar.jpg}` are gitignored.
 
+## The séance
+
+Twelve stages, and the whole thing turns on the second one. A seeker deep in their burn is
+not going to complete the sentence *"I want to keep…"* — the old flow made them, and that
+is the stage this version deletes. Every step is a `POST /api/session/say` with the
+séance id; the body and the event are what the kiosk speaks.
+
+| stage | the Turtle | body the phone posts | what comes back |
+|---|---|---|---|
+| `naming` | asks for a name | `{text}` | → `door` |
+| `door` | *talk to the Turtle, or touch?* | `{door:"talk"\|"touch"}` | `doors[]`, → `listening` or `weather` |
+| `listening` | *tell the Turtle about your burn* | `{text}` (voice, transcribed, or typed) | → `asking` |
+| `weather` | the six skies | `{weather:id}` | `weathers[]`, → `stones` |
+| `stones` | *touch what you are carrying* | `{stones:[id]}` | `stones[]`, → `wanting` |
+| `wanting` | *what did you come out here for?* | `{wanting:id}` | `wantings[]`, → `asking` |
+| `asking` | **draws and reveals the three cards**, then asks one open question | `{text}` or `{chip}` or `{pass:true}` | `cards`, `question`, `chips[]`, → `proposed` |
+| `proposed` | the echoes, the reading, the quest, the decision | `{text}` to refine (≤3) | `echoes`, `reading`, `adventure`, → `accepted` |
+| `accepted` | seals it | `POST .../accept` | `quest` |
+
+**Every event at `asking`, `proposed` and `accepted` is complete, including the retries.**
+Those are the three stages whose renderer reaches into the event — the kiosk deals
+`e.cards[slot].id` and walks `e.quest.moves` — and it persists the last step it was handed,
+so a `proposed` event with no cards on it is not a missing screen but a blank one that
+comes back on every reload. A body with no text at `proposed` (a stale `{pass:true}`, a
+chip from the screen before, an empty retry from a phone whose reply died on LTE) re-offers
+the standing decision whole, `modes.refine: "standing"`; at `accepted` it replays the
+sealed quest; the `asking` retry carries the spread and is marked `retry: true` so a phone
+already looking at those cards redraws only the answer row. The kiosk checks the same
+contract on its own side (`renderable()`), refuses to save or route an event that fails it,
+and `cloud/test/seance.mjs` walks all twelve stages against every body shape.
+
+Plus the tale side, unchanged: `tale_naming` → `tale_listening` → `tale_told`.
+
+Two things about that shape are the point:
+
+- **Nobody has to type to be read.** The touch door is three tap screens and no text box
+  anywhere. Each tile becomes a short share phrase so the weave and the keyword scoring
+  have words to work with — but those phrases carry a marker, and `seekerWords()` drops
+  them, so a tile is never quoted back as something the seeker *said*. That is the rule
+  `"I am carrying:"` already enforced for the stones, extended to every tap.
+- **The cards come before the question.** An oracle turns the cards and then asks you
+  something; a form asks you first and then computes. So the draw happens at `asking`, the
+  spread is dealt face up, and the question the Turtle asks about it is shaped by what it
+  drew and what it has heard. `{pass:true}` is a real answer — the séance completes on it,
+  and the fallback echoes name the cards rather than inventing a quotation.
+- **An echo quotes a clause, not a word count.** The line each card turns over on quotes
+  3-8 words the seeker actually said, and `validEcho` throws away any the model invented.
+  The candidates are cut at the seeker's own punctuation and trimmed back to words with
+  weight in them, because a fixed-width window over two minutes of voice lands mid-clause
+  — *You said “out to the trash fence alone and”*. The `proposed` event reports
+  `modes.echoes: "llm" | "fallback"`, where `"llm"` means at least one of the model's
+  three lines survived that check.
+
+## The quest, and how specific it is
+
+Three street addresses is an errand list, and half of what the guide places has moved,
+burned, or was never there. So the quest prompt asks for exactly **one** move pinned to a
+real 2026 placement and **two** open ones — a direction, a kind of place, a kind of
+person, a time of day. The pinned one is chosen from the located cards: the one whose
+`live_hook` actually resolved to a placed thing, preferring one the gates data gives an
+address or a clock for. `weaveFallback` follows the same rule offline.
+
+The **seal** (`POST /api/session/accept`) obeys the same split, so the parchment says what
+the quest said out loud. The anchor realm is decided once when the cards are drawn and
+carried on the session (`sess.anchor`); the placed move seals with its card's real
+directions, and the other two seal with a bearing — the card's own citywide line when that
+line is a kind of place ("Anywhere the playa is open under you"), otherwise the realm's
+`OPEN_WHERE` from `weave.js`. The seal prompt marks which move is the placed one and
+forbids an address on the other two; `accept()` drops the model's own `where` on those two
+anyway, because told to give a bearing it still names a camp, and a camp is an address with
+the numbers filed off.
+
 ## What changed from the playa app, and why
 
 | | playa (`app/`) | cloud (`cloud/`) |
 |---|---|---|
-| séance state | module-level `SESSIONS` dict + `_gc()` | KV `sess:<id>`, 2h TTL |
+| séance state | module-level `SESSIONS` dict + `_gc()` | a Durable Object per séance, 2h expiry |
 | Tale-Book | `app/state/talebook.jsonl`, rescanned per lookup | KV `lore:name:<norm>` (30d TTL) + `lore:counts` |
 | model | Ollama `qwen3:30b-a3b` on the LAN | Workers AI `@cf/qwen/qwen3-30b-a3b-fp8` |
 | ears | whisper.cpp + ffmpeg | `@cf/openai/whisper-large-v3-turbo`, no transcode |
@@ -107,13 +192,44 @@ template.
 The playa server trusts everyone who can reach it, because reaching it means standing in
 camp. This one is on the open internet with Workers AI billing behind it, so:
 
-- **30 POST `/api/*` a minute per IP** (the `RL` ratelimit binding in `wrangler.toml`).
-  A whole séance is about a dozen calls. Over the limit the shell says so, with a 429.
-  A missing binding means no limit, not no séance — deleting the block is safe.
-- **1.5MB of audio** per `/api/transcribe`. The kiosk's own recorder caps at 60s, which
-  is ~240KB of webm/opus or ~1MB of iOS mp4/aac.
-- **1000 characters a share, 12 shares a séance, 3 refinements a quest.** Past the third
-  the Turtle says the Tree has settled and spends nothing more.
+- **30 POST `/api/*` a minute per IP** (the `RL` ratelimit binding in `wrangler.toml`),
+  and **120 a minute for `/api/speak`** on its own `RL_SPEAK` binding. A minimal séance
+  is ~7 séance POSTs, but with the Turtle's voice on it is ~41 more, because `/api/speak`
+  is one POST per *sentence* — about 48 in all. On one shared counter that meant two
+  phones behind a single carrier NAT could 429 each other out of a reading, so the voice
+  spends from its own budget. Over the limit the shell says so, with a 429. A missing
+  binding means no limit, not no séance — deleting either block is safe.
+- **`/api/transcribe` needs a séance.** The séance id goes in an `x-seance-session`
+  header (or `?session=` for a hand-run curl) and has to resolve to a live Durable Object
+  session in a stage that is actually listening — `naming`, `listening`, `asking`,
+  `proposed`, and the two tale stages. Anything else gets a séance-shaped 200 with an
+  `error` the kiosk toasts. Without that gate this was a free Whisper endpoint: an IP, a
+  4MB body, ~120MB of billed audio a minute. It also has **its own ratelimit binding,
+  `RL_EARS` (12/min)**, so one seeker tapping the mic cannot eat their own séance budget
+  and a scraper cannot have thirty of them.
+- **4MB of audio** per `/api/transcribe`. The talk door gives a seeker two minutes, which
+  is ~480KB of webm/opus or ~2MB of iOS mp4/aac (iOS records AAC at ~128kbps and will not
+  be talked down). The kiosk's own recorder still stops itself at 120s. **The old
+  60s/1.5MB numbers were measured; these are not** — verify a real two-minute share on
+  staging and read the TAIL of the transcript, because a truncated answer looks like a
+  quiet seeker rather than like an error.
+- **1000 characters a share** — except at `listening`, which takes 2000, because that is
+  where two minutes of transcribed voice lands in one piece. **12 shares a séance, 3
+  refinements a quest.** Past the third the Turtle says the Tree has settled and spends
+  nothing more.
+- **`/api/print` needs a sealed quest.** The receipt is the paper the shell would have
+  cut, and `app/oracle/printer.py` opens it with `YOU TOLD THE TURTLE` and the seeker's own
+  shares — which is right on paper handed to the person who said them, and wrong over the
+  open internet to anyone holding a session id. The shares stay in the receipt (removing
+  them would leave the playa's own format with a heading and nothing under it); what is
+  gated is when it can be fetched: `sess.stage === "accepted"`, and nothing before.
+- **A thrown séance says so in the Turtle's voice.** `/api/session/*` answers an internal
+  failure with a 200 and one line — never `String(err.message)`, which used to go straight
+  onto a stranger's screen — and the stack goes to `console.error`. The session is saved on
+  that path too when the stage both moved and finished arriving (`session.replayable()`),
+  so a retry replays the draw instead of paying for a second one; a stage that was entered
+  but never filled in is deliberately not saved, because redoing it costs a draw and saving
+  it strands the seeker in a stage whose reveal never reached them.
 - **`accept` is a replay, not a reseal** — the sealed quest and its spoken line are stored
   on the session, so a double-tap or a retried POST cannot bill a second sealing.
 - **The Tale-Book forgets.** Per-name records expire after 30 days and hold the quest
@@ -126,7 +242,10 @@ camp. This one is on the open internet with Workers AI billing behind it, so:
 
 `assets/index.html` is `app/web/kiosk.html` with a handful of changes, each marked
 `cloud:`: a `noindex` meta tag, the Print button hidden (there is no printer out here),
-and `esc()` around everything the model or the seeker puts on the quest parchment.
+`esc()` around everything the model or the seeker puts on the page (the parchment, the
+weather tiles, the stones, the card art), the `renderable()` contract above, a restore that
+re-renders without re-buying the voice, and a recorder that asks for 48kbps and checks
+`blob.size` against the shell's roof before posting rather than after.
 Everything else — the mic, the browser-TTS fallback, the localStorage session restore,
 the `?kiosk=1` station param — is untouched. **The playa kiosk is the original.** Real UI
 work belongs in `app/web/kiosk.html` first, then gets copied down.

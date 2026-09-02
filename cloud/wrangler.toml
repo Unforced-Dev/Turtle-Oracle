@@ -32,13 +32,26 @@ run_worker_first = true
 [ai]
 binding = "AI"
 
-# Séance state. Sessions live under sess:<id> with a 2h TTL; the Tale-Book lives in the
-# same namespace, under lore:name:* for 30 days and lore:counts forever.
+# Séance state: one Durable Object per séance, addressed by the séance id. KV cannot hold
+# this — it caches a read at the location that served it for ~60s and a write does not
+# invalidate that cache, so two turns seconds apart could roll the state machine backwards.
+# See src/sessiondo.js. SQLite storage because it is the only DO storage on the free plan.
+[[durable_objects.bindings]]
+name = "SESSION_DO"
+class_name = "SessionDO"
+
+[[migrations]]
+tag = "v1"
+new_sqlite_classes = ["SessionDO"]
+
+# The Tale-Book and the tiers counter, which are best-effort counters read minutes or days
+# after they are written and are happy being eventually consistent: lore:name:* for 30
+# days, lore:counts and tiers forever.
 [[kv_namespaces]]
 binding = "SESSIONS"
 id = "37010e57750c4c989c563ff76e829c0e"
 
-# 30 POST /api/* calls a minute per IP — a whole séance is about a dozen, so this is a
+# 30 POST /api/* calls a minute per IP — a minimal séance is about seven, so this is a
 # roof over a scraper, not over a seeker. src/index.js treats a missing RL binding as
 # "no limit", so deleting this block degrades to the pre-limit behaviour rather than
 # breaking the Worker.
@@ -47,6 +60,27 @@ name = "RL"
 type = "ratelimit"
 namespace_id = "1001"
 simple = { limit = 30, period = 60 }
+
+# The voice, on its own budget. /api/speak is one POST per SENTENCE — a séance with the
+# Turtle's voice on is ~41 of them — so on the shared 30/min counter two phones behind one
+# carrier NAT could 429 each other out of a reading. Same "missing binding = no limit"
+# rule; only /api/speak spends from this one.
+[[unsafe.bindings]]
+name = "RL_SPEAK"
+type = "ratelimit"
+namespace_id = "1002"
+simple = { limit = 120, period = 60 }
+
+# The ears, on their own budget too. One POST to /api/transcribe is up to two minutes of
+# audio billed by Workers AI, so on the shared 30/min counter a single IP could push
+# ~120MB of whisper a minute — and every one of those POSTs also came out of a real
+# seeker's séance budget. src/ears.js additionally requires a live séance in a listening
+# stage, so this is the roof over a seeker who taps the mic a lot, not the gate.
+[[unsafe.bindings]]
+name = "RL_EARS"
+type = "ratelimit"
+namespace_id = "1003"
+simple = { limit = 12, period = 60 }
 
 [vars]
 # Same family as the playa Spark's qwen3:30b-a3b. Verified on this account 2026-08-23.
@@ -92,6 +126,14 @@ run_worker_first = true
 [env.staging.ai]
 binding = "AI"
 
+[[env.staging.durable_objects.bindings]]
+name = "SESSION_DO"
+class_name = "SessionDO"
+
+[[env.staging.migrations]]
+tag = "v1"
+new_sqlite_classes = ["SessionDO"]
+
 [[env.staging.kv_namespaces]]
 binding = "SESSIONS"
 id = "37010e57750c4c989c563ff76e829c0e"
@@ -101,6 +143,23 @@ name = "RL"
 type = "ratelimit"
 namespace_id = "1001"
 simple = { limit = 30, period = 60 }
+
+[[env.staging.unsafe.bindings]]
+name = "RL_SPEAK"
+type = "ratelimit"
+namespace_id = "1002"
+simple = { limit = 120, period = 60 }
+
+# The ears, on their own budget too. One POST to /api/transcribe is up to two minutes of
+# audio billed by Workers AI, so on the shared 30/min counter a single IP could push
+# ~120MB of whisper a minute — and every one of those POSTs also came out of a real
+# seeker's séance budget. src/ears.js additionally requires a live séance in a listening
+# stage, so this is the roof over a seeker who taps the mic a lot, not the gate.
+[[env.staging.unsafe.bindings]]
+name = "RL_EARS"
+type = "ratelimit"
+namespace_id = "1003"
+simple = { limit = 12, period = 60 }
 
 [env.staging.vars]
 MODEL = "@cf/qwen/qwen3-30b-a3b-fp8"

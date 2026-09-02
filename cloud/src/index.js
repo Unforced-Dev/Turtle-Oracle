@@ -12,6 +12,7 @@
  *   - a warm-keeper thread. Workers AI has no cold model to keep resident.
  */
 import { DECK, CARDS, cardPayload } from "./deck.js";
+import { DEFAULT_WHISPER, transcribe } from "./ears.js";
 import { locate } from "./geo.js";
 import { WorkersAILLM, DEFAULT_MODEL } from "./llm.js";
 import * as lore from "./lore.js";
@@ -19,7 +20,10 @@ import { formatReceipt } from "./printer.js";
 import * as session from "./session.js";
 import { json } from "./util.js";
 
-const DEFAULT_WHISPER = "@cf/openai/whisper-large-v3-turbo";
+/* wrangler needs the Durable Object class exported from the entry module. The séance
+ * state lives here now rather than in KV — sessiondo.js says why. */
+export { SessionDO } from "./sessiondo.js";
+
 const DEFAULT_TTS = "@cf/deepgram/aura-1";
 const DEFAULT_TTS_SPEAKER = "angus";
 
@@ -27,14 +31,16 @@ const DEFAULT_TTS_SPEAKER = "angus";
  * roof that still lets an abandoned session fall off the shelf the same evening. */
 const SESSION_TTL = 7200;
 
-/* Whisper is billed by audio; the kiosk's own recorder caps at 60s, which is ~240KB of
- * webm/opus on Android and ~1MB of mp4/aac on iOS. Anything past 1.5MB is not a seeker,
- * it is a mistake or an attack. */
-const MAX_AUDIO_BYTES = 1.5 * 1024 * 1024;
-
-/* Every POST /api/* route spends money — whisper, the voice, and the séance itself —
- * so they are all limited together, per client IP. See the binding in wrangler.toml. */
+/* Every POST /api/* route spends money — whisper, the voice, and the séance itself — so
+ * they are limited per client IP. The voice gets its OWN budget: /api/speak is one POST
+ * per sentence, ~41 of them in a séance, so sharing the séance's 30/min meant two phones
+ * behind one carrier NAT could 429 each other out of a reading. See wrangler.toml. */
 const RATE_LIMITED = "the shell needs a moment — too many seekers at once";
+
+/* What a stranger hears when the Worker throws. Never String(err.message): the seeker is
+ * standing in the dust looking at a toast, and an internal message tells them nothing and
+ * tells everyone else how this is built. The real one goes to console.error. */
+const LOST_THREAD = "the Turtle lost the thread — touch it again";
 
 /* The kiosk is one HTML file with an inline <style>, an inline <script> and one inline
  * onerror handler, its grain texture is a data: SVG, and the Turtle's spoken lines play
@@ -60,7 +66,9 @@ const REALM_ORDER = { shell: 0, roots: 1, trunk: 2, branches: 3 };
  * a ~100s edge timeout. Raising either number buys a 524 instead of a reading. */
 function makeCtx(env) {
   return {
+    // the Tale-Book and the tiers counter; the séance itself is in ctx.sessions
     kv: env.SESSIONS,
+    sessions: env.SESSION_DO,
     llm: new WorkersAILLM(env),
     shellChance: parseFloat(env.SHELL_CHANCE || "0.10"),
     tShort: parseFloat(env.T_SHORT || "20"),
@@ -69,16 +77,29 @@ function makeCtx(env) {
 }
 
 /** True when this IP has had its share of the shell for the minute. */
-async function overLimit(env, request) {
+async function overLimit(binding, request) {
   /* No binding — local `wrangler dev`, or a deploy the account would not take it on —
    * means no limit rather than no séance. */
-  if (!env.RL || typeof env.RL.limit !== "function") return false;
+  if (!binding || typeof binding.limit !== "function") return false;
   try {
-    const { success } = await env.RL.limit({ key: request.headers.get("cf-connecting-ip") || "no-ip" });
+    const { success } = await binding.limit({
+      key: request.headers.get("cf-connecting-ip") || "no-ip",
+    });
     return !success;
   } catch (e) {
     return false;
   }
+}
+
+/** Which budget a route spends from. The two routes that bill by the SECOND of media
+ *  each have their own: the voice because a séance is ~41 POSTs of it and two phones
+ *  behind one carrier NAT were 429ing each other out of a reading, and the ears because
+ *  one POST there is up to two minutes of billed Whisper and should not be able to eat a
+ *  seeker's séance budget — nor have 30 of them a minute to itself. */
+function limiterFor(env, path) {
+  if (path === "/api/speak") return env.RL_SPEAK;
+  if (path === "/api/transcribe") return env.RL_EARS;
+  return env.RL;
 }
 
 /** The kiosk and the card art, with the headers a public deployment wants. */
@@ -122,41 +143,6 @@ async function readJsonBody(req) {
   }
 }
 
-function toBase64(bytes) {
-  let s = "";
-  const CH = 0x8000;
-  for (let i = 0; i < bytes.length; i += CH) {
-    s += String.fromCharCode.apply(null, bytes.subarray(i, i + CH));
-  }
-  return btoa(s);
-}
-
-/* ---- ears: app/oracle/ears.py, whisper.cpp -> Workers AI whisper ------------------ */
-async function transcribe(req, env) {
-  const buf = await req.arrayBuffer();
-  if (!buf.byteLength) return json({ error: "no audio" }, 400);
-  if (buf.byteLength > MAX_AUDIO_BYTES) return json({ error: "that is too much audio" }, 413);
-  const model = env.WHISPER_MODEL || DEFAULT_WHISPER;
-  /* The kiosk posts the raw MediaRecorder blob with its own Content-Type — webm/opus on
-   * Android and Chrome, mp4/aac on iOS. Both were round-tripped through this model on
-   * 2026-08-23 and both transcribed; unlike the playa path there is no ffmpeg step. */
-  try {
-    const out = await env.AI.run(model, { audio: toBase64(new Uint8Array(buf)) });
-    const text = String((out && (out.text || out.transcription)) || "")
-      .split(/\s+/)
-      .filter(Boolean)
-      .join(" ")
-      .trim();
-    if (!text) return json({ error: "the Turtle has no ears on this machine" }, 501);
-    return json({ text });
-  } catch (err) {
-    return json(
-      { error: "the Turtle has no ears on this machine", detail: String(err && err.message) },
-      501,
-    );
-  }
-}
-
 /* ---- voice: app/oracle/voice.py, kokoro -> Workers AI TTS ------------------------- */
 async function speak(req, env) {
   const body = await readJsonBody(req);
@@ -197,27 +183,46 @@ async function seance(action, req, env, exec) {
   if (action === "start") {
     const mode = String(body.mode || "seek").trim();
     const { sess, event } = session.start(mode);
-    await session.saveSession(ctx.kv, sess, SESSION_TTL);
+    await session.saveSession(ctx.sessions, sess, SESSION_TTL);
     return json(event);
+  }
+
+  if (action !== "say" && action !== "accept") {
+    return json({ error: "unknown séance action" }, 404);
   }
 
   const sid = String(body.session || "").trim();
-  const sess = await session.loadSession(ctx.kv, sid);
+  const sess = await session.loadSession(ctx.sessions, sid);
+  const stageIn = sess ? sess.stage : null;
 
-  if (action === "say") {
-    const event = await session.hear(sess, body, ctx);
-    if (sess) await session.saveSession(ctx.kv, sess, SESSION_TTL);
-    exec(noteTiers(ctx.kv, event.modes));
-    return json(event);
-  }
-  if (action === "accept") {
+  let event;
+  try {
     // The sealed quest stays on the session; /api/print reads it back by session id.
-    const event = await session.accept(sess, ctx);
-    if (sess) await session.saveSession(ctx.kv, sess, SESSION_TTL);
-    exec(noteTiers(ctx.kv, event.modes));
-    return json(event);
+    event = action === "say" ? await session.hear(sess, body, ctx) : await session.accept(sess, ctx);
+  } catch (err) {
+    /* The seeker gets a line in the Turtle's voice and a 200, because the kiosk toasts
+     * `error` and keeps their screen; the real message goes to the log, where it belongs.
+     * It used to be handed to the phone as a 500 with String(err.message) in it. */
+    console.error(`séance ${action} failed at ${stageIn}:`, (err && err.stack) || String(err));
+    /* hear() mutates `sess` and THEN awaits the model, and saveSession only ran when the
+     * request finished — so a throw anywhere after the draw threw the spread away and the
+     * seeker's retry paid for a second one. Save it, but only when the stage both moved
+     * and finished arriving: replayable() is false for a stage that was entered and never
+     * filled in (an `asking` with no question yet), and saving one of those would land
+     * the retry in a stage whose reveal the seeker never saw. An unfinished stage is
+     * cheaper to redo than a broken séance is to sit in. */
+    if (sess && sess.stage !== stageIn && session.replayable(sess)) {
+      try {
+        await session.saveSession(ctx.sessions, sess, SESSION_TTL);
+      } catch (e) {
+        /* the séance is already lost; do not lose the reply too */
+      }
+    }
+    return json({ error: LOST_THREAD, stage: (sess && sess.stage) || "gone" });
   }
-  return json({ error: "unknown séance action" }, 404);
+  if (sess) await session.saveSession(ctx.sessions, sess, SESSION_TTL);
+  exec(noteTiers(ctx.kv, event.modes));
+  return json(event);
 }
 
 /* ---- the printer that is not there ----------------------------------------------- */
@@ -225,8 +230,19 @@ async function print(req, env) {
   const body = await readJsonBody(req);
   const sid = String(body.session || "").trim();
   if (!sid) return json({ error: "no reading to print yet" }, 400);
-  const sess = await session.loadSession(env.SESSIONS, sid);
+  const sess = await session.loadSession(env.SESSION_DO, sid);
   if (!sess || !sess.picks) return json({ error: "no such séance to print" }, 400);
+  /* The receipt is the paper the shell would have cut, and app/oracle/printer.py opens it
+   * with YOU TOLD THE TURTLE and the seeker's own shares — a confession, on the paper, by
+   * design, because on the playa the paper goes straight into the hand of the person who
+   * said it. Here it comes back over the open internet to whoever posts the id, so it is
+   * gated on a SEALED séance: an accepted quest is a thing the seeker asked for and can
+   * hand on, and everything before it is a session mid-confession. The shares stay in the
+   * receipt because removing them would leave the playa's own format with a heading and
+   * nothing under it, and this text has to stay the paper. */
+  if (sess.stage !== "accepted" || !sess.quest) {
+    return json({ error: "there is no sealed quest on this séance yet" }, 400);
+  }
   const receipt = formatReceipt(
     {
       question: sess.shares.join(" / "),
@@ -287,15 +303,15 @@ export default {
           readings: tiers,
           // the number to look at: if this is climbing, the Turtle has gone dumb
           fallback_pct: total ? Math.round((1000.0 * tiers.fallback) / total) / 10 : null,
-          sessions: "kv",
+          sessions: "durable-object",
           printer: "none — cloud turtle",
         });
       }
     }
 
     if (request.method === "POST" && path.startsWith("/api/")) {
-      if (await overLimit(env, request)) return json({ error: RATE_LIMITED }, 429);
-      if (path === "/api/transcribe") return await transcribe(request, env);
+      if (await overLimit(limiterFor(env, path), request)) return json({ error: RATE_LIMITED }, 429);
+      if (path === "/api/transcribe") return await transcribe(request, env, url);
       if (path === "/api/speak") return await speak(request, env);
       if (path === "/api/print") return await print(request, env);
       if (path.startsWith("/api/session/")) {
@@ -303,7 +319,11 @@ export default {
         try {
           return await seance(action, request, env, exec);
         } catch (err) {
-          return json({ error: String((err && err.message) || err) }, 500);
+          /* seance() catches everything the séance itself can throw and answers in the
+           * Turtle's voice; this is the outer net for the rest — a body that would not
+           * parse, a Durable Object that would not answer. Same shape, same silence. */
+          console.error(`/api/session/${action} failed:`, (err && err.stack) || String(err));
+          return json({ error: LOST_THREAD, stage: null });
         }
       }
     }

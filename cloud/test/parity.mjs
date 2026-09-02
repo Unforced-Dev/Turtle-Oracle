@@ -27,10 +27,22 @@ const HERE = path.dirname(fileURLToPath(import.meta.url));
 const REPO = path.resolve(HERE, "..", "..");
 
 let failures = 0;
+let skipped = 0;
 function check(label, ok, detail = "") {
   console.log((ok ? "  ok   " : "  FAIL ") + label + (ok || !detail ? "" : "\n         " + detail));
   if (!ok) failures++;
 }
+
+/* A prompt the cloud has deliberately moved ahead on. NOT a failure and NOT a pass: the
+ * two turtles genuinely say different words here, on purpose, and the byte-diff would
+ * only ever fail. Every skip names what diverged and what has to happen to retire it. */
+function skip(label, why) {
+  console.log("  skip " + label + "\n         " + why);
+  skipped++;
+}
+const AHEAD =
+  "cloud is ahead of the Spark as of feat/cloud-seance-v2 — port back when the Spark " +
+  "is reachable, then restore the byte-diff.";
 
 /** Both sides write "It is Sunday, 4:19 PM in Black Rock City: ..." — pin the minute. */
 function normalise(s) {
@@ -192,12 +204,24 @@ await S.sealLlm(sess, cs, 1);
 
 console.log("\nprompt parity with app/oracle (byte for byte):");
 check("SYSTEM voice", SYSTEM === py.system, firstDiff(py.system, SYSTEM));
-for (const [label, a, b] of [
-  ["weave prompt", py.weave, cw.p],
-  ["echoes prompt", py.echoes, ce.p],
-  ["refine prompt", py.refine, cr.p],
-  ["seal prompt", py.seal, cs.p],
-]) {
+/* The weave prompt's quest rules diverged on feat/cloud-seance-v2: the playa turtle tells
+ * the model to name real 2026 places for all three moves, the cloud turtle pins exactly
+ * ONE move to a placement and gives the other two a bearing instead of an address. The
+ * reading half of the prompt, and every other prompt, still match byte for byte — so the
+ * rest of this diff is worth keeping, and only this one string is skipped. */
+skip("weave prompt (quest rules: one anchor + two open moves)", AHEAD);
+/* The seal prompt diverged for the same reason the weave prompt did, one stage later: the
+ * playa turtle tells the model to take every move's `where` from its card, the cloud
+ * turtle marks the ONE placed move and forbids an address on the other two, so the sealed
+ * parchment says what the spoken quest said. Retire this skip by porting the same
+ * paragraph into app/oracle/session.py's _seal_llm. */
+skip("seal prompt (one placed move, two bearings)", AHEAD);
+/* The echoes prompt gained one paragraph the Spark does not have yet: what a quotable
+ * phrase IS — a clause with a noun or a verb in it, cut at the seeker's own punctuation.
+ * Everything the Spark's version says is still said, in the same words and the same
+ * order. Retire this skip by porting that paragraph into app/oracle/session.py. */
+skip("echoes prompt (quote a clause, not a word count)", AHEAD);
+for (const [label, a, b] of [["refine prompt", py.refine, cr.p]]) {
   const A = normalise(a);
   const B = normalise(b);
   check(label, A === B, firstDiff(A, B));
@@ -223,22 +247,23 @@ check(
   `py=${JSON.stringify(py.names)}\n         js=${JSON.stringify(NAMES.map(S.extractName))}`,
 );
 const jsEch = S.echoesFallback(sess);
-check(
-  "fallback echoes",
-  JSON.stringify(jsEch) === JSON.stringify(py.echoes_fallback),
-  `py=${JSON.stringify(py.echoes_fallback)}\n         js=${JSON.stringify(jsEch)}`,
-);
+/* The same divergence, in the offline half: the Python cuts fixed seven-word windows out
+ * of what the seeker said, the cloud cuts at their punctuation and trims the edges back to
+ * real words ("out to the trash fence alone and" is what the fixed window gives on a
+ * two-minute story). Both are verbatim and 3-8 words — the structural checks below still
+ * run on the cloud's — but the phrases chosen differ, so the byte-diff cannot. */
+skip("fallback echoes (clause-shaped windows, not fixed-width ones)", AHEAD);
+console.log("         cloud picks: " + JSON.stringify(Object.values(jsEch).map((l) => l.split("“")[1].split("”")[0])));
 const jsWf = weaveFallback(told, picks, located);
 check(
   "fallback reading",
   jsWf.reading === py.weave_fallback.reading,
   firstDiff(py.weave_fallback.reading, jsWf.reading),
 );
-check(
-  "fallback quest",
-  jsWf.adventure === py.weave_fallback.adventure,
-  firstDiff(py.weave_fallback.adventure, jsWf.adventure),
-);
+/* Same divergence, offline half: the Python appends "The map says <directions>." to all
+ * three moves, the cloud appends it to the anchor move only. The reading above is
+ * untouched by that and still diffs. */
+skip("fallback quest (anchor move keeps the map line, the other two do not)", AHEAD);
 
 /* ---- 3. the structural guarantees tools/test_spoken_readings.py makes ------------ */
 
@@ -292,6 +317,40 @@ check(
   "system voice bans prose that reads poorly aloud",
   SYSTEM.includes("spoken aloud") && SYSTEM.includes("no semicolons"),
 );
+
+/* The two skips above are only safe if SOMETHING still guards the diverged strings. This
+ * is that something: the cloud's own rule, checked on the cloud's own side. */
+check(
+  "quest prompt pins exactly one move to a placement",
+  (cw.p.match(/- THE ANCHOR: exactly ONE move/g) || []).length === 1 &&
+    cw.p.includes("the REACH move") &&
+    cw.p.includes("Terrible Turtle Camp"),
+  "the fixture's only non-citywide card is the branches card, at E & 6:15",
+);
+check(
+  "quest prompt tells the other two moves to give a bearing, not an address",
+  cw.p.includes("the other two moves name NO address and NO camp") &&
+    cw.p.includes("Give them a bearing, not an address."),
+);
+check(
+  "fallback quest carries the map line exactly once",
+  (jsWf.adventure.match(/The map says /g) || []).length === 1 &&
+    (jsWf.adventure.match(/No address for this one\./g) || []).length === 2,
+  jsWf.adventure,
+);
+check(
+  "echoes prompt asks for a clause the seeker would recognise, not a word count",
+  ce.p.includes("Quote a whole clause the seeker would recognise as their own") &&
+    ce.p.includes("never a fragment that begins mid-clause") &&
+    ce.p.includes("3-8 words"),
+);
+check(
+  "seal prompt marks the one placed move and forbids an address on the other two",
+  (cs.p.match(/<- THE PLACED MOVE/g) || []).length === 1 &&
+    cs.p.includes("THE ANCHOR: exactly ONE of the three — the REACH move") &&
+    cs.p.includes("must NOT name an address, a clock, a street, or a camp"),
+  "the fixture's only placed card is the branches card, at E & 6:15",
+);
 check(
   "refine prompt preserves the spoken three-move shape",
   cr.p.includes("75-110 words") && cr.p.includes("First, Second, Third"),
@@ -309,5 +368,6 @@ const parrot = {
 };
 check("refine rejects the old quest handed back unchanged", (await S.refineLlm(sess, parrot, 1)) === null);
 
-console.log(failures ? `\n${failures} FAILED` : "\nALL PASS");
+const tail = skipped ? ` (${skipped} skipped — cloud ahead of the Spark)` : "";
+console.log(failures ? `\n${failures} FAILED${tail}` : `\nALL PASS${tail}`);
 process.exit(failures ? 1 : 0);

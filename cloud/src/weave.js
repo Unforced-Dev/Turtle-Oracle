@@ -54,8 +54,35 @@ function line(label, c, loc) {
   );
 }
 
+const SLOT_TITLES = { roots: "FACE", trunk: "STAND", branches: "REACH" };
+
+/* THE ANCHOR. A quest with three street addresses in it is a errand list, and it is the
+ * burn — half of what is on the map moved, burned, or was never where the guide said. So
+ * exactly ONE move gets pinned to a real 2026 placement and the other two get a
+ * direction and a quality. This picks the pin: the card whose live_hook actually
+ * resolved to a placed thing (geo.locate gives status "citywide" when it did not), and
+ * best of all one with a real address or clock behind it. */
+export function anchorRealm(located) {
+  const rank = (realm) => {
+    const loc = located[realm] || {};
+    if (!loc.directions) return 0;
+    if (loc.status === "citywide") return 1; // "wherever you stand" is not a placement
+    // a surveyed landmark, or a camp whose address the 2026 gates data actually knows
+    if (loc.status === "fixed" || loc.clock != null || loc.street != null) return 3;
+    return 2; // placed, but the placement is still pending the BRC API
+  };
+  let best = "trunk";
+  for (const realm of ["trunk", "roots", "branches"]) {
+    if (rank(realm) > rank(best)) best = realm;
+  }
+  return best;
+}
+
 export async function weaveLlm(question, cards, llm, located, context, timeout) {
   located = located || {};
+  const anchor = anchorRealm(located);
+  const anchorCard = cards[anchor];
+  const anchorWhere = rstrip((located[anchor] || {}).directions || "", " .");
   const body = [
     line("WHAT TO FACE (root)", cards.roots, located.roots),
     line("WHERE YOU STAND (trunk)", cards.trunk, located.trunk),
@@ -96,8 +123,16 @@ export async function weaveLlm(question, cards, llm, located, context, timeout) 
     "with a partner or friends, this is NOT optional: write the quest for them together, and it MUST " +
     "include one move done apart and one moment reunited. If it is their first burn, keep it simple " +
     "and kind.\n" +
-    "- Name the real 2026 places/art/camps and simple directions from the 'where' hints (Black Rock " +
-    "City is a clock + street grid, the Man at center, deep playa past it).\n\n" +
+    `- THE ANCHOR: exactly ONE move — the ${SLOT_TITLES[anchor]} move — is pinned to a real place ` +
+    `in Black Rock City 2026: ${anchorCard.real_2026.name}` +
+    (anchorWhere ? `, ${anchorWhere}` : "") +
+    ". Name it and give simple directions (the city is a clock plus a street grid, the Man at " +
+    "center, deep playa past him).\n" +
+    "- THE OPEN TWO: the other two moves name NO address and NO camp. Their 'where' is a " +
+    "direction, a kind of place, a kind of person, or a time of day — 'out past the last lamp', " +
+    "'wherever the music is worst', 'the first person who hands you water', 'before the sun is " +
+    "up'. It is the burn: what is on the map moved, and finding it is half the quest. Give them " +
+    "a bearing, not an address.\n\n" +
     'Return JSON only: {"reading": "...", "adventure": "..."}';
 
   const resp = await llm.generate(prompt, { system: SYSTEM, asJson: true, timeout, stage: "weave" });
@@ -119,8 +154,19 @@ function opener() {
   return "In the deep night, three moves — and if your legs hold, end it facing the sunrise.";
 }
 
+/* The offline half of THE ANCHOR: what the two unpinned moves say instead of an address.
+ * A bearing and a quality, in the Turtle's mouth — never a street. Exported because the
+ * seal has to say the same thing on the parchment that the quest said out loud. */
+export const OPEN_WHERE = {
+  roots: "No address for this one. Walk until the sound thins and you can hear your own feet.",
+  trunk: "No address for this one. It is wherever you already stand — your camp, your street, your hour.",
+  branches:
+    "No address for this one. Go where the strangers are thickest, at whatever hour you are bravest.",
+};
+
 export function weaveFallback(question, cards, located) {
   located = located || {};
+  const anchor = anchorRealm(located);
   const r = cards.roots;
   const t = cards.trunk;
   const b = cards.branches;
@@ -137,9 +183,12 @@ export function weaveFallback(question, cards, located) {
     "will reach for. Then bite.";
 
   const move = (ordinal, c, realm) => {
-    const where = ((located[realm] || {}).directions || "").replace(/&/g, "and");
-    const tail = where ? ` The map says ${where}.` : "";
-    return `${ordinal}. ${c.turtle_dare.trim()}${tail}`;
+    if (realm === anchor) {
+      const where = ((located[realm] || {}).directions || "").replace(/&/g, "and");
+      const tail = where ? ` The map says ${where}.` : "";
+      return `${ordinal}. ${c.turtle_dare.trim()}${tail}`;
+    }
+    return `${ordinal}. ${c.turtle_dare.trim()} ${OPEN_WHERE[realm]}`;
   };
 
   const adventure =
