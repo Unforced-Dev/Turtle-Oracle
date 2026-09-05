@@ -82,6 +82,26 @@ type = "ratelimit"
 namespace_id = "1003"
 simple = { limit = 12, period = 60 }
 
+# Ask the Turtle, on its own budget. One POST is one Workers AI call, and it shares
+# nothing with the ceremony: a seeker mid-séance who also wants to know where the coffee
+# is must not spend their reading's budget on chatter, and a chat loop must not be able
+# to 429 somebody else out of a reading. 20/min is a person talking, not a scraper
+# farming the city dump one question at a time.
+[[unsafe.bindings]]
+name = "RL_CHAT"
+type = "ratelimit"
+namespace_id = "1004"
+simple = { limit = 20, period = 60 }
+
+# The browse view. No model behind it, so it is cheap — but it is the one route a thumb
+# on a chip row can tap forty times a minute, and every tap walks a 6.5k-row timeline.
+# Generous, because a single browse session is legitimately a dozen requests.
+[[unsafe.bindings]]
+name = "RL_CITY"
+type = "ratelimit"
+namespace_id = "1005"
+simple = { limit = 120, period = 60 }
+
 [vars]
 # Same family as the playa Spark's qwen3:30b-a3b. Verified on this account 2026-08-23.
 MODEL = "@cf/qwen/qwen3-30b-a3b-fp8"
@@ -107,6 +127,12 @@ THINK_STAGES = "weave,tale,ask"
 # timeout (it was 1.5 * (38 + 20) = 87s when the two stages ran one after the other).
 T_SHORT = "20"
 T_LONG = "38"
+# Ask the Turtle. `chat` is deliberately NOT in THINK_STAGES: the answer is wrapped in
+# {"say": "..."} and a scratchpad has nowhere to go inside it, which is the fix that made
+# the Spark stop narrating. CHAT_TOKENS is a runaway guard, not a pacing control — see
+# the note in src/chat.js before tightening it.
+CHAT_TOKENS = "320"
+T_CHAT = "30"
 WHISPER_MODEL = "@cf/openai/whisper-large-v3-turbo"
 # Set TTS_MODEL = "off" to fall the kiosk back to the tablet's own browser voice.
 # Aura-2 speaking as Draco, picked by ear off staging 2026-09-02 (Aaron). Set here so the
@@ -170,6 +196,26 @@ type = "ratelimit"
 namespace_id = "1003"
 simple = { limit = 12, period = 60 }
 
+# Ask the Turtle, on its own budget. One POST is one Workers AI call, and it shares
+# nothing with the ceremony: a seeker mid-séance who also wants to know where the coffee
+# is must not spend their reading's budget on chatter, and a chat loop must not be able
+# to 429 somebody else out of a reading. 20/min is a person talking, not a scraper
+# farming the city dump one question at a time.
+[[env.staging.unsafe.bindings]]
+name = "RL_CHAT"
+type = "ratelimit"
+namespace_id = "1004"
+simple = { limit = 20, period = 60 }
+
+# The browse view. No model behind it, so it is cheap — but it is the one route a thumb
+# on a chip row can tap forty times a minute, and every tap walks a 6.5k-row timeline.
+# Generous, because a single browse session is legitimately a dozen requests.
+[[env.staging.unsafe.bindings]]
+name = "RL_CITY"
+type = "ratelimit"
+namespace_id = "1005"
+simple = { limit = 120, period = 60 }
+
 [env.staging.vars]
 MODEL = "@cf/qwen/qwen3-30b-a3b-fp8"
 MODEL_FALLBACK = "@cf/meta/llama-3.3-70b-instruct-fp8-fast"
@@ -181,6 +227,12 @@ SHELL_CHANCE = "0.10"
 THINK_STAGES = "weave,tale,ask"
 T_SHORT = "20"
 T_LONG = "38"
+# Ask the Turtle. `chat` is deliberately NOT in THINK_STAGES: the answer is wrapped in
+# {"say": "..."} and a scratchpad has nowhere to go inside it, which is the fix that made
+# the Spark stop narrating. CHAT_TOKENS is a runaway guard, not a pacing control — see
+# the note in src/chat.js before tightening it.
+CHAT_TOKENS = "320"
+T_CHAT = "30"
 WHISPER_MODEL = "@cf/openai/whisper-large-v3-turbo"
 # Aura-2 speaking as Draco, the voice Aaron picked by ear off this staging worker on
 # 2026-09-02. Same {text, speaker} input and the same MPEG stream out as aura-1, so the
