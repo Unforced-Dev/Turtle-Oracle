@@ -290,7 +290,12 @@ def main():
     check("a real answer passes the guard untouched", said.startswith("The Taproot"), said)
     check("a real answer is not flagged", _chat._clean.narrated is False)
     check("prompt ends by telling the model to speak, not to plan",
-          _chat._prompt([], "hi").rstrip().endswith("Turtle:") and "Speak now as the Turtle" in _chat._prompt([], "hi"))
+          _chat._prompt([], "hi").rstrip().endswith('sentences>"}') and "Speak now as the Turtle" in _chat._prompt([], "hi"))
+
+    check("json answer is unwrapped", _chat._said('{"say": "Go to Center Camp. Sit."}') == "Go to Center Camp. Sit.")
+    check("json answer with a think block is unwrapped", _chat._said('<think>x</think>{"say":"Sit."}') == "Sit.")
+    check("plain text answer survives when the model forgot the json", _chat._said("Sit down, traveler.") == "Sit down, traveler.")
+    check("prompt asks for json", 'Return JSON only' in _chat._prompt([], "hi"))
 
     print("\nALL PASS" if not FAILS else f"\n{len(FAILS)} FAILED: " + "; ".join(FAILS))
     return 1 if FAILS else 0

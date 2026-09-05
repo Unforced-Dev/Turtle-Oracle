@@ -9,6 +9,7 @@ State is a dict of chats in memory, LRU, capped. Nothing persists: a chat is a c
 at a kiosk, and when the tablet goes back to sleep it is gone.
 """
 import os
+import json
 import re
 import threading
 import time
@@ -92,7 +93,25 @@ _clean.narrated = False
 
 SPEAK_NOW = ("Speak now as the Turtle, straight to the seeker, first spoken sentence first. "
              "No preamble, no notes to yourself, no describing what you are checking or which "
-             "rule applies. Only the words the seeker hears.")
+             "rule applies. Only the words the seeker hears go in \"say\". "
+             "Shape (about a different seeker, never quote it): "
+             '{"say": "It is a little past ten in the morning, playa time. The shell is open. Ask."}')
+
+
+def _said(raw):
+    """The spoken string out of the model's JSON; the raw text if it forgot the JSON."""
+    t = THINK_RE.sub("", raw or "").strip()
+    m = re.search(r"\{.*\}", t, re.S)
+    if m:
+        try:
+            obj = json.loads(m.group(0))
+            if isinstance(obj, dict):
+                v = obj.get("say")
+                if isinstance(v, str):
+                    return v
+        except Exception:
+            pass
+    return t
 
 
 def _seance_block(sid):
@@ -143,7 +162,7 @@ def _prompt(history, text):
     lines.append("Seeker: " + text)
     lines.append("")
     lines.append(SPEAK_NOW)
-    lines.append("Turtle:")
+    lines.append('Return JSON only: {"say": "<what the Turtle says aloud, 2 to 5 sentences>"}')
     return "\n".join(lines)
 
 
@@ -220,13 +239,15 @@ def ask(body, llm, now=None):
         if llm is not None and llm.available():
             prompt = _prompt(chat["history"], text)
             system = _system(ctx, sid, now)
-            raw = llm.generate(prompt, system=system, timeout=T_CHAT, max_tokens=MAX_TOKENS)
-            say = _clean(raw)
+            raw = llm.generate(prompt, system=system, timeout=T_CHAT, as_json=True,
+                               max_tokens=MAX_TOKENS)
+            say = _clean(_said(raw))
             if not say and raw:
                 # every sentence was scratchpad: one more roll, told plainly, half the clock
                 raw = llm.generate(prompt + " Answer only, in the Turtle's voice.",
-                                   system=system, timeout=T_CHAT / 2, max_tokens=MAX_TOKENS)
-                say = _clean(raw)
+                                   system=system, timeout=T_CHAT / 2, as_json=True,
+                                   max_tokens=MAX_TOKENS)
+                say = _clean(_said(raw))
             if say:
                 mode = "llm"
     except Exception:
