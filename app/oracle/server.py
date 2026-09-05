@@ -18,6 +18,8 @@ from .llm import make_llm
 from .geo import locate, locate_spread, directions_lines, COMPASS_ROSE
 from . import printer
 from . import session
+from . import chat
+from . import guide
 from . import ears
 from . import lore
 from . import voice
@@ -178,6 +180,10 @@ class Handler(BaseHTTPRequestHandler):
                 # and is hiding it behind a very convincing template
                 "fallback_pct": round(100.0 * tiers["fallback"] / total, 1) if total else None,
                 "live_seances": len(session.SESSIONS),
+                "live_chats": len(chat.CHATS),
+                # the city dump is gitignored: if this is false on the Spark, Ask the
+                # Turtle answers about cards and nothing else
+                "city": guide.loaded() or os.path.exists(guide.SNAPSHOT),
                 "printer": ("network" if os.environ.get("ESCPOS_HOST") or
                             os.environ.get("ESCPOS_HOST_1")
                             else "usb" if os.environ.get("ESCPOS_VENDOR_ID") else "preview-only"),
@@ -242,6 +248,24 @@ class Handler(BaseHTTPRequestHandler):
             result = printer.print_or_preview(text, host=_printer_host(body.get("kiosk")))
             result["receipt"] = text
             return self._send(200, result)
+        if path == "/api/chat":
+            # ASK THE TURTLE. Open talk, grounded in the city dump; no séance required, but
+            # it will lean on one if the kiosk hands it a live session id.
+            try:
+                body = json.loads(raw or b"{}")
+            except Exception:
+                body = {}
+            if not isinstance(body, dict):
+                return self._send(400, {"error": "no question"})
+            try:
+                out = chat.ask(body, LLM_SINGLETON)
+            except Exception as e:
+                return self._send(500, {"error": str(e)})
+            if out is None:
+                return self._send(400, {"error": "no question"})
+            # deliberately NOT note_tier(): TIERS/fallback_pct is the séance's health
+            # signal, and folding chat into it would hide a dumb weave behind chatter
+            return self._send(200, out)
         if path == "/api/transcribe":
             if not raw:
                 return self._send(400, {"error": "no audio"})
@@ -344,8 +368,11 @@ def main():
     print(f"    LLM (Ollama {LLM_SINGLETON.model}): {'available' if LLM_SINGLETON.available() else 'OFF — using offline weave'}")
     print(f"    Ears (whisper.cpp): {'available' if ears.available() else 'OFF — typed input only'}")
     print(f"    Voice: {VOICE_SINGLETON.status()['backend']} ({VOICE_SINGLETON.voice})")
+    print(f"    The city (BRC dump): {'loaded' if os.path.exists(guide.SNAPSHOT) else 'MISSING — cards only'}")
     threading.Thread(target=_warm_keeper, daemon=True).start()
     threading.Thread(target=_warm_voice, daemon=True).start()
+    # 4MB of JSON is a second of parsing; pay it here and not in the first seeker's request
+    threading.Thread(target=guide.warm, daemon=True).start()
     OracleServer(("0.0.0.0", PORT), Handler).serve_forever()
 
 
