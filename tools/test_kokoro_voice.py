@@ -9,7 +9,7 @@ from urllib.request import Request, urlopen
 
 sys.path.insert(0, os.path.join(os.path.dirname(__file__), "..", "app"))
 
-from oracle import server
+from oracle import server, voice as voicemod
 from oracle.voice import KokoroVoice, VoiceUnavailable
 
 
@@ -40,12 +40,70 @@ def unit_checks():
         raise AssertionError("disabled engine synthesized")
     except VoiceUnavailable:
         pass
-    for bad in ("", "x" * 601):
+    for bad in ("", "x" * (voicemod.MAX_SPEECH + 1)):
         try:
             engine.synthesize(bad)
             raise AssertionError("invalid speech text accepted")
         except ValueError:
             pass
+    # a whole reading now goes in ONE request; the old per-sentence cap was what forced
+    # eight round trips of half a megabyte each over camp wifi
+    assert voicemod.MAX_SPEECH >= 1600, "a reading must fit in one call"
+
+
+class FakeRun:
+    """Stands in for subprocess.run so the encoder path is exercised with no ffmpeg."""
+
+    def __init__(self, out=b"OggS-fake", code=0):
+        self.out, self.code, self.calls = out, code, []
+
+    def __call__(self, argv, input=None, capture_output=None, timeout=None):
+        self.calls.append((argv, input, timeout))
+        return type("P", (), {"returncode": self.code, "stdout": self.out, "stderr": b""})()
+
+
+def encoder_checks():
+    """Opus when the box has ffmpeg, WAV when it does not — and never an exception."""
+    real_ffmpeg, real_run = voicemod.FFMPEG, voicemod.subprocess.run
+    try:
+        voicemod.FFMPEG = None
+        assert voicemod.to_opus(b"RIFF-wav") is None, "no ffmpeg must fall back, not raise"
+
+        voicemod.FFMPEG = "/usr/bin/ffmpeg"
+        run = FakeRun()
+        voicemod.subprocess.run = run
+        assert voicemod.to_opus(b"RIFF-wav") == b"OggS-fake"
+        argv, sent, timeout = run.calls[0]
+        assert argv[0] == "/usr/bin/ffmpeg" and sent == b"RIFF-wav"
+        assert "libopus" in argv and "32k" in argv and "ogg" in argv, argv
+        assert timeout and timeout <= 30, "a stuck encoder must not hold a request open"
+
+        voicemod.subprocess.run = FakeRun(out=b"", code=1)
+        assert voicemod.to_opus(b"RIFF-wav") is None, "a failed encode falls back to WAV"
+
+        def boom(*a, **k):
+            raise OSError("no such binary")
+        voicemod.subprocess.run = boom
+        assert voicemod.to_opus(b"RIFF-wav") is None, "a broken encoder must not raise"
+
+        # end to end through the engine: the mime follows what was actually produced
+        voicemod.subprocess.run = FakeRun()
+        engine = KokoroVoice(backend="kokoro", voice="bm_george", cache_size=2)
+        engine._pipeline = FakePipeline()
+        engine._voice_source = "bm_george"
+        engine._encode_wav = lambda chunks: b"RIFF-fake"
+        assert engine.render("Slow is smooth.") == (b"OggS-fake", "audio/ogg")
+        assert engine.render("Slow is smooth.") == (b"OggS-fake", "audio/ogg"), "cached"
+        assert len(engine._pipeline.calls) == 1, "the cache holds the ENCODED bytes"
+
+        voicemod.FFMPEG = None
+        engine2 = KokoroVoice(backend="kokoro", voice="bm_george", cache_size=2)
+        engine2._pipeline = FakePipeline()
+        engine2._voice_source = "bm_george"
+        engine2._encode_wav = lambda chunks: b"RIFF-fake"
+        assert engine2.render("Slow is smooth.") == (b"RIFF-fake", "audio/wav")
+    finally:
+        voicemod.FFMPEG, voicemod.subprocess.run = real_ffmpeg, real_run
 
 
 class FakeVoice:
@@ -95,10 +153,52 @@ def endpoint_checks():
         server.VOICE_SINGLETON = original
 
 
+class OggVoice(FakeVoice):
+    def render(self, text):
+        return b"OggS-test-audio", "audio/ogg"
+
+
+def container_and_cache_checks():
+    """The wire: an engine that encodes is served as Ogg, and card art is cached for a day."""
+    original = server.VOICE_SINGLETON
+    server.VOICE_SINGLETON = OggVoice()
+    httpd = server.OracleServer(("127.0.0.1", 0), server.Handler)
+    thread = threading.Thread(target=httpd.serve_forever, daemon=True)
+    thread.start()
+    base = f"http://127.0.0.1:{httpd.server_port}"
+    try:
+        with post(base, "The Turtle speaks.") as response:
+            assert response.headers.get_content_type() == "audio/ogg"
+            assert response.headers["Cache-Control"] == "no-store", "a reading is not cached"
+            assert response.read() == b"OggS-test-audio"
+
+        head = Request(base + "/kiosk.html", method="HEAD")
+        with urlopen(head, timeout=3) as r:
+            assert r.status == 200, "HEAD must not be a 501, or curl -I lies about the cache"
+            assert r.read() == b"", "a HEAD carries no body"
+            assert "no-store" in r.headers["Cache-Control"], "the kiosk must never be cached"
+
+        for path in ("/thumb/roots-01.jpg", "/thumb/back.jpg", "/med/roots-01.jpg", "/avatar.jpg"):
+            try:
+                with urlopen(Request(base + path, method="HEAD"), timeout=3) as r:
+                    cc = r.headers["Cache-Control"]
+                    assert "max-age=86400" in cc and "immutable" in cc, (path, cc)
+            except HTTPError as exc:
+                assert exc.code == 404, (path, exc.code)   # art not built on this box
+    finally:
+        httpd.shutdown()
+        httpd.server_close()
+        thread.join(timeout=2)
+        server.VOICE_SINGLETON = original
+
+
 def main():
     unit_checks()
+    encoder_checks()
     endpoint_checks()
-    print("kokoro voice: cache, validation, audio contract, and graceful failure passed")
+    container_and_cache_checks()
+    print("kokoro voice: cache, opus encoding, validation, audio contract, "
+          "cache headers and graceful failure passed")
 
 
 if __name__ == "__main__":

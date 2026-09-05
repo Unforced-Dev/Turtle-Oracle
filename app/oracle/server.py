@@ -9,6 +9,7 @@ import json
 import os
 import re
 import threading
+import urllib.parse
 from http.server import BaseHTTPRequestHandler, ThreadingHTTPServer
 
 from .deck import load_deck, REPO, card_payload
@@ -18,6 +19,8 @@ from .llm import make_llm
 from .geo import locate, locate_spread, directions_lines, COMPASS_ROSE
 from . import printer
 from . import session
+from . import chat
+from . import guide
 from . import ears
 from . import lore
 from . import voice
@@ -124,19 +127,69 @@ class Handler(BaseHTTPRequestHandler):
                              ("no-store" if ctype.startswith("text/html") or
                               ctype == "application/json" else "public, max-age=86400"))
             self.end_headers()
-            self.wfile.write(body)
+            if not getattr(self, "_headers_only", False):
+                self.wfile.write(body)
         except (BrokenPipeError, ConnectionResetError):
             pass
+
+    # Card art never changes under its own name — a tablet should fetch each one once a
+    # day, not once a séance. HTML and JSON are exempt (see _send): a fix has to land on
+    # the next refresh, and a reading is nobody else's to keep.
+    STATIC = "public, max-age=86400, immutable"
 
     def _serve_file(self, relpath, ctype):
         try:
             with open(os.path.join(REPO, relpath), "rb") as f:
-                return self._send(200, f.read(), ctype)
+                cache = None if ctype.startswith("text/html") else self.STATIC
+                return self._send(200, f.read(), ctype, cache=cache)
         except FileNotFoundError:
             return self._send(404, {"error": f"{relpath} missing"})
 
+    def _query(self):
+        """The query string as flat strings. Every value is length-capped here, once, so no
+        route downstream can be handed a megabyte of ``q=`` from a curious phone."""
+        parts = self.path.split("?", 1)
+        raw = urllib.parse.parse_qs(parts[1] if len(parts) > 1 else "", keep_blank_values=True)
+        return {k: (v[0] or "")[:200] for k, v in raw.items()}
+
+    def _city(self, path):
+        """SEE WHAT'S HAPPENING. Read-only views over the in-memory city index: a window of
+        events, one ranked search, one thing whole, and the city filtered by a live séance.
+        Nothing here touches the model, so nothing here can block on one."""
+        qs = self._query()
+        if path == "/api/city/happening":
+            return self._send(200, guide.happening(
+                window=qs.get("window") or "now", kind=qs.get("kind") or "",
+                q=qs.get("q") or "", limit=qs.get("limit") or guide.DEFAULT_PAGE,
+                offset=qs.get("offset") or 0))
+        if path == "/api/city/search":
+            return self._send(200, guide.search(qs.get("q") or ""))
+        if path == "/api/city/item":
+            uid, name = qs.get("uid") or "", qs.get("name") or ""
+            if not uid and not name:
+                return self._send(400, {"error": "no uid"})
+            found = guide.item(uid=uid, name=name)
+            if found is None:
+                # `soft` is for the speculative lookup: the kiosk asks whether the place a
+                # quest names is a real placement, and most of the time it is not. A 404
+                # there is a red line in the browser console on every sealed quest, which
+                # is how a real error stops being visible. Ask softly, get an answer.
+                if qs.get("soft"):
+                    return self._send(200, {"found": False})
+                return self._send(404, {"error": "the shell has never heard of that"})
+            found["found"] = True
+            return self._send(200, found)
+        if path == "/api/city/for-seance":
+            return self._send(200, guide.for_seance((qs.get("session") or "").strip()))
+        return self._send(404, {"error": "not found"})
+
     def do_GET(self):
         path = self.path.split("?", 1)[0]
+        if path.startswith("/api/city/"):
+            try:
+                return self._city(path)
+            except Exception as e:
+                return self._send(500, {"error": str(e)})
         if path in ("/", "/index.html", "/site.html"):
             return self._serve_file("app/web/site.html", "text/html; charset=utf-8")
         if path in ("/oracle", "/oracle.html", "/app"):
@@ -178,6 +231,10 @@ class Handler(BaseHTTPRequestHandler):
                 # and is hiding it behind a very convincing template
                 "fallback_pct": round(100.0 * tiers["fallback"] / total, 1) if total else None,
                 "live_seances": len(session.SESSIONS),
+                "live_chats": len(chat.CHATS),
+                # the city dump is gitignored: if this is false on the Spark, Ask the
+                # Turtle answers about cards and nothing else
+                "city": guide.loaded() or os.path.exists(guide.SNAPSHOT),
                 "printer": ("network" if os.environ.get("ESCPOS_HOST") or
                             os.environ.get("ESCPOS_HOST_1")
                             else "usb" if os.environ.get("ESCPOS_VENDOR_ID") else "preview-only"),
@@ -196,7 +253,7 @@ class Handler(BaseHTTPRequestHandler):
                 fp = os.path.join(ART, name)
                 if os.path.exists(fp):
                     with open(fp, "rb") as f:
-                        return self._send(200, f.read(), "image/png")
+                        return self._send(200, f.read(), "image/png", cache=self.STATIC)
             return self._send(404, {"error": "no such card art"})
         if path.startswith("/download/"):
             name = os.path.basename(path)
@@ -242,6 +299,24 @@ class Handler(BaseHTTPRequestHandler):
             result = printer.print_or_preview(text, host=_printer_host(body.get("kiosk")))
             result["receipt"] = text
             return self._send(200, result)
+        if path == "/api/chat":
+            # ASK THE TURTLE. Open talk, grounded in the city dump; no séance required, but
+            # it will lean on one if the kiosk hands it a live session id.
+            try:
+                body = json.loads(raw or b"{}")
+            except Exception:
+                body = {}
+            if not isinstance(body, dict):
+                return self._send(400, {"error": "no question"})
+            try:
+                out = chat.ask(body, LLM_SINGLETON)
+            except Exception as e:
+                return self._send(500, {"error": str(e)})
+            if out is None:
+                return self._send(400, {"error": "no question"})
+            # deliberately NOT note_tier(): TIERS/fallback_pct is the séance's health
+            # signal, and folding chat into it would hide a dumb weave behind chatter
+            return self._send(200, out)
         if path == "/api/transcribe":
             if not raw:
                 return self._send(400, {"error": "no audio"})
@@ -268,13 +343,18 @@ class Handler(BaseHTTPRequestHandler):
             if not text:
                 return self._send(204, b"", "audio/wav", cache="no-store")
             try:
-                wav = VOICE_SINGLETON.synthesize(text)
+                # `render` hands back the container it actually produced — Ogg/Opus where
+                # the box has ffmpeg, WAV where it does not. An engine that only knows how
+                # to synthesize (a test double) is still a WAV.
+                render = getattr(VOICE_SINGLETON, "render", None)
+                audio, mime = (render(text) if render
+                               else (VOICE_SINGLETON.synthesize(text), "audio/wav"))
             except ValueError as exc:
                 return self._send(400, {"error": str(exc)})
             except voice.VoiceUnavailable:
                 return self._send(503, {"error": "the Turtle's deeper voice is unavailable"})
             # Readings contain the seeker's words; never let a browser or proxy retain them.
-            return self._send(200, wav, "audio/wav", cache="no-store")
+            return self._send(200, audio, mime, cache="no-store")
         if path.startswith("/api/session/"):
             try:
                 body = json.loads(raw or b"{}")
@@ -302,6 +382,16 @@ class Handler(BaseHTTPRequestHandler):
                 return self._send(500, {"error": str(e)})
             return self._send(404, {"error": "unknown séance action"})
         return self._send(404, {"error": "not found"})
+
+    def do_HEAD(self):
+        """A HEAD is a GET whose body goes nowhere. BaseHTTPRequestHandler answers 501
+        otherwise, which makes `curl -I` say the cache headers are missing when they are
+        not — and a cache check that lies is worse than no cache check."""
+        self._headers_only = True
+        try:
+            self.do_GET()
+        finally:
+            self._headers_only = False
 
     def log_message(self, *a):
         pass  # quiet
@@ -344,8 +434,11 @@ def main():
     print(f"    LLM (Ollama {LLM_SINGLETON.model}): {'available' if LLM_SINGLETON.available() else 'OFF — using offline weave'}")
     print(f"    Ears (whisper.cpp): {'available' if ears.available() else 'OFF — typed input only'}")
     print(f"    Voice: {VOICE_SINGLETON.status()['backend']} ({VOICE_SINGLETON.voice})")
+    print(f"    The city (BRC dump): {'loaded' if os.path.exists(guide.SNAPSHOT) else 'MISSING — cards only'}")
     threading.Thread(target=_warm_keeper, daemon=True).start()
     threading.Thread(target=_warm_voice, daemon=True).start()
+    # 4MB of JSON is a second of parsing; pay it here and not in the first seeker's request
+    threading.Thread(target=guide.warm, daemon=True).start()
     OracleServer(("0.0.0.0", PORT), Handler).serve_forever()
 
 
