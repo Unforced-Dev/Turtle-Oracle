@@ -530,6 +530,14 @@ check(
   chat.clean("One. Two. Three. Four. Five. Six. Seven.").say,
 );
 
+/* A Black Rock City address looks exactly like a time. The block says which is which. */
+const ctxWhen = await guide.retrieve(env, "what is happening tonight", { now: NOW });
+check(
+  "the block labels when and where, so an address is never read as an hour",
+  /when: \d{2}:\d{2}/.test(ctxWhen.block) && /where: /.test(ctxWhen.block),
+  ctxWhen.block.split("\n").slice(0, 2).join(" | "),
+);
+
 const ctxLineup = await guide.retrieve(env, "who is playing at Mayan Warrior tonight", { now: NOW });
 check("a lineup question is recognised as one", ctxLineup.lineup === true);
 const refusal = chat.fallback(ctxLineup, "who is playing at Mayan Warrior tonight", null);

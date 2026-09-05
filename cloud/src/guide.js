@@ -598,8 +598,15 @@ export function describeCard(name) {
 
 /* ---- retrieval: everything the model is allowed to know about one question -------- */
 
+/* THE FIELDS ARE LABELLED, and guide.py's are not. Black Rock City addresses look exactly
+ * like times — "C & 7:45" is a corner and "07:00–19:00" is an hour — and on staging
+ * 2026-09-05 the Turtle read one as the other and told a seeker an event "starts at 7:45",
+ * which is the single worst thing this file can get wrong. Four characters of prompt buys
+ * the model no way to confuse them. Worth porting back to app/oracle/guide.py. */
 function hitLine(h) {
-  return [h.title, h.type, h.when, h.where].filter(Boolean).join(" — ");
+  return [h.title, h.type, h.when ? "when: " + h.when : "", h.where ? "where: " + h.where : ""]
+    .filter(Boolean)
+    .join(" — ");
 }
 
 /**
@@ -665,7 +672,7 @@ export async function retrieve(env, question, opts = {}) {
       for (const [, p] of keep) {
         const desc = String(p.desc || "").slice(0, 180);
         lines.push(
-          `- ${p.name}` + (p.where ? ` at ${p.where}` : "") + (desc ? ` — ${desc}` : ""),
+          `- ${p.name}` + (p.where ? ` — where: ${p.where}` : "") + (desc ? ` — ${desc}` : ""),
         );
         hits.push(placeRow(p));
       }
