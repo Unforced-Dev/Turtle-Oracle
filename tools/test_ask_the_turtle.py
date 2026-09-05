@@ -49,6 +49,26 @@ class FakeLLM:
         return self.reply
 
 
+class ScriptedLLM:
+    """Answers a different thing each call, so a re-roll can be watched."""
+
+    model = "scripted"
+
+    def __init__(self, *replies):
+        self.replies = list(replies)
+        self.calls = 0
+        self.prompts = []
+
+    def available(self):
+        return True
+
+    def generate(self, prompt, system=None, as_json=False, timeout=None, **kw):
+        self.prompts.append(prompt)
+        i = min(self.calls, len(self.replies) - 1)
+        self.calls += 1
+        return self.replies[i]
+
+
 class DeadLLM:
     model = "dead"
 
@@ -300,6 +320,70 @@ def main():
     check("json answer with a think block is unwrapped", _chat._said('<think>x</think>{"say":"Sit."}') == "Sit.")
     check("plain text answer survives when the model forgot the json", _chat._said("Sit down, traveler.") == "Sit down, traveler.")
     check("prompt asks for json", 'Return JSON only' in _chat._prompt([], "hi"))
+
+    # --- the now floor: a window says which hours, `now` says which are left ----------
+    print("\nnothing that has already ended is offered as happening:")
+    if snapshot_present():
+        ctx = guide.retrieve("what is on tonight", now=NOW)
+        stamped = [h for h in ctx["hits"] if h.get("when")]
+        check("the Turtle names something for tonight at half past nine", bool(stamped))
+        late = []
+        for h in stamped:
+            end = h["when"].split(" ")[0].split("\u2013")[-1]
+            if ":" in end and "today" in h["when"]:
+                hh, mm = end.split(":")
+                if (int(hh), int(mm)) < (NOW.hour, NOW.minute):
+                    late.append(h["when"] + " " + h["title"])
+        check("none of them finished before it was asked", not late, "; ".join(late[:3]))
+        idx = guide.index()
+        over = 0
+        for s_, e_, i in idx["occ"]:
+            stop = e_ or (s_ + datetime.timedelta(hours=1))
+            if s_ >= NOW - datetime.timedelta(hours=6) and stop <= NOW:
+                over += 1
+        check("and the shell really did hold some finished ones to drop", over > 0, str(over))
+    else:
+        print("  skip (no city dump on this box)")
+
+    # --- labelled fields: a BRC address is a clock position, not an hour ---------------
+    print("\nevery field the model reads is labelled:")
+    line = guide._line({"title": "Coffee", "kind": "Beverages",
+                        "when": "06:00\u201308:00 today", "where": "GaiaDome at C & 7:45"})
+    check("the time is labelled 'when:'", "when: 06:00" in line, line)
+    check("the address is labelled 'where:'", "where: GaiaDome at C & 7:45" in line, line)
+    check("the address can never be mistaken for the time",
+          line.index("when:") < line.index("where:") and line.count("when:") == 1, line)
+    if snapshot_present():
+        block = guide.retrieve("what is on tonight", now=NOW)["block"]
+        ev = [ln for ln in block.splitlines() if ln.startswith("- ") and "when:" in ln]
+        check("every event line in the block labels its own time and place",
+              ev and all(" — where: " in ln for ln in ev), (ev or [""])[0])
+
+    # --- the example is a shape, not an answer ----------------------------------------
+    print("\nthe shape example is never the answer:")
+    example = '{"say": "It is a little past ten in the morning, playa time. The shell is open. Ask."}'
+    check("the guard recognises the example read back",
+          chat.unexample("It is a little past ten in the morning, playa time. "
+                         "The shell is open. Ask."))
+    check("it recognises a fragment of it", chat.unexample("The shell is open. Ask."))
+    check("a real answer is not mistaken for it",
+          not chat.unexample("GaiaDome pours coffee until eight, at C and 7:45."))
+    check("an empty answer is not the example", not chat.unexample(""))
+
+    good = '{"say": "GaiaDome pours coffee until eight tonight."}'
+    llm = ScriptedLLM(example, good)
+    out = chat.ask({"text": "where is the coffee"}, llm, now=NOW)
+    check("the example is thrown out and the model is asked once more",
+          llm.calls == 2 and out["mode"] == "llm", f"{llm.calls} calls, {out['mode']}")
+    check("the re-roll is what the seeker hears", out["say"].startswith("GaiaDome"), out["say"])
+    check("the second ask tells it not to repeat the example",
+          "Do not repeat the example" in llm.prompts[-1])
+
+    stuck = ScriptedLLM(example, example)
+    out = chat.ask({"text": "where is the coffee"}, stuck, now=NOW)
+    check("twice is not a fluke — the shell answers plainly instead",
+          stuck.calls == 2 and out["mode"] == "fallback", f"{stuck.calls} calls, {out['mode']}")
+    check("and what it says is not the example", not chat.unexample(out["say"]), out["say"])
 
     print("\nALL PASS" if not FAILS else f"\n{len(FAILS)} FAILED: " + "; ".join(FAILS))
     return 1 if FAILS else 0

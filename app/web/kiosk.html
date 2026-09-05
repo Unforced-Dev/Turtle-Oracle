@@ -858,7 +858,7 @@ async function loadLore(){
     const d=await fetch("/api/lore").then(r=>r.json());
     if(!d.sealed){ $('lore').innerHTML=""; return; }
     const recent=d.recent_titles&&d.recent_titles[0]
-      ? `<br><span style="font-style:italic">someone is out there on “${d.recent_titles[0]}”</span>`:"";
+      ? `<br><span style="font-style:italic">someone is out there on “${esc(d.recent_titles[0])}”</span>`:"";
     $('lore').innerHTML=`${d.sealed} quest${d.sealed>1?"s":""} sealed · ${d.tales} tale${d.tales===1?"":"s"} told${recent}`;
   }catch(e){}
 }
@@ -1450,8 +1450,9 @@ function chatTurn(who,text){
 function chatHits(hits){
   $('chathits').innerHTML=(hits||[]).map(h=>{
     const meta=[h.kind,h.when,h.where].filter(Boolean).map(esc).join(" · ");
-    const tap=h.uid?` tap" data-uid="${esc(h.uid)}`:"";
-    return `<div class="hit${tap}"><div class="htitle">${esc(h.title)}</div>`+
+    const cls="hit"+(h.uid?" tap":"");
+    const uid=h.uid?` data-uid="${esc(h.uid)}"`:"";
+    return `<div class="${cls}"${uid}><div class="htitle">${esc(h.title)}</div>`+
       (meta?`<div class="hmeta">${meta}</div>`:"")+`</div>`;
   }).join("");
   $('chathits').querySelectorAll('.hit.tap[data-uid]').forEach(h=>

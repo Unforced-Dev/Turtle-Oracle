@@ -40,7 +40,9 @@ YOU ARE ANSWERING A QUESTION AT THE SHELL, not weaving a reading. Rules, absolut
 - Answer in 2 to 5 sentences. Spoken aloud, so no bullets, no headings, no lists, no
   markdown, no emoji. Plain sentences.
 - Every place, time and name you say must come from THE SHELL HOLDS below. Never invent a
-  camp, an address, a time, or an event.
+  camp, an address, a time, or an event. Each line below labels its own fields: "when:" is
+  the only time, "where:" is the only place. A BRC address IS a clock position — "C & 7:45",
+  "Esplanade & 9:00" — and it is an intersection, never an hour. Never read one as a time.
 - If the answer is not in THE SHELL HOLDS, say "the Turtle does not know that" and say what
   you do know instead. The shell has NO DJ lineups, NO set times, NO art-car schedules and
   NO who-is-playing — never guess one, not even a likely one.
@@ -90,6 +92,20 @@ def _clean(text):
 
 
 _clean.narrated = False
+
+# SPEAK_NOW carries a shape example so the model returns one spoken line and not a plan.
+# Small models read an example as a script: seen on the Spark, an answer came back as the
+# example verbatim — a seeker asking where the coffee is was told the shell is open. It is
+# told not to quote it; this catches the times it does anyway.
+EXAMPLE_BITS = ("a little past ten in the morning",
+                "the shell is open. ask",
+                "it is a little past ten")
+
+
+def unexample(said):
+    """True when the 'answer' is the shape example read back instead of an answer."""
+    t = re.sub(r"\s+", " ", (said or "").lower())
+    return any(bit in t for bit in EXAMPLE_BITS)
 
 SPEAK_NOW = ("Speak now as the Turtle, straight to the seeker, first spoken sentence first. "
              "No preamble, no notes to yourself, no describing what you are checking or which "
@@ -242,12 +258,18 @@ def ask(body, llm, now=None):
             raw = llm.generate(prompt, system=system, timeout=T_CHAT, as_json=True,
                                max_tokens=MAX_TOKENS)
             say = _clean(_said(raw))
+            if say and unexample(say):
+                say = ""            # the example, read back: same remedy as scratchpad
             if not say and raw:
-                # every sentence was scratchpad: one more roll, told plainly, half the clock
-                raw = llm.generate(prompt + " Answer only, in the Turtle's voice.",
+                # every sentence was scratchpad, or the example verbatim: one more roll,
+                # told plainly, on half the clock
+                raw = llm.generate(prompt + " Answer only, in the Turtle's voice. "
+                                   "Do not repeat the example.",
                                    system=system, timeout=T_CHAT / 2, as_json=True,
                                    max_tokens=MAX_TOKENS)
                 say = _clean(_said(raw))
+                if unexample(say):
+                    say = ""        # twice is not a fluke; the shell answers plainly instead
             if say:
                 mode = "llm"
     except Exception:

@@ -292,13 +292,16 @@ def _score(rec, qtok, name_weight=3):
 
 
 def _line(hit):
+    """One event for the model to read. EVERY FIELD IS LABELLED, because a BRC address is
+    a clock position — "C & 7:45", "Esplanade & 9:00" — and reads exactly like a time. An
+    unlabelled line let the model say an event "starts at 7:45" from its address alone."""
     bits = [hit["title"]]
     if hit.get("kind"):
         bits.append(hit["kind"])
     if hit.get("when"):
-        bits.append(hit["when"])
+        bits.append("when: " + hit["when"])
     if hit.get("where"):
-        bits.append(hit["where"])
+        bits.append("where: " + hit["where"])
     return " — ".join(b for b in bits if b)
 
 
@@ -363,7 +366,11 @@ def retrieve(question, now=None, k=6):
     scored = []
     for s, e, i in idx["occ"]:
         stop = e or (s + datetime.timedelta(hours=1))
-        if stop <= start or s >= end:
+        # An all-day thing that ran 06:00-18:00 OVERLAPS the tonight window and is still
+        # over at half past nine. A window says which hours are being asked about; `now`
+        # says which of them are left. Asked "what's on tonight" at 21:30, the Turtle was
+        # naming things that had ended three hours earlier.
+        if stop <= start or stop <= now or s >= end:
             continue
         rec = idx["events"][i]
         scored.append((_score(rec, qtok), -s.timestamp(), s, e, rec))
@@ -394,7 +401,7 @@ def retrieve(question, now=None, k=6):
         lines.append(f"{kind}:")
         for r in keep:
             desc = re.sub(r"\s+", " ", r["desc"])[:180]
-            lines.append(f"- {r['name']}" + (f" at {r['where']}" if r["where"] else "")
+            lines.append(f"- {r['name']}" + (f" — where: {r['where']}" if r["where"] else "")
                          + (f" — {desc}" if desc else ""))
             hits.append({"title": r["name"], "kind": kind.title()[:-1] if kind != "ART" else "Art",
                          "uid": r["uid"], "when": "", "where": r["where"]})
