@@ -54,7 +54,7 @@
   .speaking .medallion img{box-shadow:0 0 90px rgba(232,205,133,.4), 0 12px 60px rgba(0,0,0,.7)}
 
   /* ---- attract ---- */
-  #attract{justify-content:center;text-align:center;gap:3.5vh;cursor:pointer}
+  #attract{justify-content:center;text-align:center;gap:2.2vh;cursor:pointer}
   #attract .medallion{width:min(52vw,46vh,420px);height:min(52vw,46vh,420px)}
   .rune{font-size:.78rem;letter-spacing:.5em;text-transform:uppercase;color:var(--gold-dim)}
   #attract h1{margin:0;color:var(--gold);font-weight:600;letter-spacing:.06em;
@@ -186,7 +186,6 @@
   .panel.pull.writing #q, .panel.pull.writing #offer{display:block}
   .panel.pull.writing #writehere{display:none}
   .panel.pull #microw{margin-top:14px}
-  .panel.pull #mic{width:52px;height:52px;font-size:1.2rem}
   #miccap{display:none;color:var(--parch-dim);font-size:.9rem;font-style:italic}
   .panel.pull #miccap{display:inline}
   #chiprow{display:none;flex-wrap:wrap;gap:10px;justify-content:center;margin-top:14px}
@@ -238,14 +237,22 @@
   /* ---- ask the turtle: the chat scene ---- */
   #chat{gap:10px}
   #chat .medallion{width:min(22vw,15vh,120px);height:min(22vw,15vh,120px);margin-top:0}
-  #chathist{width:100%;max-width:680px;max-height:26vh;overflow-y:auto;margin-top:6px;
-    display:flex;flex-direction:column;gap:8px}
-  #chathist .turn{font-size:.92rem;line-height:1.4}
+  /* A long answer used to grow the big line until the question box was off the bottom of
+     a phone. Each part of the chat gets its own ceiling and its own scrollbar instead, so
+     the input is always on screen and the history is always readable on a tablet. */
+  #chat .oracle-says{max-height:30vh;overflow-y:auto;font-size:clamp(1.1rem,2.4vw,1.4rem)}
+  #chathist{width:100%;max-width:680px;max-height:22vh;overflow-y:auto;margin-top:6px;
+    display:flex;flex-direction:column;gap:9px}
+  #chathist .turn{font-size:1rem;line-height:1.45}
   #chathist .turn.you{color:var(--parch-dim);font-style:italic}
   #chathist .turn.turtle{color:var(--gold-dim)}
-  #chathits{width:100%;max-width:680px;display:flex;flex-direction:column;gap:8px;margin-top:10px}
+  #chathits{width:100%;max-width:680px;display:flex;flex-direction:column;gap:8px;margin-top:10px;
+    max-height:26vh;overflow-y:auto}
   .hit{background:linear-gradient(180deg,var(--ink2),#0e0a05);border:1px solid var(--edge);
-    border-radius:10px;padding:9px 12px}
+    border-radius:10px;padding:11px 13px}
+  /* a place the Turtle named is a place you can open */
+  .hit.tap{cursor:pointer;transition:border-color .2s,transform .12s}
+  .hit.tap:active{transform:scale(.985)} .hit.tap:hover{border-color:var(--gold-dim)}
   .hit .htitle{color:var(--gold);font-size:.98rem;line-height:1.25}
   .hit .hmeta{color:var(--parch-dim);font-size:.8rem;font-style:italic;margin-top:3px}
   #chatpanel{margin-top:10px}
@@ -258,6 +265,82 @@
     color:var(--gold-dim);border-radius:10px;padding:8px 12px;font-size:1rem;min-height:0}
   footer{margin-top:auto;padding-top:26px;color:var(--gold-dim);font-size:.68rem;
     letter-spacing:.22em;text-transform:uppercase;text-align:center}
+
+  /* ---- the three doors on the attract screen ----
+     Pull the cards, ask, or just look. All three are thumb-sized and none of them
+     scrolls: #attract is the one screen in the kiosk that must fit, always, because a
+     seeker who has to scroll to find the door does not find the door. */
+  .doors{display:flex;flex-direction:column;gap:10px;width:min(92vw,430px)}
+  .door{width:100%;min-height:58px;font-size:1.06rem;padding:14px 18px}
+  .door.primary{min-height:66px;font-size:1.2rem;letter-spacing:.03em}
+  .door.quiet{background:transparent;color:var(--gold2);border-color:var(--gold-dim);font-weight:400}
+  .door.quiet:active{background:rgba(200,162,74,.12)}
+
+  /* ---- WHAT'S HAPPENING: the browse scene ---- */
+  #browse{gap:10px;padding-top:max(2vh,14px)}
+  #browse .rune{margin-bottom:2px}
+  .citytop{width:100%;max-width:760px;display:flex;flex-direction:column;align-items:center;gap:9px}
+  .cchips{display:flex;flex-wrap:wrap;gap:8px;justify-content:center}
+  .cchip{font:inherit;padding:11px 18px;border-radius:999px;border:1px solid var(--edge);
+    background:transparent;color:var(--parch-dim);font-weight:400;min-height:0;font-size:.98rem}
+  .cchip.sel{background:linear-gradient(180deg,#caa64f,#96772f);color:#1a1408;
+    font-weight:700;border-color:var(--gold-dim)}
+  .cchip.small{font-size:.86rem;padding:8px 14px}
+  .csearch{display:flex;gap:8px;width:100%;max-width:560px;align-items:center}
+  .csearch input{flex:1;min-width:0;background:#0d0a05;color:var(--parch);border:1px solid var(--edge);
+    border-radius:10px;padding:12px 14px;font:inherit;font-size:1.02rem;
+    user-select:text;-webkit-user-select:text}
+  .csearch input::placeholder{color:#7d6f52;font-style:italic}
+  .csearch button{padding:12px 18px;min-height:46px;font-size:.98rem}
+  .cnote{color:var(--parch-dim);font-size:.86rem;font-style:italic;text-align:center;min-height:1.2em}
+  #citylist{width:100%;max-width:760px;display:flex;flex-direction:column;gap:9px;margin-top:4px}
+  /* every row is a door into the thing it names */
+  .crow{background:linear-gradient(180deg,var(--ink2),#0e0a05);border:1px solid var(--edge);
+    border-radius:12px;padding:12px 14px;cursor:pointer;transition:border-color .2s,transform .12s;
+    min-height:56px}
+  .crow:active{transform:scale(.985)} .crow:hover{border-color:var(--gold-dim)}
+  .crow .ctitle{color:var(--gold);font-size:1.04rem;line-height:1.3}
+  .crow .cmeta{color:var(--gold2);font-size:.84rem;margin-top:3px;opacity:.85}
+  .crow .cwhere{color:var(--parch-dim);font-size:.84rem;font-style:italic;margin-top:3px}
+  .crow.pin{border-color:var(--gold-dim);box-shadow:0 0 24px rgba(200,162,74,.16)}
+  .crow.pin .cwhy{color:var(--ember);font-size:.8rem;font-style:italic;margin-top:4px}
+  .nowbadge{display:inline-block;margin-left:8px;padding:1px 9px;border-radius:999px;
+    background:var(--ember);color:#150d05;font-size:.66rem;letter-spacing:.16em;
+    text-transform:uppercase;font-weight:700;vertical-align:middle}
+  .cempty{color:var(--parch-dim);font-style:italic;text-align:center;padding:26px 10px;font-size:1.02rem}
+
+  /* ---- the detail sheet ----
+     display:none when closed, never opacity — an invisible overlay that still takes taps
+     is how the shell stopped waking once already. A sheet must never trap the kiosk: the
+     backdrop closes it, Close closes it, and show() closes it on the way to any scene. */
+  #sheet{position:fixed;inset:0;z-index:70;display:none;align-items:flex-end;justify-content:center;
+    background:rgba(6,4,2,.86);padding:0}
+  #sheet.on{display:flex}
+  .sheetcard{width:100%;max-width:720px;max-height:92vh;overflow-y:auto;
+    background:linear-gradient(180deg,#191308,#0c0905);border:1px solid var(--gold-dim);
+    border-radius:18px 18px 0 0;padding:20px 20px 26px;box-shadow:0 -18px 60px rgba(0,0,0,.75)}
+  .sheetcard .skind{font-size:.7rem;letter-spacing:.3em;text-transform:uppercase;color:var(--gold-dim)}
+  .sheetcard h2{color:var(--gold);margin:6px 0 10px;font-size:clamp(1.25rem,3vw,1.7rem);
+    line-height:1.2;letter-spacing:.01em;text-transform:none;border:0;padding:0;text-align:left}
+  .sline{display:flex;gap:9px;margin:7px 0;font-size:.98rem;align-items:flex-start}
+  .sline .sl{flex:none;color:var(--gold-dim);font-size:.7rem;letter-spacing:.2em;
+    text-transform:uppercase;width:82px;padding-top:4px}
+  .sline .sv{flex:1;min-width:0;color:var(--parch)}
+  .sline .sv .occ{display:block}
+  .sline .sv .occ.over{opacity:.45}
+  .sdesc{margin-top:14px;padding-top:12px;border-top:1px solid var(--edge);
+    color:var(--parch);font-size:1rem;line-height:1.5;user-select:text;-webkit-user-select:text}
+  .ssub{margin-top:14px;padding-top:12px;border-top:1px solid var(--edge)}
+  .ssub .shead{color:var(--gold-dim);font-size:.7rem;letter-spacing:.24em;text-transform:uppercase;
+    margin-bottom:8px}
+  .ssub .crow{margin-bottom:8px}
+  .sheetrow{display:flex;gap:10px;margin-top:18px;flex-wrap:wrap}
+  .sheetrow button{flex:1;min-width:150px}
+  /* the quest's named place, when the shell actually holds it */
+  .placelink{display:inline-block;background:transparent;border:0;padding:0;margin:0;
+    font:inherit;color:#7a5218;text-decoration:underline;text-underline-offset:3px;
+    min-height:0;font-weight:700;cursor:pointer;text-align:left}
+  .move .mat{font-size:.9rem;color:#5c4a26;margin-top:3px}
 </style>
 </head>
 <body>
@@ -274,10 +357,17 @@
     <h1>The Terrible Turtle Oracle</h1>
     <div class="creed">Move Slow &amp; Bite Things</div>
   </div>
-  <div class="wake">✦ &nbsp;touch the shell to wake the oracle&nbsp; ✦</div>
-  <div id="lore" style="color:var(--gold-dim);font-size:.8rem;letter-spacing:.12em;min-height:2.6em;text-align:center"></div>
-  <button class="ghost" id="askturtle" style="font-size:.95rem">💬&nbsp; Ask the Turtle</button>
-  <button class="ghost" id="returned" style="font-size:.95rem">🐢&nbsp; I have returned — I carry a tale</button>
+  <!-- THREE DOORS, and they are the three lenses: see what is happening, ask about it,
+       or pull the cards and let them point. Pulling is the primary because it is what the
+       Oracle is; the other two are the ways in for a seeker who is not ready for a
+       ceremony. Touching anywhere on this screen still pulls. -->
+  <div class="doors">
+    <button class="door primary" id="pullcards">✦&nbsp; Pull the cards&nbsp; ✦</button>
+    <button class="door quiet" id="browseturtle">🔥&nbsp; What&#39;s happening</button>
+    <button class="door quiet" id="askturtle">💬&nbsp; Ask the Turtle</button>
+  </div>
+  <button class="ghost" id="returned" style="font-size:.92rem;min-height:46px">🐢&nbsp; I have returned — I carry a tale</button>
+  <div id="lore" style="color:var(--gold-dim);font-size:.78rem;letter-spacing:.12em;min-height:1.6em;text-align:center"></div>
   <div style="flex:1.2"></div>
 </section>
 
@@ -319,6 +409,7 @@
       <div class="row decide" id="decide" style="display:none">
         <button id="accept">⚔&nbsp; I accept this quest</button>
         <button class="ghost" id="more">🐢&nbsp; Hear me further</button>
+        <button class="ghost" id="cityread">🔥&nbsp; What&#39;s out there for this</button>
         <button class="ghost" id="chatread">💬&nbsp; Talk with the Turtle about this</button>
       </div>
     </div>
@@ -336,6 +427,7 @@
          artifact now, so there is a way to carry it off the tablet instead. -->
     <button id="print" style="display:none">🖨&nbsp; Print my quest</button>
     <button class="ghost" id="share">⧉&nbsp; Take it with you</button>
+    <button class="ghost" id="cityquest">🔥&nbsp; What&#39;s out there for this</button>
     <button class="ghost" id="chatquest">💬&nbsp; Talk with the Turtle about this</button>
     <button class="ghost" id="again">↺&nbsp; The Oracle sleeps — wake it again</button>
   </div>
@@ -351,17 +443,49 @@
     <div id="chathits"></div>
     <div class="panel" id="chatpanel">
       <textarea id="chatq" placeholder="ask the Turtle anything — where, when, what it means…"></textarea>
-      <div class="row">
+      <div class="row" id="chatmicrow">
         <button class="micorb" id="chatmic" title="speak to the turtle">🎙</button>
+        <span id="chatmiccap" style="color:var(--parch-dim);font-size:.9rem;font-style:italic">or ask it aloud</span>
         <button id="chatsend">Ask</button>
       </div>
       <div class="row">
+        <button class="ghost" id="chatcity">🔥&nbsp; See what&#39;s happening</button>
         <button class="ghost" id="chatback">↺&nbsp; Back to the shell</button>
       </div>
     </div>
   </div>
   <footer>the turtle knows the city · and what it does not know, it says</footer>
 </section>
+
+<!-- SCENE 5 · WHAT'S HAPPENING -->
+<section class="scene" id="browse">
+  <div class="citytop">
+    <div class="rune">what is happening in the city</div>
+    <div class="cchips" id="cwindow">
+      <button class="cchip" data-window="now">Now</button>
+      <button class="cchip" data-window="tonight">Tonight</button>
+      <button class="cchip" data-window="tomorrow">Tomorrow</button>
+      <button class="cchip" data-window="all">All of it</button>
+    </div>
+    <div class="csearch">
+      <input id="csearch" type="search" autocomplete="off" autocorrect="off" spellcheck="false"
+             placeholder="search camps, art, events…">
+      <button id="csearchgo">Search</button>
+    </div>
+    <div class="cchips" id="ckinds"></div>
+    <div class="cnote" id="cnote"></div>
+  </div>
+  <div id="citylist"></div>
+  <div class="row"><button class="ghost" id="cmore" style="display:none">more of it</button></div>
+  <div class="row">
+    <button class="ghost" id="cwhole" style="display:none">🗺&nbsp; See the whole city</button>
+    <button class="ghost" id="cback">↺&nbsp; Back to the shell</button>
+  </div>
+  <footer>tap anything · the turtle will tell you the rest</footer>
+</section>
+
+<!-- THE DETAIL SHEET · every event, camp and art piece the kiosk names opens here -->
+<div id="sheet"><div class="sheetcard" id="sheetcard"></div></div>
 
 <!-- THE PULL -->
 <div id="veil">
@@ -538,7 +662,13 @@ async function post(action,body){
 }
 
 /* ---------- scenes ---------- */
-function show(scene){ document.querySelectorAll(".scene").forEach(s=>s.classList.remove("on"));
+function show(scene){
+  /* The sheet lives outside the scenes, so nothing else would take it down. A sheet left
+     open over the attract screen is a kiosk that has stopped working, and the next seeker
+     has no idea why. Every scene change closes it. */
+  if(typeof closeSheet==="function") closeSheet();
+  if(scene!=="browse"&&typeof closeBrowse==="function") closeBrowse();
+  document.querySelectorAll(".scene").forEach(s=>s.classList.remove("on"));
   $(scene).classList.add("on"); }
 function toast(msg,ms=3400){ $('toast').textContent=msg; $('toast').classList.add("on");
   setTimeout(()=>$('toast').classList.remove("on"),ms); }
@@ -940,6 +1070,7 @@ function renderQuest(e,restored){
           <div class="mslot">${esc(moveHead(q.moves.length,i))} — ${esc(m.card)}</div>
           <div class="mtask">${esc(m.task)}</div>
           <div class="mwhere">📍 ${esc(m.where)}</div>
+          ${m.at?`<div class="mat" data-at="${esc(m.at)}">at ${esc(m.at)}</div>`:""}
           <div class="mproof">⌘ bring back: ${esc(m.proof)}</div>
           ${m.leave?`<div class="mleave">✕ leave behind: ${esc(m.leave)}</div>`:""}
         </div>
@@ -947,10 +1078,32 @@ function renderQuest(e,restored){
     <div class="vow"><b>THE VOW</b><br>${esc(q.vow)}<div class="vwhere">${esc(q.vow_where)}</div></div>
     <div class="qmap">${esc(q.map)}</div>
     ${q.chosen?`<div class="chosen">${esc(q.chosen)}</div>`:""}`;
+  linkQuestPlaces();
   show("quest");
   setTimeout(()=>$('parch').classList.add("on"),80);
   if(!restored) speak(e.say);
   pokeIdle();  // a seal gets its own four-minute handoff window, even after a slow LLM call
+}
+/* THE PLACE ON THE PARCHMENT. A sealed quest names where the card stands — "at Opulent
+   Temple" — and if the shell actually holds that camp or that art piece, the name becomes
+   a door. It is drawn as plain text first and only upgraded once the lookup answers, so a
+   name the dump has never heard of stays honest text and never a dead link. */
+async function linkQuestPlaces(){
+  const nodes=[...$('parch').querySelectorAll('.mat[data-at]')];
+  for(const node of nodes){
+    const name=node.dataset.at;
+    if(!name) continue;
+    try{
+      const r=await fetch("/api/city/item?name="+encodeURIComponent(name));
+      if(!r.ok) continue;
+      const it=await r.json();
+      if(!it||!it.uid||!$('parch').contains(node)) continue;
+      node.innerHTML=`at <button class="placelink" type="button">${esc(it.title)}</button>`;
+      node.querySelector('.placelink').addEventListener('click',ev=>{
+        ev.stopPropagation(); openSheet({uid:it.uid});
+      });
+    }catch(err){}
+  }
 }
 $('print').addEventListener('click', async ()=>{
   $('print').disabled=true;
@@ -1086,12 +1239,14 @@ function chatReset(){
   $('chatq').value=""; $('chatsend').disabled=false;
   $('chatpanel').classList.remove("on");
 }
-function openChat(withSession){
+function openChat(withSession,from){
   discardRecording(); stopVoice();
+  const wasBrowsing=BROWSE_ON;
   chatReset();
   CHAT_ON=true; MICBTN="chatmic"; MICBOX="chatq";
   $('chatpanel').classList.add("on");
-  CHAT_FROM=withSession ? ($('quest').classList.contains("on")?"quest":"seance") : null;
+  CHAT_FROM=from || (withSession ? ($('quest').classList.contains("on")?"quest":"seance") : null);
+  if(CHAT_FROM==="browse"&&!wasBrowsing) CHAT_FROM=null;
   if(!withSession) SID=null;
   show("chat");
   incant($('chatsays'),CHAT_OPEN,90);
@@ -1105,12 +1260,17 @@ function chatTurn(who,text){
   $('chathist').appendChild(d);
   $('chathist').scrollTop=$('chathist').scrollHeight;
 }
+/* THE PLACES UNDER AN ANSWER ARE DOORS. The Turtle naming five events a seeker cannot
+   open is the exact complaint this pass began with. A hit carrying a uid is tappable. */
 function chatHits(hits){
   $('chathits').innerHTML=(hits||[]).map(h=>{
     const meta=[h.kind,h.when,h.where].filter(Boolean).map(esc).join(" · ");
-    return `<div class="hit"><div class="htitle">${esc(h.title)}</div>`+
+    const tap=h.uid?` tap" data-uid="${esc(h.uid)}`:"";
+    return `<div class="hit${tap}"><div class="htitle">${esc(h.title)}</div>`+
       (meta?`<div class="hmeta">${meta}</div>`:"")+`</div>`;
   }).join("");
+  $('chathits').querySelectorAll('.hit.tap[data-uid]').forEach(h=>
+    h.addEventListener('click',ev=>{ ev.stopPropagation(); openSheet({uid:h.dataset.uid}); }));
 }
 async function chatSend(){
   const text=$('chatq').value.trim();
@@ -1155,10 +1315,288 @@ $('chatsend').addEventListener('click', chatSend);
 $('chatback').addEventListener('click', ev=>{
   ev.stopPropagation();
   const back=CHAT_FROM;
+  /* Browsing needs no séance behind it, and the list is still in the DOM — put the seeker
+     back on the row they tapped, not at the top of the shell. */
+  if(back==="browse"){ chatReset(); BROWSE_ON=true; show("browse"); pokeIdle(); return; }
   if(back&&SID){ chatReset(); show(back); pokeIdle(); }
   else resetAll();
 });
 $('chatq').addEventListener('keydown',e=>{ if(e.key==="Enter"&&!e.shiftKey){ e.preventDefault(); chatSend(); } });
+
+
+/* ---------- THE CITY: SEE WHAT'S HAPPENING, AND TAP ANY OF IT ----------
+   Three lenses, one list. "Just show me what's on" is the browse scene; "tell me about
+   that" is the sheet; "ask about that" hands the thing to Ask the Turtle by name. Every
+   row anywhere in the kiosk — a chat hit, a browse row, a place inside a sheet, the place
+   named on a sealed quest — opens the same sheet, drawn from the same server payload.
+   Nothing is trusted: every field goes through esc() before it reaches innerHTML. */
+let BROWSE_ON=false, BROWSE_FROM=null, CITY_GEN=0, CITY_BUSY=false;
+const CITY={window:"tonight", kind:"", q:"", offset:0, mode:"window", total:0, shown:0};
+const PAGE=40;
+
+function cityMeta(it){
+  return [it.type, it.when].filter(Boolean).map(esc).join(" · ");
+}
+/* One row, one shape, wherever it is drawn. `data-uid` is what makes it a door. */
+function cityRow(it,extra){
+  const uid=it.uid?` data-uid="${esc(it.uid)}"`:"";
+  return `<div class="crow${extra||""}"${uid}>`+
+    `<div class="ctitle">${esc(it.title)}${it.live?'<span class="nowbadge">now</span>':""}</div>`+
+    (cityMeta(it)?`<div class="cmeta">${cityMeta(it)}</div>`:"")+
+    (it.where?`<div class="cwhere">📍 ${esc(it.where)}</div>`:"")+
+    (it.why?`<div class="cwhy">${esc(it.why)}</div>`:"")+
+    `</div>`;
+}
+function bindRows(root){
+  root.querySelectorAll('.crow[data-uid]').forEach(r=>r.addEventListener('click',ev=>{
+    ev.stopPropagation(); openSheet({uid:r.dataset.uid});
+  }));
+}
+function cityKinds(kinds){
+  const box=$('ckinds');
+  if(CITY.mode!=="window"||!kinds||!kinds.length){ box.innerHTML=""; return; }
+  box.innerHTML=`<button class="cchip small${CITY.kind?"":" sel"}" data-kind="">Everything</button>`+
+    kinds.map(k=>`<button class="cchip small${CITY.kind===k.label?" sel":""}" `+
+      `data-kind="${esc(k.label)}">${esc(k.label)} ${k.count}</button>`).join("");
+  box.querySelectorAll('.cchip').forEach(c=>c.addEventListener('click',ev=>{
+    ev.stopPropagation(); CITY.kind=c.dataset.kind; CITY.offset=0; cityLoad();
+  }));
+}
+function cityWindowChips(){
+  $('cwindow').querySelectorAll('.cchip').forEach(c=>
+    c.classList.toggle("sel", CITY.mode==="window"&&c.dataset.window===CITY.window));
+}
+function cityBusy(on){
+  CITY_BUSY=on;
+  $('csearchgo').disabled=on; $('cmore').disabled=on;
+}
+/* WHAT'S ON, in one window. The server does the filtering; the tablet holds one page. */
+async function cityLoad(more){
+  const gen=++CITY_GEN;
+  if(!more){ CITY.offset=0; $('citylist').innerHTML=""; CITY.shown=0; }
+  cityBusy(true);
+  $('cnote').textContent=more?"more…":"the shell is looking…";
+  try{
+    const p=new URLSearchParams({window:CITY.window,kind:CITY.kind,q:CITY.q,
+      limit:String(PAGE),offset:String(CITY.offset)});
+    const d=await fetch("/api/city/happening?"+p.toString()).then(r=>r.json());
+    if(gen!==CITY_GEN) return;
+    /* Nothing in this window for those words — but the shell may still hold the thing
+       itself, standing somewhere, at another hour. Say so and show it, rather than
+       leaving a seeker at an empty screen with a word they know is a real place. */
+    if(!more&&CITY.q&&!d.items.length){ return citySearch(CITY.q,d.label); }
+    CITY.total=d.total; CITY.shown+=d.items.length;
+    cityWindowChips(); cityKinds(d.kinds);
+    cityAppend(d.items, d.have_snapshot
+      ? `Nothing in the shell for ${d.label}${CITY.kind?" under "+CITY.kind:""}.`
+      : "The city is not in this shell tonight — only the cards.");
+    $('cnote').textContent=d.total
+      ? `${d.total} in the shell for ${d.label}${CITY.q?` matching “${CITY.q}”`:""} · showing ${CITY.shown}`
+      : "";
+    $('cmore').style.display=CITY.shown<CITY.total?"":"none";
+    CITY.offset=CITY.shown;
+  }catch(err){
+    if(gen===CITY_GEN){ $('cnote').textContent=""; 
+      $('citylist').innerHTML=`<div class="cempty">The shell is not answering. Find a turtle.</div>`; }
+  }finally{ if(gen===CITY_GEN) cityBusy(false); }
+}
+/* EVERYWHERE, ANY HOUR. Camps and art first — a place is still true in an hour. */
+async function citySearch(q,missedWindow){
+  const gen=++CITY_GEN;
+  CITY.mode="search"; CITY.kind="";
+  cityBusy(true); cityWindowChips(); cityKinds(null);
+  $('citylist').innerHTML=""; $('cmore').style.display="none";
+  $('cnote').textContent="the shell is looking…";
+  try{
+    const d=await fetch("/api/city/search?q="+encodeURIComponent(q)).then(r=>r.json());
+    if(gen!==CITY_GEN) return;
+    CITY.total=d.total; CITY.shown=d.items.length;
+    cityAppend(d.items, d.have_snapshot
+      ? `Nothing in the shell for “${q}”.`
+      : "The city is not in this shell tonight — only the cards.");
+    const lead=missedWindow?`Nothing for ${missedWindow} — searching the whole city. `:"";
+    $('cnote').textContent=d.total
+      ? `${lead}${d.total} in the shell for “${q}”${d.total>d.items.length?` · showing ${d.items.length}`:""}`
+      : "";
+  }catch(err){
+    if(gen===CITY_GEN){ $('cnote').textContent="";
+      $('citylist').innerHTML=`<div class="cempty">The shell is not answering. Find a turtle.</div>`; }
+  }finally{ if(gen===CITY_GEN) cityBusy(false); }
+}
+/* THE CITY, FILTERED BY YOUR DRAW. The bite card's real placement pinned at the top,
+   then what is on in the next six hours that touches the same words. */
+async function citySeance(){
+  const gen=++CITY_GEN;
+  CITY.mode="seance"; CITY.kind=""; CITY.q=""; $('csearch').value="";
+  cityBusy(true); cityWindowChips(); cityKinds(null);
+  $('citylist').innerHTML=""; $('cmore').style.display="none";
+  $('cwhole').style.display="";
+  $('cnote').textContent="the shell is looking…";
+  try{
+    const d=await fetch("/api/city/for-seance?session="+encodeURIComponent(SID||"")).then(r=>r.json());
+    if(gen!==CITY_GEN) return;
+    const rows=[];
+    if(d.pin) rows.push(cityRow(d.pin," pin"));
+    rows.push(...(d.items||[]).map(it=>cityRow(it)));
+    if(!rows.length){
+      $('citylist').innerHTML=`<div class="cempty">Nothing in the shell for this card in `+
+        `${esc(d.label||"the next six hours")}. Tap “See the whole city”.</div>`;
+    } else {
+      $('citylist').innerHTML=rows.join("");
+      bindRows($('citylist'));
+    }
+    $('cnote').textContent=d.card
+      ? `for ${d.card.name} · ${d.label}` : `${d.label}`;
+  }catch(err){
+    if(gen===CITY_GEN){ $('cnote').textContent="";
+      $('citylist').innerHTML=`<div class="cempty">The shell is not answering. Find a turtle.</div>`; }
+  }finally{ if(gen===CITY_GEN) cityBusy(false); }
+}
+function cityAppend(items,emptyLine){
+  if(!items.length&&!$('citylist').children.length){
+    $('citylist').innerHTML=`<div class="cempty">${esc(emptyLine)}</div>`; return;
+  }
+  const frag=document.createElement("div");
+  frag.innerHTML=items.map(it=>cityRow(it)).join("");
+  bindRows(frag);
+  while(frag.firstChild) $('citylist').appendChild(frag.firstChild);
+}
+function openBrowse(opts){
+  opts=opts||{};
+  stopVoice(); discardRecording();
+  BROWSE_ON=true;
+  BROWSE_FROM=opts.from||null;
+  CITY.kind=""; CITY.q=""; CITY.offset=0; CITY.shown=0;
+  $('csearch').value=""; $('cnote').textContent=""; $('citylist').innerHTML="";
+  $('cwhole').style.display="none"; $('cmore').style.display="none";
+  show("browse");
+  pokeIdle();
+  if(opts.seance&&SID){ citySeance(); return; }
+  CITY.mode="window"; CITY.window=opts.window||"tonight";
+  cityLoad();
+}
+function closeBrowse(){ BROWSE_ON=false; CITY_GEN++; cityBusy(false); }
+
+/* ---------- the detail sheet ---------- */
+/* A stack, so an event opened from inside a camp's sheet can step back to the camp. It is
+   never deep: Close always closes the whole thing, and any scene change closes it too. */
+let SHEET_STACK=[], SHEET_ITEM=null, SHEET_GEN=0;
+function sheetLines(it){
+  const L=[];
+  const when=(it.occurrences&&it.occurrences.length)
+    ? it.occurrences.map(o=>`<span class="occ${o.over?" over":""}">${esc(o.when)}`+
+        `${o.live?'<span class="nowbadge">now</span>':""}</span>`).join("")
+    : (it.when?esc(it.when):"");
+  if(when) L.push(["when",when]);
+  const where=[it.where||it.address||it.other_location].filter(Boolean).map(esc).join("");
+  if(where) L.push(["where",where]);
+  if(it.kind==="event"&&it.host) L.push(["hosted by",esc(it.host)+
+    (it.host_hometown?` <span style="opacity:.7">— from ${esc(it.host_hometown)}</span>`:"")]);
+  if(it.artist) L.push(["artist",esc(it.artist)]);
+  if(it.hometown) L.push(["hometown",esc(it.hometown)]);
+  if(it.landmark) L.push(["look for",esc(it.landmark)]);
+  return L.map(([k,v])=>`<div class="sline"><div class="sl">${esc(k)}</div><div class="sv">${v}</div></div>`).join("");
+}
+function drawSheet(it){
+  SHEET_ITEM=it;
+  const kind=it.kind==="event"?(it.type||"Event"):(it.kind==="camp"?"Camp":"Art");
+  const sub=(it.events&&it.events.length)
+    ? `<div class="ssub"><div class="shead">still to come here</div>`+
+      it.events.map(e=>cityRow(e)).join("")+`</div>` : "";
+  $('sheetcard').innerHTML=
+    `<div class="skind">${esc(kind)}${it.over?" · over for this burn":""}</div>`+
+    `<h2>${esc(it.title)}${it.live?'<span class="nowbadge">now</span>':""}</h2>`+
+    sheetLines(it)+
+    (it.desc?`<div class="sdesc">${esc(it.desc)}</div>`:"")+
+    sub+
+    `<div class="sheetrow">`+
+      `<button id="sheetask">💬&nbsp; Ask the Turtle about this</button>`+
+      (SHEET_STACK.length?`<button class="ghost" id="sheetback">↩&nbsp; Back</button>`:"")+
+      `<button class="ghost" id="sheetclose">Close</button>`+
+    `</div>`;
+  $('sheet').classList.add("on");
+  $('sheetcard').scrollTop=0;
+  bindRows($('sheetcard'));
+  $('sheetclose').addEventListener('click',ev=>{ ev.stopPropagation(); closeSheet(); });
+  $('sheetask').addEventListener('click',ev=>{ ev.stopPropagation(); askAboutSheet(); });
+  const back=$('sheetback');
+  if(back) back.addEventListener('click',ev=>{ ev.stopPropagation(); popSheet(); });
+}
+async function openSheet(key){
+  const gen=++SHEET_GEN;
+  if(SHEET_ITEM&&$('sheet').classList.contains("on")) SHEET_STACK.push(SHEET_ITEM);
+  $('sheetcard').innerHTML=`<div class="cempty">the shell is remembering…</div>`;
+  $('sheet').classList.add("on");
+  pokeIdle();
+  try{
+    const p=key.uid?("uid="+encodeURIComponent(key.uid)):("name="+encodeURIComponent(key.name||""));
+    const r=await fetch("/api/city/item?"+p);
+    if(gen!==SHEET_GEN) return;
+    if(!r.ok){ SHEET_STACK.pop(); closeSheet(); toast("The shell does not hold that one."); return; }
+    drawSheet(await r.json());
+  }catch(err){
+    if(gen===SHEET_GEN){ SHEET_STACK.pop(); closeSheet(); toast("The shell is not answering."); }
+  }
+}
+function popSheet(){
+  const prev=SHEET_STACK.pop();
+  if(prev) drawSheet(prev); else closeSheet();
+}
+function closeSheet(){
+  SHEET_GEN++; SHEET_STACK=[]; SHEET_ITEM=null;
+  $('sheet').classList.remove("on"); $('sheetcard').innerHTML="";
+}
+/* Hand the thing to Ask the Turtle by name, question already written. The seeker can edit
+   it — a kiosk that sends before they have read it answers a question nobody asked. */
+function askAboutSheet(){
+  const it=SHEET_ITEM; if(!it) return;
+  const from=BROWSE_ON?"browse":($('quest').classList.contains("on")?"quest":
+    ($('seance').classList.contains("on")?"seance":null));
+  closeSheet();
+  openChat(Boolean(SID), from);
+  const q=it.kind==="event"
+    ? `Tell me about the event “${it.title}” — where is it and what happens there?`
+    : `Tell me about ${it.title} — where is it and what is it?`;
+  $('chatq').value=q;
+  $('chatq').focus();
+}
+$('sheet').addEventListener('click',ev=>{ if(ev.target===$('sheet')) closeSheet(); });
+
+/* ---------- browse wiring ---------- */
+$('cwindow').querySelectorAll('.cchip').forEach(c=>c.addEventListener('click',ev=>{
+  ev.stopPropagation();
+  CITY.mode="window"; CITY.window=c.dataset.window; CITY.kind=""; CITY.q="";
+  $('csearch').value=""; $('cwhole').style.display="none";
+  cityLoad();
+}));
+function citySubmit(){
+  const q=$('csearch').value.trim();
+  CITY.q=q; CITY.kind="";
+  if(!q){ CITY.mode="window"; $('cwhole').style.display="none"; cityLoad(); return; }
+  if(CITY.mode==="window"){ cityLoad(); return; }
+  citySearch(q);
+}
+$('csearchgo').addEventListener('click',ev=>{ ev.stopPropagation(); citySubmit(); });
+$('csearch').addEventListener('keydown',e=>{
+  if(e.key==="Enter"){ e.preventDefault(); citySubmit(); } });
+$('cmore').addEventListener('click',ev=>{ ev.stopPropagation(); if(!CITY_BUSY) cityLoad(true); });
+$('cwhole').addEventListener('click',ev=>{
+  ev.stopPropagation();
+  CITY.mode="window"; CITY.window="tonight"; CITY.kind=""; CITY.q="";
+  $('cwhole').style.display="none"; cityLoad();
+});
+$('cback').addEventListener('click',ev=>{
+  ev.stopPropagation();
+  const back=BROWSE_FROM;
+  closeBrowse(); closeSheet();
+  if((back==="seance"||back==="quest")&&SID){ show(back); pokeIdle(); }
+  else resetAll();
+});
+$('browseturtle').addEventListener('click',ev=>{ ev.stopPropagation(); openBrowse({from:null}); });
+$('pullcards').addEventListener('click',ev=>{ ev.stopPropagation(); wake("seek"); });
+$('chatcity').addEventListener('click',ev=>{ ev.stopPropagation(); openBrowse({from:"chat"}); });
+$('cityread').addEventListener('click',ev=>{ ev.stopPropagation(); openBrowse({from:"seance",seance:true}); });
+$('cityquest').addEventListener('click',ev=>{ ev.stopPropagation(); openBrowse({from:"quest",seance:true}); });
 
 /* ---------- wiring ---------- */
 function sleep(ms){ return new Promise(r=>setTimeout(r,ms)); }
@@ -1179,6 +1617,9 @@ for(let i=0;i<9;i++){ const m=document.createElement("div"); m.className="mote";
 /* idle: the oracle goes back to sleep */
 function resetAll(){ stopVoice(); discardRecording();
   SESSION_GEN++; SID=null; forgetStep(); resetSeance();
+  /* browse and the sheet are state like everything else: they go back to sleep too, and
+     a sheet left open must never be the thing a seeker walks up to */
+  closeSheet(); closeBrowse(); $('citylist').innerHTML=""; $('cnote').textContent="";
   /* a chat is state too, and it holds the mic bindings — never leave it live behind the
      attract screen, or the next seeker walks into the last one's conversation */
   chatReset();
@@ -1187,7 +1628,8 @@ function pokeIdle(){ clearTimeout(IDLE);
   const wait=$('quest').classList.contains("on")?240000:600000;
   /* An open chat with no séance behind it has no SID, so the old guard would have left it
      on screen forever. A chat must never be the thing that keeps the shell awake. */
-  IDLE=setTimeout(()=>{ if(SID||CHAT_ID||CHAT_ON) resetAll(); },wait); }
+  IDLE=setTimeout(()=>{ if(SID||CHAT_ID||CHAT_ON||BROWSE_ON||$('sheet').classList.contains("on"))
+    resetAll(); },wait); }
 ["click","touchstart","keydown"].forEach(ev=>document.addEventListener(ev,pokeIdle,{passive:true}));
 pokeIdle();
 </script>
