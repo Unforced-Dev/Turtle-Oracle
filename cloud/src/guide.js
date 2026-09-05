@@ -461,13 +461,18 @@ export async function search(env, q, opts = {}) {
     return { sc, e, next, over: next[1] <= now };
   });
   evHits.sort((a, b) => Number(a.over) - Number(b.over) || b.sc - a.sc || a.next[0] - b.next[0]);
-  for (const h of evHits.slice(0, limit)) {
+
+  /* A THIRD OF THE PAGE IS HELD FOR PLACES. Search "coffee" and the dump answers with
+   * forty events and a dozen camps; letting the events fill the page first buried every
+   * camp that pours coffee all week under eight one-hour workshops, which is the wrong
+   * answer to the question actually being asked. So the places that matched get up to a
+   * third of the rows, and the events take the rest. */
+  const places = ranked(idx.camps, 5).concat(ranked(idx.art, 5)).sort((a, b) => b[0] - a[0]);
+  const placeSlots = Math.min(places.length, Math.floor(limit / 3));
+  for (const h of evHits.slice(0, limit - placeSlots)) {
     items.push(eventRow(c, h.e, h.next[0], h.next[1], now));
   }
-  for (const [, p] of ranked(idx.camps, 5).slice(0, Math.max(0, limit - items.length))) {
-    items.push(placeRow(p));
-  }
-  for (const [, p] of ranked(idx.art, 5).slice(0, Math.max(0, limit - items.length))) {
+  for (const [, p] of places.slice(0, Math.max(placeSlots, limit - items.length))) {
     items.push(placeRow(p));
   }
   return { have: c.have, q: text, total: items.length, items: items.slice(0, limit) };

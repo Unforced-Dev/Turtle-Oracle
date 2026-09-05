@@ -345,10 +345,19 @@ check(
   "every hit says what it is",
   coffee.items.every((i) => ["event", "camp", "art"].includes(i.kind) && i.uid && i.title),
 );
+const coffeeEvents = coffee.items.filter((i) => i.kind === "event");
 check(
   "what is still standing outranks what is over",
-  coffee.items.every((i, n, a) => !n || Number(a[n - 1].over || false) <= Number(i.over || false)),
-  coffee.items.map((i) => (i.over ? "over" : "live")).join(","),
+  coffeeEvents.every((i, n, a) => !n || Number(a[n - 1].over || false) <= Number(i.over || false)),
+  coffeeEvents.map((i) => (i.over ? "over" : "live")).join(","),
+);
+/* A page that is all events is a page that has buried every camp that pours coffee all
+ * week under eight one-hour workshops. The places get a third of it. */
+const roomy = await guide.search(env, "coffee", { limit: 24, now: NOW });
+check(
+  "and a page holds room for the places, not only the events",
+  roomy.items.some((i) => i.kind !== "event") || roomy.items.length < 24,
+  roomy.items.map((i) => i.kind).join(","),
 );
 check("an empty search is empty, not everything", (await guide.search(env, "  ")).items.length === 0);
 check(
