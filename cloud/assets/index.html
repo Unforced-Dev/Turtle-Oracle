@@ -60,8 +60,11 @@
   .speaking .medallion img{box-shadow:0 0 90px rgba(232,205,133,.4), 0 12px 60px rgba(0,0,0,.7)}
 
   /* ---- attract ---- */
-  #attract{justify-content:center;text-align:center;gap:3.5vh;cursor:pointer}
-  #attract .medallion{width:min(52vw,46vh,420px);height:min(52vw,46vh,420px)}
+  #attract{justify-content:center;text-align:center;gap:2.2vh;cursor:pointer}
+  /* cloud: the medallion was half the screen when the attract was one instruction. It
+     now carries three doors under it, and all of them have to be above the fold on a
+     390x844 phone — so it gives ground rather than pushing "What's happening" off. */
+  #attract .medallion{width:min(34vw,24vh,260px);height:min(34vw,24vh,260px)}
   .rune{font-size:.78rem;letter-spacing:.5em;text-transform:uppercase;color:var(--gold-dim)}
   #attract h1{margin:0;color:var(--gold);font-weight:600;letter-spacing:.06em;
     font-size:clamp(1.8rem,4.5vw,3rem)}
@@ -296,6 +299,84 @@
   .qmap{font-family:ui-monospace,Menlo,Consolas,monospace;background:rgba(61,47,20,.08);
     border:1px solid #cbb98f;border-radius:6px;padding:10px;font-size:.78rem;line-height:1.35;
     white-space:pre;overflow-x:auto;margin-top:14px;color:#3d2f14}
+  /* ---- cloud: THE THREE DOORS ----------------------------------------------------
+     A tablet on a table at camp is walked up to for a reading. A phone in a pocket is
+     opened for three different reasons — "let me just see what's happening", "let me
+     ask about what's happening", "let me pull cards and then look at what's happening"
+     — and the attract screen answers all three instead of assuming the ceremony. */
+  .doors{display:flex;flex-direction:column;gap:11px;width:100%;max-width:420px;margin:0 auto}
+  .doors button{display:flex;flex-direction:column;align-items:center;gap:2px;
+    padding:14px 18px;line-height:1.25;text-align:center;min-height:0}
+  .doors button span{font-size:.79rem;font-weight:400;opacity:.72;letter-spacing:.01em}
+
+  /* ---- cloud: ASK THE TURTLE ---- */
+  #chat{gap:8px}
+  #chat .medallion{width:min(24vw,16vh,140px);height:min(24vw,16vh,140px);margin-top:0}
+  #chat .oracle-says{min-height:4.2em;margin-top:2px}
+  #chathist{width:100%;max-width:680px;max-height:22vh;overflow-y:auto;
+    display:flex;flex-direction:column;gap:7px;padding-right:2px}
+  #chathist .turn{font-size:.88rem;line-height:1.4}
+  #chathist .turn.you{color:var(--parch-dim);font-style:italic}
+  #chathist .turn.turtle{color:var(--gold-dim)}
+  #chatpanel{margin-top:8px}
+  #chatpanel textarea{min-height:54px}
+
+  /* ---- cloud: one row, everywhere a place or an event is listed. The hits under a
+     chat answer, the browse list and the sheet's own lists are all this. ---- */
+  .hits{width:100%;max-width:680px;display:flex;flex-direction:column;gap:8px;margin-top:8px}
+  .hit{background:linear-gradient(180deg,var(--ink2),#0e0a05);border:1px solid var(--edge);
+    border-radius:12px;padding:10px 13px;cursor:pointer;text-align:left;width:100%;
+    color:var(--parch);font:inherit;font-weight:400;min-height:0;display:block}
+  .hit:active{transform:scale(.99)}
+  .hit .htitle{color:var(--gold2);font-size:1rem;line-height:1.3}
+  .hit .hmeta{color:var(--parch-dim);font-size:.77rem;margin-top:3px}
+  .hit .hwhere{color:var(--gold-dim);font-size:.77rem;margin-top:2px}
+  .hit.over{opacity:.5}
+  .nowbadge{display:inline-block;background:var(--ember);color:#160e05;font-size:.6rem;
+    letter-spacing:.16em;text-transform:uppercase;border-radius:999px;padding:1px 7px;
+    margin-right:6px;font-weight:700}
+
+  /* ---- cloud: WHAT'S HAPPENING ---- */
+  #city{gap:8px}
+  #city .medallion{width:min(17vw,11vh,92px);height:min(17vw,11vh,92px);margin-top:0}
+  #city .oracle-says{min-height:0;font-size:1.02rem;margin:2px 0 6px}
+  .chips{display:flex;gap:8px;flex-wrap:wrap;justify-content:center;width:100%;max-width:680px}
+  .chip{font:inherit;font-weight:400;padding:8px 15px;border-radius:999px;border:1px solid var(--edge);
+    background:transparent;color:var(--parch-dim);min-height:0;font-size:.88rem}
+  .chip.sel{background:linear-gradient(180deg,#caa64f,#96772f);color:#1a1408;font-weight:700;
+    border-color:var(--gold-dim)}
+  .cityfind{display:flex;gap:8px;width:100%;max-width:680px;margin-top:8px}
+  .cityfind input,.cityfind select{min-width:0;background:#0d0a05;color:var(--parch);
+    border:1px solid var(--edge);border-radius:10px;padding:10px 12px;font:inherit;font-size:.93rem;
+    user-select:text;-webkit-user-select:text}
+  .cityfind input{flex:1.6} .cityfind select{flex:1}
+  .cityfind input::placeholder{color:#7d6f52;font-style:italic}
+  #citycount{color:var(--gold-dim);font-size:.72rem;letter-spacing:.14em;text-transform:uppercase;
+    margin-top:8px;min-height:1.1em;text-align:center}
+
+  /* ---- cloud: THE SHEET. One thing, in full, over whatever asked for it. It is a
+     layer and not a scene, because it must be closeable back onto the séance without
+     the séance having been torn down underneath it. ---- */
+  #sheet{position:fixed;inset:0;z-index:70;display:flex;align-items:flex-end;justify-content:center;
+    background:rgba(6,4,2,.8);opacity:0;pointer-events:none;transition:opacity .3s}
+  #sheet.on{opacity:1;pointer-events:auto}
+  .sheetbox{width:100%;max-width:680px;max-height:88vh;overflow-y:auto;
+    background:linear-gradient(180deg,#171208,#0b0805);border:1px solid var(--gold-dim);
+    border-radius:18px 18px 0 0;padding:20px 18px calc(22px + env(safe-area-inset-bottom));
+    transform:translateY(28px);transition:transform .3s}
+  #sheet.on .sheetbox{transform:none}
+  .sheetbox h2{margin:.12em 0 .3em;color:var(--gold);font-size:1.26rem;line-height:1.25;font-weight:600}
+  .sheetbox .skind{font-size:.68rem;letter-spacing:.26em;text-transform:uppercase;color:var(--gold-dim)}
+  .sheetbox .swhen{color:var(--gold2);font-size:.94rem;margin-top:3px}
+  .sheetbox .swhere{color:var(--parch-dim);font-size:.9rem;margin-top:3px}
+  .sheetbox .sdesc{margin-top:12px;font-size:1rem;line-height:1.5;
+    user-select:text;-webkit-user-select:text}
+  .sheetbox .slabel{color:var(--gold-dim);font-size:.68rem;letter-spacing:.24em;
+    text-transform:uppercase;margin:16px 0 6px}
+  .sheetbox .stimes{color:var(--parch-dim);font-size:.84rem;line-height:1.6}
+  .sheetbox .srow{display:flex;gap:10px;margin-top:18px;flex-wrap:wrap}
+  .sheetbox .srow button{flex:1;min-width:148px;padding:12px 14px;font-size:.96rem;min-height:48px}
+
   .toast{position:fixed;bottom:20px;left:50%;transform:translateX(-50%) translateY(80px);
     background:var(--ink2);border:1px solid var(--gold-dim);color:var(--gold2);border-radius:12px;
     padding:12px 22px;transition:transform .5s;z-index:60;max-width:86vw;text-align:center}
@@ -321,6 +402,14 @@
     <div class="creed">Move Slow &amp; Bite Things</div>
   </div>
   <div class="wake">✦ &nbsp;touch the shell to wake the oracle&nbsp; ✦</div>
+  <!-- cloud: THE THREE DOORS. Pulling the cards is still the primary and still what a
+       tap anywhere on this screen does; the other two are the reasons a phone gets
+       taken out of a pocket that a tablet on a table never has. -->
+  <div class="doors">
+    <button id="dpull">🐢&nbsp; Pull the cards<span>a reading, and one bite to take</span></button>
+    <button class="ghost" id="dask">💬&nbsp; Ask the Turtle<span>where, when, what a card means</span></button>
+    <button class="ghost" id="dcity">✦&nbsp; What&#39;s happening<span>what the city is doing right now</span></button>
+  </div>
   <div id="lore" style="color:var(--gold-dim);font-size:.8rem;letter-spacing:.12em;min-height:2.6em;text-align:center"></div>
   <button class="ghost" id="returned" style="font-size:.95rem">🐢&nbsp; I have returned — I carry a tale</button>
   <div style="flex:1.2"></div>
@@ -386,6 +475,13 @@
         <button id="accept">⚔&nbsp; I accept this quest</button>
         <button class="ghost" id="more">🐢&nbsp; Hear me further</button>
       </div>
+      <!-- cloud: from the cards to the city. These belong to a reading that is on the
+           table, so they come and go with the decision row (decideRow) and never sit
+           under an empty scroll. -->
+      <div class="row" id="readaux" style="display:none">
+        <button class="ghost" id="readcity">✦&nbsp; What&#39;s out there for this</button>
+        <button class="ghost" id="readchat">💬&nbsp; Talk with the Turtle about this</button>
+      </div>
     </div>
   </div>
   <footer>what to face · where you stand · what to reach for</footer>
@@ -404,8 +500,63 @@
     <button id="share">⇪&nbsp; Share my quest</button>
     <button class="ghost" id="again">↺&nbsp; The Oracle sleeps — wake it again</button>
   </div>
+  <div class="row">
+    <button class="ghost" id="questcity">✦&nbsp; What&#39;s out there for this</button>
+    <button class="ghost" id="questchat">💬&nbsp; Talk with the Turtle about this</button>
+  </div>
   <footer>return · tell the tale · receive the gift</footer>
 </section>
+
+<!-- SCENE 4 · ASK THE TURTLE (cloud) -->
+<section class="scene" id="chat">
+  <div class="medallion"><img src="/avatar.jpg" alt=""></div>
+  <div class="col">
+    <div class="oracle-says" id="chatsays"></div>
+    <div id="chathist"></div>
+    <div class="hits" id="chathits"></div>
+    <div class="panel" id="chatpanel">
+      <textarea id="chatq" placeholder="ask the Turtle anything — where, when, what it means…"></textarea>
+      <div class="row">
+        <button class="micorb" id="chatmic" title="speak to the turtle">🎙</button>
+        <button id="chatsend">Ask</button>
+      </div>
+      <div class="row">
+        <button class="ghost" id="chatcity">✦&nbsp; What&#39;s happening</button>
+        <button class="ghost" id="chatback">↺&nbsp; Back</button>
+      </div>
+    </div>
+  </div>
+  <footer>the turtle knows the city · and what it does not know, it says</footer>
+</section>
+
+<!-- SCENE 5 · WHAT'S HAPPENING (cloud) -->
+<section class="scene" id="city">
+  <div class="medallion"><img src="/avatar.jpg" alt=""></div>
+  <div class="col">
+    <div class="oracle-says" id="citysays"></div>
+    <div class="chips" id="citychips"></div>
+    <div class="cityfind" id="cityfind">
+      <input id="cityq" type="search" autocomplete="off" autocorrect="off" spellcheck="false"
+             placeholder="find a camp, a thing, a name…">
+      <select id="citykind"><option value="">any kind</option></select>
+    </div>
+    <div id="citycount"></div>
+    <div class="hits" id="citylist"></div>
+    <div class="row">
+      <button class="ghost" id="citymore" style="display:none">↓&nbsp; more</button>
+    </div>
+    <div class="row">
+      <button class="ghost" id="cityask">💬&nbsp; Ask the Turtle</button>
+      <button class="ghost" id="cityback">↺&nbsp; Back</button>
+    </div>
+  </div>
+  <footer>what is on · where it is · what it is</footer>
+</section>
+
+<!-- THE SHEET · one thing, in full (cloud) -->
+<div id="sheet">
+  <div class="sheetbox" id="sheetbox"></div>
+</div>
 
 <!-- THE PULL -->
 <div id="veil">
@@ -481,7 +632,7 @@ function restoreStep(){
     $('says').textContent=step.say||"";
     $('h-read').classList.add("on"); $('reading').textContent=step.reading||"";
     $('h-adv').classList.add("on"); $('adventure').textContent=step.adventure||"";
-    $('decide').style.display="flex";
+    decideRow(true);
     return true;
   }
   handle(step,true);
@@ -745,7 +896,7 @@ function resetSeance(){
   $('spread').innerHTML=""; $('spread').classList.remove("asking");
   $('reading').innerHTML=""; $('adventure').innerHTML="";
   $('h-read').classList.remove("on"); $('h-adv').classList.remove("on");
-  $('decide').style.display="none"; $('giftrow').classList.remove("on"); CARD_IDS="";
+  decideRow(false); $('giftrow').classList.remove("on"); CARD_IDS="";
   READ_SHOWN=false; hideAux(); T_ASK=Date.now();
 }
 
@@ -987,7 +1138,7 @@ async function theAsking(e){
     return;
   }
   $('askpanel').classList.remove("on"); $('talkpanel').classList.remove("on","live","done"); hideAux();
-  $('decide').style.display="none"; $('askline').classList.remove("on");
+  decideRow(false); $('askline').classList.remove("on");
   shuffleCards();
   $('veil').classList.add("on");
   incant($('says'),e.say,110); speak(e.say);
@@ -1057,7 +1208,7 @@ $('writehere').addEventListener('click', ()=>{
    is no veil and no deal — the Turtle speaks the echoes over the spread it already dealt,
    then the reading, then the quest. A refinement lands here too, with READ_SHOWN set. */
 async function theReading(e){
-  $('decide').style.display="none";
+  decideRow(false);
   $('askline').classList.remove("on"); $('spread').classList.remove("asking");
   const ids=SLOTS.map(s=>e.cards[s].id).join(",");
   // the offline refinement genuinely re-scores the cards: if they changed, re-deal
@@ -1081,7 +1232,7 @@ async function theReading(e){
   const adur=incant($('adventure'),e.adventure,105);
   await speakOr(e.adventure, Math.min(adur,22000));
   speak(e.ask);
-  $('decide').style.display="flex";
+  decideRow(true);
   $('decide').scrollIntoView({behavior:"smooth",block:"nearest"});
 }
 /* One card at a time: the Turtle says what it heard in that card. Their words, back. */
@@ -1137,6 +1288,13 @@ function dealSpread(e,opts){
 }
 
 /* ---------- decision ---------- */
+/* cloud: the decision row and the two doors out of a reading are one thing on screen —
+   they appear together when the quest is offered and go together when it is taken or
+   re-asked. One function, so a new caller cannot show half of it. */
+function decideRow(on){
+  $('decide').style.display=on?"flex":"none";
+  $('readaux').style.display=on?"flex":"none";
+}
 $('accept').addEventListener('click', async ()=>{
   $('accept').disabled=true;
   $('accept').textContent="⏳  the Turtle seals it…";
@@ -1149,7 +1307,7 @@ $('accept').addEventListener('click', async ()=>{
   $('accept').textContent="⚔  I accept this quest";
 });
 $('more').addEventListener('click', ()=>{
-  $('decide').style.display="none";
+  decideRow(false);
   $('askpanel').classList.remove("pull","writing");
   $('askpanel').classList.add("late");
   const line="Then speak. What should the Turtle know before this quest is sealed?";
@@ -1329,6 +1487,7 @@ function stopLevel(){
 }
 function recIdle(){
   $('mic').classList.remove("listening"); $('mic').textContent="🎙";
+  $('chatmic').classList.remove("listening"); $('chatmic').textContent="🎙";
   $('rec').classList.remove("listening"); $('recface').textContent="🎙";
   $('reclabel').textContent="hold nothing — just talk";
   $('talkpanel').classList.remove("live","done");
@@ -1428,7 +1587,10 @@ async function micToggle(){
         $('talkpanel').classList.remove("live"); $('talkpanel').classList.add("done");
         incant($('says'),"The Turtle takes in your words. Slowly…",130);
       }
-      else $('mic').textContent="…";
+      /* cloud: $(btn), not #mic — the same small-mic path now also drives #chatmic on
+         the Ask screen, and writing "…" into the séance's orb from there left the chat
+         orb spinning forever and the séance's orb dotted on a scene nobody was on. */
+      else $(btn).textContent="…";
       let heard=false;
       let controller=null;
       try{
@@ -1439,8 +1601,13 @@ async function micToggle(){
         /* cloud: the ears belong to a séance now. The id rides in a header rather than
            the query string so it stays out of request logs; src/ears.js rejects a POST
            without a live séance in a stage that is actually listening. */
+        /* cloud: a chat is the other thing a seeker speaks into, and off the attract
+           screen it has no séance behind it at all. src/ears.js takes either — a live
+           séance in a listening stage, or a chat this Worker minted — and neither one
+           rides in the query string, so no id lands in a request log. */
         const r=await fetch("/api/transcribe",{method:"POST",
-          headers:{"Content-Type":blob.type.split(";")[0],"x-seance-session":sid||""},
+          headers:{"Content-Type":blob.type.split(";")[0],"x-seance-session":sid||"",
+                   "x-turtle-chat":(CHAT_ON&&CHAT_ID)?CHAT_ID:""},
           body:blob,signal:controller.signal});
         const d=await r.json();
         if(TRANSCRIBE===controller) TRANSCRIBE=null;
@@ -1472,7 +1639,7 @@ async function micToggle(){
     recorder.start(1000); LISTENING=true; micToggle._t0=Date.now();
     $(btn).classList.add("listening");
     if(talking){ $('recface').textContent="■"; $('reclabel').textContent="talking · tap when done"; $('talkpanel').classList.add("live"); startRing(); startLevel(stream); }
-    else $('mic').textContent="■";
+    else $(btn).textContent="■";
     clearTimeout(micToggle._guard);
     micToggle._guard=setTimeout(()=>{ if(LISTENING) try{REC.stop();}catch(e){} },REC_MS);
   }catch(e){
@@ -1506,12 +1673,379 @@ $('rec').addEventListener('click', ()=>{ REC_INTO="story"; REC_BTN="rec"; REC_MS
   micToggle(); });
 $('offerstory').addEventListener('click', offerStory);
 
+
+/* ---------- cloud: THE CITY — what is happening, and one thing in full ----------------
+   Three doors, one set of parts. A row is a row whether it came back from a chat answer,
+   from the browse list or from a reading, and tapping one always opens the same sheet.
+   Nothing here touches the séance's own state: SID is read, never written, and the
+   `renderable`/`rememberStep` contract is untouched — a browse page is not a stage and
+   is never persisted. */
+let SHEET_UID=null, SHEET_BACK=null;
+
+/** One tappable line: the badge, the name, what kind and when, and where. */
+function hitHTML(h){
+  const meta=[h.type,h.when].filter(Boolean).map(esc).join(" · ");
+  return `<button class="hit${h.over?" over":""}" data-uid="${esc(h.uid)}">`
+    +`<div class="htitle">${h.on_now?'<span class="nowbadge">now</span>':""}${esc(h.title)}</div>`
+    +(meta?`<div class="hmeta">${esc(h.over?"ended · ":"")}${meta}</div>`:"")
+    +(h.where?`<div class="hwhere">📍 ${esc(h.where)}</div>`:"")
+    +`</button>`;
+}
+/* One delegated listener per list, bound once — rows are re-rendered on every chip tap
+   and re-binding per row leaks a listener a minute on a phone left on the browse screen. */
+function bindHits(el){
+  el.addEventListener('click', ev=>{
+    const row=ev.target.closest(".hit");
+    if(!row||!el.contains(row)) return;
+    ev.stopPropagation();
+    openSheet(row.dataset.uid);
+  });
+}
+
+/* ---------- the sheet ---------- */
+async function openSheet(uid, back){
+  if(!uid) return;
+  if(back!==undefined) SHEET_BACK=back;
+  try{
+    const r=await fetch("/api/city/item?uid="+encodeURIComponent(uid));
+    const d=await r.json();
+    if(!r.ok||!d||!d.uid){ toast(d&&d.error?d.error:"The shell holds nothing for that."); return; }
+    SHEET_UID=d.uid;
+    renderSheet(d);
+    $('sheet').classList.add("on");
+    $('sheetbox').scrollTop=0;
+    pokeIdle();
+  }catch(err){ toast("The Turtle cannot see the city just now."); }
+}
+function closeSheet(){ $('sheet').classList.remove("on"); SHEET_UID=null; }
+
+function renderSheet(d){
+  const times=(d.times||[]).filter(t=>!t.over);
+  const parts=[
+    `<div class="skind">${esc(d.type||d.kind)}</div>`,
+    `<h2>${esc(d.title)}</h2>`,
+  ];
+  if(d.when) parts.push(`<div class="swhen">${d.on_now?'<span class="nowbadge">now</span>':""}${esc(d.when)}</div>`);
+  if(d.where) parts.push(`<div class="swhere">📍 ${esc(d.where)}</div>`);
+  if(d.by) parts.push(`<div class="swhere">by ${esc(d.by)}</div>`);
+  if(d.from) parts.push(`<div class="swhere">from ${esc(d.from)}</div>`);
+  if(d.landmark) parts.push(`<div class="swhere">look for ${esc(d.landmark)}</div>`);
+  if(d.desc) parts.push(`<div class="sdesc">${esc(d.desc)}</div>`);
+  if(d.host){
+    parts.push(`<div class="slabel">hosted by</div><div class="hits">`
+      +hitHTML({uid:d.host.uid,title:d.host.title,type:d.host.type,where:d.host.where})+`</div>`);
+  }
+  if(times.length>1){
+    parts.push(`<div class="slabel">it also runs</div><div class="stimes">`
+      +times.slice(1,8).map(t=>esc(t.when)).join("<br>")+`</div>`);
+  }
+  if((d.events||[]).length){
+    parts.push(`<div class="slabel">on there next</div><div class="hits">`
+      +d.events.map(hitHTML).join("")+`</div>`);
+  }
+  parts.push(`<div class="srow">`
+    +`<button id="sheetask">💬&nbsp; Ask the Turtle about this</button>`
+    +`<button class="ghost" id="sheetclose">Close</button></div>`);
+  $('sheetbox').innerHTML=parts.join("");
+}
+/* Delegated, because the sheet's whole body is replaced every time it opens. */
+$('sheetbox').addEventListener('click', ev=>{
+  ev.stopPropagation();
+  if(ev.target.closest("#sheetclose")) return closeSheet();
+  if(ev.target.closest("#sheetask")){
+    const title=($('sheetbox').querySelector("h2")||{}).textContent||"";
+    closeSheet();
+    openChat(Boolean(SID), 'Tell me about "'+title.trim()+'".');
+    return;
+  }
+  const row=ev.target.closest(".hit");
+  if(row) openSheet(row.dataset.uid);
+});
+/* A tap on the dark outside the box closes it — the gesture every sheet on a phone has. */
+$('sheet').addEventListener('click', ev=>{ if(ev.target===$('sheet')) closeSheet(); });
+
+/* ---------- WHAT'S HAPPENING ---------- */
+const CITY_WINDOWS=[["now","Now"],["tonight","Tonight"],["tomorrow","Tomorrow"],["morning","Morning"]];
+let CITY_WIN="now", CITY_KIND="", CITY_Q="", CITY_OFF=0, CITY_GEN=0,
+    CITY_FROM=null, CITY_MODE="browse", CITY_FIND=null;
+const CITY_PAGE=20;
+
+function cityReset(){
+  CITY_GEN++; CITY_WIN="now"; CITY_KIND=""; CITY_Q=""; CITY_OFF=0;
+  CITY_FROM=null; CITY_MODE="browse";
+  clearTimeout(CITY_FIND); CITY_FIND=null;
+  $('cityq').value=""; $('citykind').value="";
+  $('citylist').innerHTML=""; $('citycount').textContent=""; $('citysays').textContent="";
+  $('citymore').style.display="none";
+  $('cityfind').style.display=""; $('citychips').style.display="";
+}
+function cityChips(){
+  $('citychips').innerHTML=CITY_WINDOWS.map(([id,label])=>
+    `<button class="chip${id===CITY_WIN?" sel":""}" data-win="${esc(id)}">${esc(label)}</button>`).join("");
+}
+$('citychips').addEventListener('click', ev=>{
+  const b=ev.target.closest(".chip"); if(!b) return;
+  ev.stopPropagation();
+  CITY_WIN=b.dataset.win; CITY_OFF=0; cityChips(); cityLoad(false);
+});
+/* The kind list is the dump's own vocabulary, handed back with the first page — hard-coding
+   eight labels here would go stale the first year Burning Man renames one. */
+function cityKinds(kinds){
+  if(!kinds||!kinds.length||$('citykind').dataset.filled) return;
+  $('citykind').dataset.filled="1";
+  $('citykind').innerHTML=`<option value="">any kind</option>`
+    +kinds.map(k=>`<option value="${esc(k)}">${esc(k)}</option>`).join("");
+}
+$('citykind').addEventListener('change', ()=>{ CITY_KIND=$('citykind').value; CITY_OFF=0; cityLoad(false); });
+/* Typing is throttled, not sent per keystroke: every one of these is a request against
+   the browse budget, and a seeker types "coffee" in under a second. */
+$('cityq').addEventListener('input', ()=>{
+  clearTimeout(CITY_FIND);
+  CITY_FIND=setTimeout(()=>{ CITY_Q=$('cityq').value.trim(); CITY_OFF=0; cityLoad(false); }, 320);
+});
+$('cityq').addEventListener('keydown', ev=>{
+  if(ev.key==="Enter"){ ev.preventDefault(); clearTimeout(CITY_FIND);
+    CITY_Q=$('cityq').value.trim(); CITY_OFF=0; cityLoad(false); }
+});
+$('citymore').addEventListener('click', ev=>{ ev.stopPropagation(); cityLoad(true); });
+bindHits($('citylist'));
+
+/** One page. `append` keeps what is on screen and adds to it; anything else replaces it.
+ *  A search box with words in it asks the WHOLE city, any time; empty, the chips and the
+ *  kind filter ask what is on in a window. Two questions, and the count line says which. */
+async function cityLoad(append){
+  const gen=++CITY_GEN;
+  if(!append){ CITY_OFF=0; $('citylist').innerHTML=""; }
+  $('citycount').textContent="the Turtle looks…";
+  $('citymore').style.display="none";
+  const searching=CITY_Q.length>1;
+  const url=searching
+    ? "/api/city/search?q="+encodeURIComponent(CITY_Q)+"&limit="+CITY_PAGE
+    : "/api/city/happening?window="+encodeURIComponent(CITY_WIN)
+      +"&kind="+encodeURIComponent(CITY_KIND)
+      +"&limit="+CITY_PAGE+"&offset="+CITY_OFF;
+  try{
+    const r=await fetch(url);
+    const d=await r.json();
+    if(gen!==CITY_GEN) return;
+    if(!r.ok){ $('citycount').textContent=""; toast(d.error||"The shell needs a moment."); return; }
+    cityKinds(d.kinds);
+    const items=d.items||[];
+    $('citylist').insertAdjacentHTML("beforeend", items.map(hitHTML).join(""));
+    if(d.have===false){
+      $('citycount').textContent="the city is not in this shell tonight";
+    } else if(searching){
+      $('citycount').textContent=items.length
+        ? items.length+" for “"+CITY_Q+"”, any time"
+        : "nothing in the shell answers to “"+CITY_Q+"”";
+    } else {
+      const label=(CITY_WINDOWS.find(w=>w[0]===CITY_WIN)||["","now"])[1].toLowerCase();
+      $('citycount').textContent=d.total
+        ? d.total+" "+(d.total===1?"thing":"things")+" "+label
+        : "nothing written in the shell for "+label;
+      CITY_OFF+=items.length;
+      if(CITY_OFF<d.total) $('citymore').style.display="";
+    }
+  }catch(err){
+    if(gen===CITY_GEN){ $('citycount').textContent=""; toast("The Turtle cannot see the city just now."); }
+  }
+}
+
+const CITY_OPEN="What the city is doing. Tap a thing to see it whole.";
+function openCity(from){
+  discardRecording(); stopVoice();
+  cityReset(); chatQuiet();
+  CITY_FROM=from||null; CITY_MODE="browse";
+  cityChips();
+  show("city");
+  $('citysays').textContent=CITY_OPEN;
+  cityLoad(false);
+  pokeIdle();
+}
+
+/** FROM THE CARDS TO THE CITY. Same scene, one question instead of a browse: what is out
+ *  there for THIS reading. The chips and the search box come off, because this is not a
+ *  list the seeker is steering — it is the Turtle answering about their own draw. */
+async function openFor(from){
+  if(!SID){ toast("There is no reading to look out from."); return; }
+  discardRecording(); stopVoice();
+  cityReset(); chatQuiet();
+  CITY_FROM=from||null; CITY_MODE="for";
+  $('citychips').style.display="none"; $('cityfind').style.display="none";
+  show("city");
+  $('citysays').textContent="The Turtle looks out from your cards…";
+  $('citycount').textContent="";
+  const gen=++CITY_GEN;
+  try{
+    const r=await fetch("/api/city/for?session="+encodeURIComponent(SID));
+    const d=await r.json();
+    if(gen!==CITY_GEN) return;
+    if(!r.ok){ $('citysays').textContent="The Turtle cannot see the city just now."; return; }
+    const bite=(d.cards||[]).find(c=>c.bite);
+    $('citysays').textContent=bite
+      ? "Your bite is "+bite.name+". Here is what the city put near it."
+      : "Here is what the city is doing around your cards.";
+    const rows=[];
+    if(d.pinned){
+      rows.push(`<div class="slabel">${esc(d.pinned.card)} stands here</div>`);
+      rows.push(hitHTML({uid:d.pinned.uid,title:d.pinned.title,type:d.pinned.type,where:d.pinned.where}));
+    }
+    if((d.items||[]).length){
+      rows.push(`<div class="slabel">and in the next six hours</div>`);
+      rows.push(...d.items.map(hitHTML));
+    }
+    $('citylist').innerHTML=rows.join("");
+    if(!rows.length) $('citycount').textContent="the shell holds nothing out there just now";
+  }catch(err){
+    if(gen===CITY_GEN) $('citysays').textContent="The Turtle cannot see the city just now.";
+  }
+  pokeIdle();
+}
+
+/* ---------- ASK THE TURTLE ---------- */
+/* Open talk, with or without a séance behind it. It shares the séance's voice, its mic
+   and its escaping — this is one more scene, not a second kiosk. */
+let CHAT_ID=null, CHAT_ON=false, CHAT_GEN=0, CHAT_BUSY=false, CHAT_ABORT=null;
+/* The newest answer is the big line at the top; it drops into the small history only when
+   the next question pushes it there. Printing it in both places at once fills a phone with
+   the same paragraph twice and shoves the places off the bottom of the screen. */
+let CHAT_PENDING=null, CHAT_FROM=null;
+const CHAT_OPEN="Ask the Turtle. Where to go, when it happens, what a card means. What it does not know, it will say.";
+
+/** Stop the chat without tearing it down — used when another scene takes the mic. */
+function chatQuiet(){
+  CHAT_ON=false;
+  if(CHAT_ABORT){ try{CHAT_ABORT.abort();}catch(e){} CHAT_ABORT=null; }
+  CHAT_BUSY=false; $('chatsend').disabled=false;
+  MICBOX_RESET();
+}
+/* The recorder is one machine with two boxes to write into. The chat borrows it and hands
+   it back, rather than a second recorder being built beside it. */
+function MICBOX_RESET(){ REC_INTO="q"; REC_BTN="mic"; REC_MS=60000; }
+function chatReset(){
+  CHAT_GEN++; CHAT_ID=null; CHAT_PENDING=null; CHAT_FROM=null;
+  chatQuiet();
+  $('chathist').innerHTML=""; $('chathits').innerHTML=""; $('chatsays').innerHTML="";
+  $('chatq').value=""; $('chatpanel').classList.remove("on");
+}
+function chatTurn(who,text){
+  const d=document.createElement("div");
+  d.className="turn "+(who==="you"?"you":"turtle");
+  d.textContent=(who==="you"?"you: ":"the Turtle: ")+text;
+  $('chathist').appendChild(d);
+  $('chathist').scrollTop=$('chathist').scrollHeight;
+}
+bindHits($('chathits'));
+
+/** `withSession` keeps the séance behind the chat, so the Turtle can lean on their cards.
+ *  `seed` is a question to ask straight away — the sheet's "ask about this". */
+async function openChat(withSession, seed){
+  discardRecording(); stopVoice();
+  chatReset();
+  CHAT_ON=true; REC_INTO="chatq"; REC_BTN="chatmic"; REC_MS=60000;
+  $('chatpanel').classList.add("on");
+  /* Where they came from. A chat opened off a reading or a sealed parchment has to give
+     that screen back — the parchment is the only artifact they get, and a one-way door
+     out of it would eat it. Opened cold, "back" means the attract screen. */
+  CHAT_FROM=$('quest').classList.contains("on") ? "quest"
+    : $('city').classList.contains("on") ? "city"
+    : (withSession && $('seance').classList.contains("on")) ? "seance" : null;
+  show("chat");
+  incant($('chatsays'),CHAT_OPEN,90);
+  if(!seed) speak(CHAT_OPEN);
+  pokeIdle();
+  /* Mint the chat before the seeker can reach for the mic: src/ears.js will not spend
+     Whisper on a conversation that does not exist yet, and on a cold Ask there is no
+     séance to stand in for one. Failure here costs the mic, never the typing. */
+  const gen=CHAT_GEN;
+  try{
+    const d=await fetch("/api/chat/open",{method:"POST",
+      headers:{"Content-Type":"application/json"},body:"{}"}).then(r=>r.json());
+    if(gen===CHAT_GEN&&d&&d.chat_id) CHAT_ID=d.chat_id;
+  }catch(err){}
+  if(seed&&gen===CHAT_GEN){ $('chatq').value=seed; chatSend(); }
+}
+
+async function chatSend(){
+  const text=$('chatq').value.trim();
+  if(!text||CHAT_BUSY) return;
+  const gen=CHAT_GEN;
+  CHAT_BUSY=true; $('chatsend').disabled=true; $('chatq').value="";
+  if(CHAT_PENDING){ chatTurn("turtle",CHAT_PENDING); CHAT_PENDING=null; }
+  chatTurn("you",text);
+  incant($('chatsays'),PONDER[Math.floor(Math.random()*PONDER.length)],120);
+  document.body.classList.add("speaking");
+  const ctl=new AbortController(); CHAT_ABORT=ctl;
+  const guard=setTimeout(()=>{ try{ctl.abort();}catch(e){} },60000);
+  try{
+    const r=await fetch("/api/chat",{method:"POST",signal:ctl.signal,
+      headers:{"Content-Type":"application/json"},
+      body:JSON.stringify({text,chat_id:CHAT_ID||undefined,session:SID||undefined})});
+    const d=await r.json();
+    if(gen!==CHAT_GEN) return;
+    if(d.chat_id) CHAT_ID=d.chat_id;
+    document.body.classList.remove("speaking");
+    if(d.say){
+      incant($('chatsays'),d.say,95);
+      $('chathits').innerHTML=(d.hits||[]).map(hitHTML).join("");
+      CHAT_PENDING=d.say;
+      speak(d.say);
+    } else toast(d.error||"The Turtle heard only wind.");
+  }catch(err){
+    if(gen===CHAT_GEN&&err&&err.name!=="AbortError")
+      toast("The Turtle's shell is not answering — try once more.");
+  }finally{
+    clearTimeout(guard);
+    if(CHAT_ABORT===ctl) CHAT_ABORT=null;
+    document.body.classList.remove("speaking");
+    if(gen===CHAT_GEN){ CHAT_BUSY=false; $('chatsend').disabled=false; }
+  }
+}
+$('chatsend').addEventListener('click', ev=>{ ev.stopPropagation(); chatSend(); });
+$('chatmic').addEventListener('click', ev=>{ ev.stopPropagation();
+  REC_INTO="chatq"; REC_BTN="chatmic"; REC_MS=60000; micToggle(); });
+$('chatq').addEventListener('keydown', ev=>{
+  if(ev.key==="Enter"&&!ev.shiftKey){ ev.preventDefault(); chatSend(); } });
+$('chatcity').addEventListener('click', ev=>{ ev.stopPropagation(); openCity("chat"); });
+$('chatback').addEventListener('click', ev=>{
+  ev.stopPropagation();
+  const back=CHAT_FROM;
+  chatReset();
+  if(back==="city"){ show("city"); pokeIdle(); return; }
+  if(back&&SID){ show(back); pokeIdle(); return; }
+  resetAll();
+});
+$('cityask').addEventListener('click', ev=>{ ev.stopPropagation(); openChat(Boolean(SID)); });
+$('cityback').addEventListener('click', ev=>{
+  ev.stopPropagation();
+  const back=CITY_FROM;
+  cityReset();
+  /* Back into a chat means the chat takes the mic again — openCity quietened it rather
+     than tearing it down, precisely so the conversation is still there to come back to. */
+  if(back==="chat"&&CHAT_ID){
+    CHAT_ON=true; REC_INTO="chatq"; REC_BTN="chatmic"; REC_MS=60000;
+    show("chat"); pokeIdle(); return;
+  }
+  if(back&&SID){ show(back); pokeIdle(); return; }
+  resetAll();
+});
+$('readcity').addEventListener('click', ev=>{ ev.stopPropagation(); openFor("seance"); });
+$('readchat').addEventListener('click', ev=>{ ev.stopPropagation(); openChat(true); });
+$('questcity').addEventListener('click', ev=>{ ev.stopPropagation(); openFor("quest"); });
+$('questchat').addEventListener('click', ev=>{ ev.stopPropagation(); openChat(true); });
+
 /* ---------- wiring ---------- */
 function sleep(ms){ return new Promise(r=>setTimeout(r,ms)); }
 /* cloud: the attract tap is the ONE user gesture the whole séance is guaranteed to get,
    so the audio is unlocked inside it — synchronously, before wake() awaits anything. */
 $('attract').addEventListener('click', ()=>{ primeAudio(); wake("seek"); });
 $('returned').addEventListener('click', ev=>{ ev.stopPropagation(); primeAudio(); wake("tale"); });
+/* cloud: THE THREE DOORS. Every one of them primes the audio in its own gesture — the
+   attract tap is the only user gesture any of these screens is guaranteed to get, and a
+   Turtle that cannot speak on the Ask screen is the whole point of that screen gone. */
+$('dpull').addEventListener('click', ev=>{ ev.stopPropagation(); primeAudio(); wake("seek"); });
+$('dask').addEventListener('click', ev=>{ ev.stopPropagation(); primeAudio(); openChat(false); });
+$('dcity').addEventListener('click', ev=>{ ev.stopPropagation(); primeAudio(); openCity(null); });
 /* cloud: "I have returned" is for a turtle standing at the shell with a gift to hand
    over. On a stranger's phone it is a dead end, so it only exists at a station. */
 if(!KIOSK) $('returned').style.display="none";
@@ -1530,6 +2064,11 @@ for(let i=0;i<9;i++){ const m=document.createElement("div"); m.className="mote";
 /* idle: the oracle goes back to sleep */
 function resetAll(){ stopVoice(); discardRecording();
   SESSION_GEN++; SID=null; LAST_QUEST=null; forgetStep(); resetSeance();
+  /* cloud: a chat and a browse are state too, and a chat holds the mic bindings. Never
+     leave one live behind the attract screen — on a shared phone the next person would
+     walk into the last one's conversation, and the mic would still be pointed at a box
+     on a scene nobody is looking at. */
+  chatReset(); cityReset(); closeSheet();
   $('parch').classList.remove("on"); show("attract"); loadLore(); }
 /* cloud: the idle wipe exists because a kiosk in a tent is shared — the next seeker
    must not walk up to the last one's confession. A personal phone is the opposite: it
@@ -1538,7 +2077,10 @@ function resetAll(){ stopVoice(); discardRecording();
 function pokeIdle(){ clearTimeout(IDLE);
   if(!KIOSK) return;
   const wait=$('quest').classList.contains("on")?240000:600000;
-  IDLE=setTimeout(()=>{ if(SID) resetAll(); },wait); }
+  /* An open chat or browse with no séance behind it has no SID, so the old guard would
+     have left it up forever on a station. Neither one may be the thing that keeps the
+     shell awake either — the timer runs, it just has something to clear. */
+  IDLE=setTimeout(()=>{ if(SID||CHAT_ON||CHAT_ID||$('city').classList.contains("on")) resetAll(); },wait); }
 ["click","touchstart","keydown"].forEach(ev=>document.addEventListener(ev,pokeIdle,{passive:true}));
 pokeIdle();
 </script>
