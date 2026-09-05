@@ -191,7 +191,8 @@ def _build(raw):
     # name -> record, for resolving a card's real_2026 placement and a quest's named place
     by_name = {}
     for rec in camps + art:
-        by_name.setdefault(_normname(rec["name"]), rec)
+        rec["norm"] = _normname(rec["name"])
+        by_name.setdefault(rec["norm"], rec)
     return {"camps": camps, "art": art, "events": events, "occ": occ,
             "by_uid": by_uid, "by_host": by_host, "by_name": by_name,
             "fetched_at": raw.get("fetched_at"), "have": True}
@@ -614,7 +615,7 @@ def item(uid=None, name=None, now=None):
     if uid:
         rec = idx["by_uid"].get(uid)
     if rec is None and name:
-        rec = idx["by_name"].get(_normname(name))
+        rec = find_place(name)
     if rec is None:
         return None
     out = item_payload(rec, now, full=True)
@@ -650,6 +651,31 @@ PLACED_TYPES = {
 NEAR_ENOUGH = 0.6
 
 
+def find_place(name, kinds=("camp", "art")):
+    """The camp or art piece a name points at, or None. Exact on the flattened name first,
+    then the near-enough rule — ONE definition, so the place a card pins and the place a
+    sealed quest links to can never be two different answers."""
+    want = _normname(name or "")
+    if not want:
+        return None
+    idx = index()
+    exact = idx["by_name"].get(want)
+    if exact is not None and exact["kind"] in kinds:
+        return exact
+    if len(want) < 6:
+        return None
+    pools = {"camp": idx["camps"], "art": idx["art"]}
+    for kind in kinds:
+        for rec in pools[kind]:
+            got = rec["norm"]
+            if len(got) < 6 or not (want in got or got in want):
+                continue
+            if min(len(want), len(got)) / float(max(len(want), len(got))) < NEAR_ENOUGH:
+                continue
+            return rec
+    return None
+
+
 def resolve_place(real, now=None):
     """The snapshot record a card's ``real_2026`` placement points at, or None."""
     if not isinstance(real, dict):
@@ -657,25 +683,7 @@ def resolve_place(real, now=None):
     pools = PLACED_TYPES.get(real.get("type") or "")
     if not pools:
         return None
-    want = _normname(real.get("name") or "")
-    if not want:
-        return None
-    idx = index()
-    by = {"camp": idx["camps"], "art": idx["art"]}
-    exact = idx["by_name"].get(want)
-    if exact is not None and exact["kind"] in pools:
-        return exact
-    if len(want) < 6:
-        return None
-    for kind in pools:
-        for rec in by[kind]:
-            got = _normname(rec["name"])
-            if len(got) < 6 or not (want in got or got in want):
-                continue
-            if min(len(want), len(got)) / float(max(len(want), len(got))) < NEAR_ENOUGH:
-                continue
-            return rec
-    return None
+    return find_place(real.get("name") or "", pools)
 
 
 SEANCE_HOURS = 6

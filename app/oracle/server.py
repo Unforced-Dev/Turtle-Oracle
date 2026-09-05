@@ -163,7 +163,14 @@ class Handler(BaseHTTPRequestHandler):
                 return self._send(400, {"error": "no uid"})
             found = guide.item(uid=uid, name=name)
             if found is None:
+                # `soft` is for the speculative lookup: the kiosk asks whether the place a
+                # quest names is a real placement, and most of the time it is not. A 404
+                # there is a red line in the browser console on every sealed quest, which
+                # is how a real error stops being visible. Ask softly, get an answer.
+                if qs.get("soft"):
+                    return self._send(200, {"found": False})
                 return self._send(404, {"error": "the shell has never heard of that"})
+            found["found"] = True
             return self._send(200, found)
         if path == "/api/city/for-seance":
             return self._send(200, guide.for_seance((qs.get("session") or "").strip()))

@@ -278,14 +278,21 @@
 
   /* ---- WHAT'S HAPPENING: the browse scene ---- */
   #browse{gap:10px;padding-top:max(2vh,14px)}
-  #browse .rune{margin-bottom:2px}
+  /* clear of the sound toggle in the corner, and one line on a 390px phone */
+  #browse .rune{margin-bottom:2px;font-size:.7rem;letter-spacing:.3em;padding:0 54px}
   .citytop{width:100%;max-width:760px;display:flex;flex-direction:column;align-items:center;gap:9px}
   .cchips{display:flex;flex-wrap:wrap;gap:8px;justify-content:center}
-  .cchip{font:inherit;padding:11px 18px;border-radius:999px;border:1px solid var(--edge);
-    background:transparent;color:var(--parch-dim);font-weight:400;min-height:0;font-size:.98rem}
+  .cchip{font:inherit;padding:11px 15px;border-radius:999px;border:1px solid var(--edge);
+    background:transparent;color:var(--parch-dim);font-weight:400;min-height:0;font-size:.96rem;
+    flex:none;white-space:nowrap}
   .cchip.sel{background:linear-gradient(180deg,#caa64f,#96772f);color:#1a1408;
     font-weight:700;border-color:var(--gold-dim)}
-  .cchip.small{font-size:.86rem;padding:8px 14px}
+  .cchip.small{font-size:.86rem;padding:9px 13px}
+  /* Eight type labels wrap to four rows on a phone and push the first event most of a
+     screen down. One row you swipe instead — the list is what the seeker came for. */
+  #ckinds{flex-wrap:nowrap;overflow-x:auto;max-width:100%;justify-content:flex-start;
+    padding-bottom:2px;scrollbar-width:none}
+  #ckinds::-webkit-scrollbar{display:none}
   .csearch{display:flex;gap:8px;width:100%;max-width:560px;align-items:center}
   .csearch input{flex:1;min-width:0;background:#0d0a05;color:var(--parch);border:1px solid var(--edge);
     border-radius:10px;padding:12px 14px;font:inherit;font-size:1.02rem;
@@ -460,7 +467,7 @@
 <!-- SCENE 5 · WHAT'S HAPPENING -->
 <section class="scene" id="browse">
   <div class="citytop">
-    <div class="rune">what is happening in the city</div>
+    <div class="rune">what is happening</div>
     <div class="cchips" id="cwindow">
       <button class="cchip" data-window="now">Now</button>
       <button class="cchip" data-window="tonight">Tonight</button>
@@ -1070,7 +1077,7 @@ function renderQuest(e,restored){
           <div class="mslot">${esc(moveHead(q.moves.length,i))} — ${esc(m.card)}</div>
           <div class="mtask">${esc(m.task)}</div>
           <div class="mwhere">📍 ${esc(m.where)}</div>
-          ${m.at?`<div class="mat" data-at="${esc(m.at)}">at ${esc(m.at)}</div>`:""}
+          ${m.at?`<div class="mat" data-at="${esc(m.at)}" style="display:none"></div>`:""}
           <div class="mproof">⌘ bring back: ${esc(m.proof)}</div>
           ${m.leave?`<div class="mleave">✕ leave behind: ${esc(m.leave)}</div>`:""}
         </div>
@@ -1094,11 +1101,14 @@ async function linkQuestPlaces(){
     const name=node.dataset.at;
     if(!name) continue;
     try{
-      const r=await fetch("/api/city/item?name="+encodeURIComponent(name));
+      const r=await fetch("/api/city/item?soft=1&name="+encodeURIComponent(name));
       if(!r.ok) continue;
       const it=await r.json();
-      if(!it||!it.uid||!$('parch').contains(node)) continue;
+      /* Most cards name a principle or a ritual, not an address — those resolve to
+         nothing and the line stays hidden, exactly as the parchment read before. */
+      if(!it||!it.found||!it.uid||!$('parch').contains(node)) continue;
       node.innerHTML=`at <button class="placelink" type="button">${esc(it.title)}</button>`;
+      node.style.display="";
       node.querySelector('.placelink').addEventListener('click',ev=>{
         ev.stopPropagation(); openSheet({uid:it.uid});
       });
@@ -1341,7 +1351,7 @@ function cityMeta(it){
 function cityRow(it,extra){
   const uid=it.uid?` data-uid="${esc(it.uid)}"`:"";
   return `<div class="crow${extra||""}"${uid}>`+
-    `<div class="ctitle">${esc(it.title)}${it.live?'<span class="nowbadge">now</span>':""}</div>`+
+    `<div class="ctitle">${esc(it.title)}${it.live?' <span class="nowbadge">now</span>':""}</div>`+
     (cityMeta(it)?`<div class="cmeta">${cityMeta(it)}</div>`:"")+
     (it.where?`<div class="cwhere">📍 ${esc(it.where)}</div>`:"")+
     (it.why?`<div class="cwhy">${esc(it.why)}</div>`:"")+
@@ -1485,7 +1495,7 @@ function sheetLines(it){
   const L=[];
   const when=(it.occurrences&&it.occurrences.length)
     ? it.occurrences.map(o=>`<span class="occ${o.over?" over":""}">${esc(o.when)}`+
-        `${o.live?'<span class="nowbadge">now</span>':""}</span>`).join("")
+        `${o.live?' <span class="nowbadge">now</span>':""}</span>`).join("")
     : (it.when?esc(it.when):"");
   if(when) L.push(["when",when]);
   const where=[it.where||it.address||it.other_location].filter(Boolean).map(esc).join("");
@@ -1505,7 +1515,7 @@ function drawSheet(it){
       it.events.map(e=>cityRow(e)).join("")+`</div>` : "";
   $('sheetcard').innerHTML=
     `<div class="skind">${esc(kind)}${it.over?" · over for this burn":""}</div>`+
-    `<h2>${esc(it.title)}${it.live?'<span class="nowbadge">now</span>':""}</h2>`+
+    `<h2>${esc(it.title)}${it.live?' <span class="nowbadge">now</span>':""}</h2>`+
     sheetLines(it)+
     (it.desc?`<div class="sdesc">${esc(it.desc)}</div>`:"")+
     sub+

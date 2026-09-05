@@ -221,6 +221,16 @@ def one_thing():
           guide.item(name="The Camp Of Absolutely Nothing", now=NOW) is None)
     check("a name matches past its leading 'the' and its parenthetical aside",
           guide.item(name="The Opulent Temple (main stage)", now=NOW) is not None)
+    # THE PIN AND THE LINK MUST BE THE SAME ANSWER. The reading pins a card's placement
+    # through resolve_place; the sealed parchment links the same name through item(name=).
+    # Two matchers meant "Terrible Turtle Camp" pinned a camp and then linked to nothing.
+    for cid in ("shell-01", "branches-08", "trunk-10", "trunk-12", "roots-05"):
+        card = by_id()[cid]
+        pinned = guide.resolve_place(card["real_2026"])
+        linked = guide.item(name=card["real_2026"]["name"], now=NOW)
+        check(f"{card['name']}: what the reading pins is what the parchment links",
+              (pinned["uid"] if pinned else None) == (linked["uid"] if linked else None),
+              f"pin={pinned['name'] if pinned else None} link={linked['title'] if linked else None}")
 
 
 def placements():
