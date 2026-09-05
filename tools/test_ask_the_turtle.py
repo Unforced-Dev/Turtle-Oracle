@@ -66,8 +66,12 @@ def snapshot_present():
 def main():
     print("the clock is the playa's, not the machine's:")
     start, end, label = guide.window_for("what is on tonight", NOW)
-    check("'tonight' is the evening of the day it is asked, not the next one",
-          label == "tonight" and start.date() == NOW.date() and end.date() == NOW.date(),
+    # A burn night does not stop at midnight, so neither does "tonight" — it opens at 17:00
+    # on the day it is asked and closes at 05:00 the next morning. It must still never be
+    # TOMORROW evening, which is the mistake this check has always been guarding against.
+    check("'tonight' is the night of the day it is asked, and it runs past midnight",
+          label == "tonight" and start.date() == NOW.date() and start.hour == 17
+          and end.hour == 5 and end.date() == (NOW + datetime.timedelta(days=1)).date(),
           f"{start} .. {end}")
     check("'tonight' opens at 17:00 playa time", start.hour == 17 and start.utcoffset()
           == datetime.timedelta(hours=-7), f"{start}")
