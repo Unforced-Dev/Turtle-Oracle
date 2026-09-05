@@ -344,8 +344,9 @@
   .sheetcard h2{color:var(--gold);margin:6px 0 10px;font-size:clamp(1.25rem,3vw,1.7rem);
     line-height:1.2;letter-spacing:.01em;text-transform:none;border:0;padding:0;text-align:left}
   .sline{display:flex;gap:9px;margin:7px 0;font-size:.98rem;align-items:flex-start}
-  .sline .sl{flex:none;color:var(--gold-dim);font-size:.7rem;letter-spacing:.2em;
-    text-transform:uppercase;width:82px;padding-top:4px}
+  /* wide enough that "hosted by" stays on one line */
+  .sline .sl{flex:none;color:var(--gold-dim);font-size:.7rem;letter-spacing:.14em;
+    text-transform:uppercase;width:92px;padding-top:4px}
   .sline .sv{flex:1;min-width:0;color:var(--parch)}
   .sline .sv .occ{display:block}
   .sline .sv .occ.over{opacity:.45}
