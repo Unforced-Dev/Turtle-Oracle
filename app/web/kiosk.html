@@ -261,8 +261,22 @@
     background:var(--ink2);border:1px solid var(--gold-dim);color:var(--gold2);border-radius:12px;
     padding:12px 22px;transition:transform .5s;z-index:60;max-width:86vw;text-align:center}
   .toast.on{transform:translateX(-50%) translateY(0)}
-  .soundtoggle{position:fixed;top:14px;right:14px;z-index:50;background:transparent;border:1px solid var(--edge);
+  .soundtoggle{position:fixed;top:14px;right:14px;z-index:80;background:transparent;border:1px solid var(--edge);
     color:var(--gold-dim);border-radius:10px;padding:8px 12px;font-size:1rem;min-height:0}
+  .soundtoggle.on{border-color:var(--gold-dim);color:var(--gold2)}
+  /* ---- READ ALOUD ----
+     The kiosk is silent unless a seeker asks for a voice. Every thing the Turtle says
+     carries its own button, so the choice is per utterance and never a surprise: a tablet
+     on a shelf at 3am does not start talking at whoever walks past. The toggle in the
+     corner is for anyone who wants the old always-speaking Turtle back. */
+  .readaloud{display:block;margin:8px auto 0;background:transparent;border:1px solid var(--edge);
+    color:var(--gold-dim);border-radius:999px;padding:9px 16px;font-size:.84rem;
+    font-weight:400;letter-spacing:.06em;min-height:40px}
+  .readaloud:active{transform:scale(.97)}
+  .readaloud.playing{border-color:var(--gold);color:var(--gold2);background:rgba(200,162,74,.14)}
+  .readaloud.dim,#readquest.dim{opacity:.6;border-color:var(--ember);color:var(--ember)}
+  #readquest.playing{background:linear-gradient(180deg,#caa64f,#96772f);color:#1a1408}
+  .parchment .readaloud{border-color:#8a6f34;color:#6b5426}
   footer{margin-top:auto;padding-top:26px;color:var(--gold-dim);font-size:.68rem;
     letter-spacing:.22em;text-transform:uppercase;text-align:center}
 
@@ -353,7 +367,7 @@
 <body>
 <div class="room"></div>
 <div class="grain"></div>
-<button class="soundtoggle" id="snd">🔊</button>
+<button class="soundtoggle" id="snd" title="speak every line aloud">🔇</button>
 
 <!-- SCENE 1 · ATTRACT -->
 <section class="scene on" id="attract">
@@ -383,6 +397,7 @@
   <div class="medallion"><img src="/avatar.jpg" alt=""></div>
   <div class="col">
     <div class="oracle-says" id="says"></div>
+    <button class="readaloud" data-for="says">🔊&nbsp; Read aloud</button>
     <div class="wgrid" id="wgrid"></div>
     <div class="stemline" id="stemline"></div>
     <div id="stonesrow"></div>
@@ -394,8 +409,10 @@
     <div class="spread" id="spread"></div>
     <!-- the Turtle's reading of the three, under the cards it is reading -->
     <div id="lookline"></div>
+    <button class="readaloud" data-for="lookline">🔊&nbsp; Read aloud</button>
     <!-- the Turtle's one question, under the reading it follows from -->
     <div id="askline"></div>
+    <button class="readaloud" data-for="askline">🔊&nbsp; Read aloud</button>
     <div class="panel" id="askpanel">
       <!-- THE PULL SCREEN's primary. Letting the cards speak is a whole answer, not a
            refusal — it is the fast way through, and it is the default. -->
@@ -412,7 +429,9 @@
     </div>
     <div class="scroll" id="scroll">
       <h2 id="h-read">The Reading</h2><div class="prose" id="reading"></div>
+      <button class="readaloud" data-for="reading">🔊&nbsp; Read the reading aloud</button>
       <h2 id="h-adv">The Quest Offered</h2><div class="prose" id="adventure"></div>
+      <button class="readaloud" data-for="adventure">🔊&nbsp; Read the quest aloud</button>
       <div class="row decide" id="decide" style="display:none">
         <button id="accept">⚔&nbsp; I accept this quest</button>
         <button class="ghost" id="more">🐢&nbsp; Hear me further</button>
@@ -432,6 +451,7 @@
          deleted so this stays a small diff and /api/print still returns the formatted
          receipt for a camp turtle to fetch by hand. The parchment on screen is the
          artifact now, so there is a way to carry it off the tablet instead. -->
+    <button class="ghost" id="readquest">🔊&nbsp; Read it aloud</button>
     <button id="print" style="display:none">🖨&nbsp; Print my quest</button>
     <button class="ghost" id="share">⧉&nbsp; Take it with you</button>
     <button class="ghost" id="cityquest">🔥&nbsp; What&#39;s out there for this</button>
@@ -446,6 +466,7 @@
   <div class="medallion"><img src="/avatar.jpg" alt=""></div>
   <div class="col">
     <div class="oracle-says" id="chatsays"></div>
+    <button class="readaloud" data-for="chatsays">🔊&nbsp; Read aloud</button>
     <div id="chathist"></div>
     <div id="chathits"></div>
     <div class="panel" id="chatpanel">
@@ -505,7 +526,7 @@
 const $=id=>document.getElementById(id);
 const SLOTS=["roots","trunk","branches"];
 const SLOTCAP={roots:"Face",trunk:"Stand",branches:"Reach"};
-let SID=null, SPOKEN=true, VOICE=null, IDLE=null, CARD_IDS="", SESSION_GEN=0;
+let SID=null, SPOKEN=false, VOICE=null, IDLE=null, CARD_IDS="", SESSION_GEN=0;
 /* the reading has already been spoken once — a refinement re-offers the quest only */
 let READ_SHOWN=false;
 /* the stage the kiosk is standing in, so the mic knows whether stop means send */
@@ -551,7 +572,46 @@ function renderable(step){
   return true;
 }
 
-/* ---------- voice of the turtle ---------- */
+/* ---------- voice of the turtle ----------
+   THE KIOSK IS SILENT UNLESS ASKED. A tablet on a shelf that starts talking at whoever
+   walks past is the thing the camp asked us to stop; every line the Turtle says now
+   carries its own "Read aloud" button, and the toggle in the corner (off, remembered) is
+   for anyone who wants the old always-speaking Turtle back.
+
+   AND IT SPEAKS IN ONE BREATH. The kiosk used to POST /api/speak once per SENTENCE — a
+   reading was eight requests of ~150 KB of raw PCM each over camp 2.4 GHz, which is where
+   the pauses came from and why it kept falling through to the tablet's own browser voice.
+   One request per utterance now, Ogg/Opus off the server (about forty times smaller), and
+   the browser voice only if someone deliberately turns it on with ?browservoice=1: a
+   different voice arriving unannounced reads as the Turtle breaking, not as a fallback. */
+const SOUND_KEY="turtle-oracle.sound", BROWSERVOICE_KEY="turtle-oracle.browservoice";
+let BROWSER_VOICE=false, READING_ALOUD=false, READ_BTN=null;
+try{ SPOKEN=localStorage.getItem(SOUND_KEY)==="1"; }catch(err){}
+try{ BROWSER_VOICE=localStorage.getItem(BROWSERVOICE_KEY)==="1"; }catch(err){}
+(()=>{ const p=new URLSearchParams(location.search).get("browservoice");
+  if(p===null) return;
+  BROWSER_VOICE=p!=="0";
+  try{ localStorage.setItem(BROWSERVOICE_KEY,BROWSER_VOICE?"1":"0"); }catch(err){}
+})();
+/* may any sound come out right now? the toggle, or one deliberate Read aloud */
+const audible=()=>SPOKEN||READING_ALOUD;
+
+/* ONE audio element, primed on the first touch. Android Chrome will not play audio that
+   was created outside a user gesture, and the blob arrives after an await — so the
+   element is unlocked ahead of time with 92 bytes of silence and then reused. */
+const SILENT_WAV="data:audio/wav;base64,UklGRlQAAABXQVZFZm10IBAAAAABAAEAQB8AAIA+AAACABAAZGF0YTAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAA=";
+let AUDIO_EL=null, AUDIO_PRIMED=false;
+function audioEl(){
+  if(!AUDIO_EL){ AUDIO_EL=new Audio(); AUDIO_EL.preload="auto"; }
+  return AUDIO_EL;
+}
+function primeAudio(){
+  if(AUDIO_PRIMED) return;
+  AUDIO_PRIMED=true;
+  try{ const a=audioEl(); a.src=SILENT_WAV; const p=a.play();
+       if(p&&p.catch) p.catch(()=>{}); }catch(err){}
+}
+
 /* Ranks across engines. macOS ships Daniel/Alex/Oliver; the Galaxy Tabs ship Google TTS
    ("English United Kingdom" / male variants) or Samsung TTS, and none of the Apple names
    exist there — an Apple-only ranking silently lands on a bright American default and the
@@ -582,12 +642,27 @@ function speechParts(text){
     .map(s=>s.trim()).filter(Boolean).filter(s=>!INTERJECTION.test(s));
 }
 function releaseAudio(){
-  if(SERVER_AUDIO){ SERVER_AUDIO.pause(); SERVER_AUDIO.src=""; SERVER_AUDIO=null; }
+  /* the element is shared and primed, so it is emptied, never thrown away — assigning
+     src="" would make the browser go and fetch the page itself */
+  if(SERVER_AUDIO){ try{ SERVER_AUDIO.pause(); SERVER_AUDIO.removeAttribute("src");
+    SERVER_AUDIO.load(); }catch(err){} SERVER_AUDIO=null; }
   if(SERVER_AUDIO_URL){ URL.revokeObjectURL(SERVER_AUDIO_URL); SERVER_AUDIO_URL=null; }
 }
-function stopVoice(){
-  SPEAK_GEN++; releaseAudio();
+function resetReadButtons(){
+  document.querySelectorAll('.readaloud.playing,#readquest.playing').forEach(b=>{
+    b.classList.remove("playing");
+    if(b.dataset.label) b.textContent=b.dataset.label;
+  });
+  READ_BTN=null;
+}
+/* `keepButtons` is for the stop that OPENS a read-aloud: speak() clears the last voice
+   before it starts, and without this it also wiped the ◼ Stop the button had just been
+   given — so a failed line never got to say "voice unavailable" on the button that asked
+   for it. A scene change, the idle timer and the toggle all stop with a full reset. */
+function stopVoice(keepButtons){
+  SPEAK_GEN++; releaseAudio(); READING_ALOUD=false;
   if("speechSynthesis" in window) speechSynthesis.cancel();
+  if(!keepButtons) resetReadButtons();
   const done=SPEAK_DONE; SPEAK_DONE=null;
   document.body.classList.remove("speaking");
   if(done) done();
@@ -604,9 +679,10 @@ function browserSpeak(parts,token,finish){
   const words=parts.join(" ").split(/\s+/).length;
   setTimeout(()=>{ if(token===SPEAK_GEN)finish(); },words*550+4000);
 }
+/* One request, one whole utterance, one file. */
 async function playServerLine(line,token){
   if(!("Audio" in window)) return false;
-  const ctl=new AbortController(), timeout=setTimeout(()=>ctl.abort(),15000);
+  const ctl=new AbortController(), timeout=setTimeout(()=>ctl.abort(),30000);
   try{
     const r=await fetch("/api/speak",{method:"POST",signal:ctl.signal,
       headers:{"Content-Type":"application/json"},body:JSON.stringify({text:line})});
@@ -615,13 +691,23 @@ async function playServerLine(line,token){
     // NOT a fallback — handing it to the browser voice would say the grunt after all.
     if(r.status===204) return true;
     const blob=await r.blob();
-    if(token!==SPEAK_GEN||!SPOKEN) return true;
+    if(token!==SPEAK_GEN||!audible()) return true;
     SERVER_AUDIO_URL=URL.createObjectURL(blob);
-    SERVER_AUDIO=new Audio(SERVER_AUDIO_URL);
+    SERVER_AUDIO=audioEl();
+    SERVER_AUDIO.src=SERVER_AUDIO_URL;
     const played=await new Promise(resolve=>{
-      let settled=false;
-      const guard=setTimeout(()=>end(false),Math.max(20000,line.split(/\s+/).length*800+5000));
-      const end=ok=>{ if(settled)return; settled=true; clearTimeout(guard); resolve(ok); };
+      let settled=false, timer=null;
+      const arm=(ms,ok)=>{ clearTimeout(timer); timer=setTimeout(()=>end(ok),ms); };
+      const end=ok=>{ if(settled)return; settled=true; clearTimeout(timer); resolve(ok); };
+      /* Until the file says how long it is, guess long. */
+      arm(Math.max(20000,line.split(/\s+/).length*800+5000),false);
+      /* Once it does, wait exactly that long and no longer. A tablet whose audio clock
+         stalls (no output device, a locked screen) never fires `ended`, and the button
+         would otherwise sit on ◼ Stop for twenty seconds after a four-second line. */
+      SERVER_AUDIO.onloadedmetadata=()=>{
+        const d=SERVER_AUDIO.duration;
+        if(isFinite(d)&&d>0) arm(d*1000+2500,true);
+      };
       SERVER_AUDIO.onended=()=>end(true); SERVER_AUDIO.onerror=()=>end(false);
       const started=SERVER_AUDIO.play();
       if(started&&started.catch) started.catch(()=>end(false));
@@ -630,27 +716,81 @@ async function playServerLine(line,token){
   }catch(err){ return false; }
   finally{ clearTimeout(timeout); }
 }
-async function speak(text,cb){
-  stopVoice();
-  if(!SPOKEN){ if(cb)cb(); return; }
-  const token=SPEAK_GEN, parts=speechParts(text);
-  document.body.classList.add("speaking");
+/* `force` is a deliberate Read aloud: it speaks whatever the toggle says. speechParts is
+   only used to drop the written-only breaths ("Mm.") — the pieces go back together and
+   travel as ONE request. */
+async function speak(text,cb,force){
+  stopVoice(force);
+  if(!force&&!SPOKEN){ if(cb)cb(); return; }
+  READING_ALOUD=!!force;
+  const token=SPEAK_GEN, say=speechParts(text).join(" ").trim();
   let done=false;
-  const finish=()=>{ if(done)return; done=true; releaseAudio();
+  const finish=()=>{ if(done)return; done=true; releaseAudio(); READING_ALOUD=false;
     if(SPEAK_DONE===finish) SPEAK_DONE=null;
     document.body.classList.remove("speaking"); if(cb)cb(); };
   SPEAK_DONE=finish;
-  let i=0;
-  for(;i<parts.length;i++){
-    if(token!==SPEAK_GEN||!SPOKEN) return;
-    if(!await playServerLine(parts[i],token)) break;
-  }
-  if(token!==SPEAK_GEN||!SPOKEN) return;
-  if(i<parts.length) browserSpeak(parts.slice(i),token,finish);
-  else finish();
+  if(!say){ finish(); return; }
+  document.body.classList.add("speaking");
+  const ok=await playServerLine(say,token);
+  if(token!==SPEAK_GEN) return;
+  if(ok) return finish();
+  /* The server voice did not answer. Say so where the seeker asked — never quietly hand
+     them a different voice, which is what made the Turtle sound like a phone. */
+  if(BROWSER_VOICE){ browserSpeak([say],token,finish); return; }
+  voiceTrouble();
+  finish();
 }
-$('snd').addEventListener('click',()=>{ SPOKEN=!SPOKEN; $('snd').textContent=SPOKEN?"🔊":"🔇";
-  if(!SPOKEN) stopVoice(); });
+function voiceTrouble(){
+  const b=READ_BTN;
+  if(!b) return;
+  b.classList.remove("playing"); b.classList.add("dim");
+  b.textContent="🔇  voice unavailable";
+  setTimeout(()=>{ if(b.classList.contains("dim")){
+    b.classList.remove("dim"); b.textContent=b.dataset.label||"🔊  Read aloud"; } },4000);
+}
+/* ---------- read aloud: one button per thing the Turtle said ---------- */
+function textOf(el){ return el?(el.textContent||"").replace(/\s+/g," ").trim():""; }
+function syncReadButtons(){
+  document.querySelectorAll('.readaloud[data-for]').forEach(b=>{
+    if(!b.dataset.label) b.dataset.label=b.textContent;
+    b.style.display=textOf($(b.dataset.for))?"":"none";
+  });
+}
+function readAloud(btn,text){
+  const again=btn&&btn.classList.contains("playing");
+  stopVoice();                       // a second tap stops, it does not start again
+  if(again||!text) return;
+  READ_BTN=btn||null;
+  if(btn){ if(!btn.dataset.label) btn.dataset.label=btn.textContent;
+           btn.classList.remove("dim"); btn.classList.add("playing"); btn.textContent="◼  Stop"; }
+  speak(text,()=>{
+    if(btn&&!btn.classList.contains("dim")){
+      btn.classList.remove("playing"); btn.textContent=btn.dataset.label; }
+    if(READ_BTN===btn) READ_BTN=null;
+  },true);
+}
+document.addEventListener('click',ev=>{
+  const b=ev.target&&ev.target.closest?ev.target.closest('.readaloud[data-for]'):null;
+  if(!b) return;
+  ev.stopPropagation();
+  readAloud(b,textOf($(b.dataset.for)));
+});
+function paintSound(){
+  $('snd').textContent=SPOKEN?"🔊":"🔇";
+  $('snd').classList.toggle("on",SPOKEN);
+  $('snd').title=SPOKEN?"the Turtle speaks every line — tap for silence"
+                       :"the Turtle is silent — tap to have it speak every line";
+}
+paintSound();
+$('snd').addEventListener('click',ev=>{
+  ev.stopPropagation();
+  SPOKEN=!SPOKEN;
+  try{ localStorage.setItem(SOUND_KEY,SPOKEN?"1":"0"); }catch(err){}
+  paintSound();
+  if(!SPOKEN) stopVoice();
+  toast(SPOKEN?"The Turtle will speak every line."
+              :"The Turtle is silent. Tap “Read aloud” under anything it says.");
+});
 
 /* ---------- word-by-word incantation ---------- */
 function incant(el,text,msPerWord=120){
@@ -658,6 +798,7 @@ function incant(el,text,msPerWord=120){
   const words=(text||"").split(/\s+/);
   words.forEach((w,i)=>{ const s=document.createElement("span"); s.className="w";
     s.style.animationDelay=(i*msPerWord)+"ms"; s.textContent=w+" "; el.appendChild(s); });
+  syncReadButtons();
   return words.length*msPerWord+400;
 }
 
@@ -702,7 +843,7 @@ function resetSeance(){
   $('h-read').classList.remove("on"); $('h-adv').classList.remove("on");
   $('decide').style.display="none"; $('giftrow').classList.remove("on"); CARD_IDS="";
   READ_SHOWN=false; LAST_QUEST=null;
-  hideAux(); T_ASK=Date.now();
+  hideAux(); T_ASK=Date.now(); syncReadButtons();
 }
 
 function taleTold(e){
@@ -1141,6 +1282,27 @@ $('share').addEventListener('click', async ev=>{
   try{ await navigator.clipboard.writeText(text); toast("copied"); }
   catch(err){ toast("Hold the parchment to select it — this device will not copy for us."); }
 });
+/* The sealed quest as one spoken piece — the acceptance, the charge, the bite and the vow.
+   It is not read off the parchment's textContent because the compass map is in there and
+   a voice reading an ASCII rose is a minute of nonsense. */
+function questSpoken(e){
+  const q=(e&&e.quest)||{}, L=[];
+  if(e&&e.say) L.push(e.say);
+  if(q.charge) L.push(q.charge);
+  (q.moves||[]).forEach(m=>{
+    if(m.task) L.push(m.task);
+    if(m.where) L.push("Where: "+m.where+".");
+    if(m.proof) L.push("Bring back: "+m.proof+".");
+    if(m.leave) L.push("Leave behind: "+m.leave+".");
+  });
+  if(q.vow) L.push(q.vow);
+  return L.join(" ");
+}
+$('readquest').addEventListener('click', ev=>{
+  ev.stopPropagation();
+  if(!LAST_QUEST){ toast("There is no sealed quest yet."); return; }
+  readAloud($('readquest'), questSpoken(LAST_QUEST));
+});
 $('again').addEventListener('click', resetAll);
 
 /* One recorder, two boxes: the séance's #q and Ask the Turtle's #chatq. The ids are
@@ -1248,6 +1410,7 @@ function chatReset(){
   $('chatsays').dataset.n="0";
   $('chatq').value=""; $('chatsend').disabled=false;
   $('chatpanel').classList.remove("on");
+  syncReadButtons();
 }
 function openChat(withSession,from){
   discardRecording(); stopVoice();
@@ -1641,6 +1804,10 @@ function pokeIdle(){ clearTimeout(IDLE);
   IDLE=setTimeout(()=>{ if(SID||CHAT_ID||CHAT_ON||BROWSE_ON||$('sheet').classList.contains("on"))
     resetAll(); },wait); }
 ["click","touchstart","keydown"].forEach(ev=>document.addEventListener(ev,pokeIdle,{passive:true}));
+/* Android Chrome only lets an <audio> element play if it was started inside a gesture.
+   The blob arrives after an await, long past the tap, so the element is unlocked here — on
+   the very first touch anywhere — with 92 bytes of silence. */
+["click","touchstart"].forEach(ev=>document.addEventListener(ev,primeAudio,{passive:true,once:false}));
 pokeIdle();
 </script>
 </body>

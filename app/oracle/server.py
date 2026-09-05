@@ -336,13 +336,18 @@ class Handler(BaseHTTPRequestHandler):
             if not text:
                 return self._send(204, b"", "audio/wav", cache="no-store")
             try:
-                wav = VOICE_SINGLETON.synthesize(text)
+                # `render` hands back the container it actually produced — Ogg/Opus where
+                # the box has ffmpeg, WAV where it does not. An engine that only knows how
+                # to synthesize (a test double) is still a WAV.
+                render = getattr(VOICE_SINGLETON, "render", None)
+                audio, mime = (render(text) if render
+                               else (VOICE_SINGLETON.synthesize(text), "audio/wav"))
             except ValueError as exc:
                 return self._send(400, {"error": str(exc)})
             except voice.VoiceUnavailable:
                 return self._send(503, {"error": "the Turtle's deeper voice is unavailable"})
             # Readings contain the seeker's words; never let a browser or proxy retain them.
-            return self._send(200, wav, "audio/wav", cache="no-store")
+            return self._send(200, audio, mime, cache="no-store")
         if path.startswith("/api/session/"):
             try:
                 body = json.loads(raw or b"{}")

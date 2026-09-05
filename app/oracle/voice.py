@@ -8,11 +8,34 @@ from collections import OrderedDict
 from io import BytesIO
 import os
 import re
+import shutil
+import subprocess
 import threading
 import time
 
 
 SAMPLE_RATE = 24_000
+
+# WHAT THE WIRE COSTS. Kokoro's PCM is 48 KB per spoken second: a forty-word line measured
+# 602 KB on the Spark, and the kiosk asked for one of those PER SENTENCE. Over camp 2.4 GHz
+# with half a second of round trip that is where the pauses came from, and every timeout
+# dropped through to the tablet's own browser voice — which is the voice the camp lead
+# heard and did not like. Opus at 32 kbit/s is 4 KB per second, forty times smaller, and
+# Android Chrome plays Ogg/Opus natively.
+#
+# ffmpeg is on the Spark and is NOT a dependency of this repo: when it is absent (the
+# laptop, CI) the WAV path is unchanged and everything still works, only fatter.
+FFMPEG = shutil.which("ffmpeg")
+OPUS_ARGS = ["-loglevel", "error", "-f", "wav", "-i", "pipe:0",
+             "-c:a", "libopus", "-b:a", "32k", "-application", "voip", "-f", "ogg", "pipe:1"]
+ENCODE_TIMEOUT = 10
+
+# A whole reading in ONE request. The old 600 was a per-sentence cap and it is what forced
+# eight round trips per reading; kokoro is asked sentence by sentence internally now and the
+# pieces are concatenated before a single encode.
+MAX_SPEECH = int(os.environ.get("ORACLE_TTS_MAX_CHARS", "1600"))
+# Kokoro synthesizes each sentence cold, so butting them together sounds like a splice.
+GAP_SECONDS = 0.18
 
 # THE TURTLE'S INTERJECTIONS ARE FOR THE EYE, NOT THE EAR. "Mm." and "Hm." are how the
 # Turtle's written lines breathe, and they are all over the copy — but a TTS engine reads a
@@ -36,6 +59,24 @@ def strip_interjections(text):
 
 class VoiceUnavailable(RuntimeError):
     pass
+
+
+def to_opus(wav):
+    """WAV bytes -> Ogg/Opus bytes, or None when this box has no ffmpeg (or it failed).
+
+    Never raises: a missing or broken encoder must degrade to the fat-but-correct WAV, not
+    take the Turtle's voice away entirely.
+    """
+    if not FFMPEG or not wav:
+        return None
+    try:
+        done = subprocess.run([FFMPEG] + OPUS_ARGS, input=wav, capture_output=True,
+                              timeout=ENCODE_TIMEOUT)
+    except Exception:
+        return None
+    if done.returncode != 0 or not done.stdout:
+        return None
+    return done.stdout
 
 
 class KokoroVoice:
@@ -115,16 +156,27 @@ class KokoroVoice:
         import numpy as np
         import soundfile as sf
 
-        audio = np.concatenate(chunks) if len(chunks) > 1 else chunks[0]
+        if len(chunks) > 1:
+            gap = np.zeros(int(GAP_SECONDS * SAMPLE_RATE), dtype=np.asarray(chunks[0]).dtype)
+            joined = []
+            for i, c in enumerate(chunks):
+                if i:
+                    joined.append(gap)
+                joined.append(np.asarray(c))
+            audio = np.concatenate(joined)
+        else:
+            audio = chunks[0]
         out = BytesIO()
         sf.write(out, audio, SAMPLE_RATE, format="WAV", subtype="PCM_16")
         return out.getvalue()
 
-    def synthesize(self, text):
+    def render(self, text):
+        """(bytes, mime) for one whole utterance. Ogg/Opus where ffmpeg exists, WAV where
+        it does not. The cache holds the ENCODED bytes, so a repeated line costs nothing."""
         text = self._clean(text)
         if not text:
             raise ValueError("no text")
-        if len(text) > 600:
+        if len(text) > MAX_SPEECH:
             raise ValueError("speech line is too long")
         key = (self.voice, round(self.speed, 3), text)
         with self._lock:
@@ -135,8 +187,11 @@ class KokoroVoice:
             pipeline = self._load()
             try:
                 chunks = []
+                # sentence by sentence, because a paragraph handed to kokoro whole runs past
+                # its token window and comes back quietly truncated; the pieces are joined as
+                # PCM here and encoded once
                 for result in pipeline(text, voice=self._voice_source, speed=self.speed,
-                                       split_pattern=r"\n+"):
+                                       split_pattern=r"(?<=[.!?\u2026])\s+"):
                     audio = result.audio if hasattr(result, "audio") else result[2]
                     if audio is not None and len(audio):
                         chunks.append(audio)
@@ -148,12 +203,18 @@ class KokoroVoice:
             except Exception as exc:
                 self.last_error = f"{type(exc).__name__}: {exc}"
                 raise VoiceUnavailable("Kokoro could not synthesize this line") from exc
+            opus = to_opus(wav)
+            out = (opus, "audio/ogg") if opus else (wav, "audio/wav")
             if self.cache_size:
-                self._cache[key] = wav
+                self._cache[key] = out
                 while len(self._cache) > self.cache_size:
                     self._cache.popitem(last=False)
-            return wav
+            return out
+
+    def synthesize(self, text):
+        """The encoded bytes alone — kept for callers that do not care about the container."""
+        return self.render(text)[0]
 
     def warm(self):
         if self.enabled:
-            self.synthesize("The Turtle wakes.")
+            self.render("The Turtle wakes.")
