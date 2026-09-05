@@ -92,6 +92,11 @@
     box-shadow:0 18px 50px rgba(0,0,0,.55);opacity:0;transform:translateY(16px);
     transition:opacity .6s,transform .6s;pointer-events:none}
   .panel.on{opacity:1;transform:none;pointer-events:auto}
+  /* A scene that is off is invisible, but `pointer-events:none` does not inherit past a
+     child that turns them back on — an open panel inside a hidden scene keeps swallowing
+     taps on whatever is actually on screen. Ask the Turtle put a second panel behind the
+     attract screen and the shell stopped waking. Off means off, children included. */
+  .scene:not(.on) .panel{pointer-events:none}
   textarea{width:100%;min-height:76px;resize:none;background:#0d0a05;color:var(--parch);
     border:1px solid var(--edge);border-radius:10px;padding:12px 14px;font:inherit;font-size:1.12rem;
     user-select:text;-webkit-user-select:text}
@@ -230,6 +235,21 @@
   .qmap{font-family:ui-monospace,Menlo,Consolas,monospace;background:rgba(61,47,20,.08);
     border:1px solid #cbb98f;border-radius:6px;padding:10px;font-size:.78rem;line-height:1.35;
     white-space:pre;overflow-x:auto;margin-top:14px;color:#3d2f14}
+  /* ---- ask the turtle: the chat scene ---- */
+  #chat{gap:10px}
+  #chat .medallion{width:min(22vw,15vh,120px);height:min(22vw,15vh,120px);margin-top:0}
+  #chathist{width:100%;max-width:680px;max-height:26vh;overflow-y:auto;margin-top:6px;
+    display:flex;flex-direction:column;gap:8px}
+  #chathist .turn{font-size:.92rem;line-height:1.4}
+  #chathist .turn.you{color:var(--parch-dim);font-style:italic}
+  #chathist .turn.turtle{color:var(--gold-dim)}
+  #chathits{width:100%;max-width:680px;display:flex;flex-direction:column;gap:8px;margin-top:10px}
+  .hit{background:linear-gradient(180deg,var(--ink2),#0e0a05);border:1px solid var(--edge);
+    border-radius:10px;padding:9px 12px}
+  .hit .htitle{color:var(--gold);font-size:.98rem;line-height:1.25}
+  .hit .hmeta{color:var(--parch-dim);font-size:.8rem;font-style:italic;margin-top:3px}
+  #chatpanel{margin-top:10px}
+  #chatpanel textarea{min-height:56px}
   .toast{position:fixed;bottom:20px;left:50%;transform:translateX(-50%) translateY(80px);
     background:var(--ink2);border:1px solid var(--gold-dim);color:var(--gold2);border-radius:12px;
     padding:12px 22px;transition:transform .5s;z-index:60;max-width:86vw;text-align:center}
@@ -256,6 +276,7 @@
   </div>
   <div class="wake">✦ &nbsp;touch the shell to wake the oracle&nbsp; ✦</div>
   <div id="lore" style="color:var(--gold-dim);font-size:.8rem;letter-spacing:.12em;min-height:2.6em;text-align:center"></div>
+  <button class="ghost" id="askturtle" style="font-size:.95rem">💬&nbsp; Ask the Turtle</button>
   <button class="ghost" id="returned" style="font-size:.95rem">🐢&nbsp; I have returned — I carry a tale</button>
   <div style="flex:1.2"></div>
 </section>
@@ -298,6 +319,7 @@
       <div class="row decide" id="decide" style="display:none">
         <button id="accept">⚔&nbsp; I accept this quest</button>
         <button class="ghost" id="more">🐢&nbsp; Hear me further</button>
+        <button class="ghost" id="chatread">💬&nbsp; Talk with the Turtle about this</button>
       </div>
     </div>
   </div>
@@ -314,9 +336,31 @@
          artifact now, so there is a way to carry it off the tablet instead. -->
     <button id="print" style="display:none">🖨&nbsp; Print my quest</button>
     <button class="ghost" id="share">⧉&nbsp; Take it with you</button>
+    <button class="ghost" id="chatquest">💬&nbsp; Talk with the Turtle about this</button>
     <button class="ghost" id="again">↺&nbsp; The Oracle sleeps — wake it again</button>
   </div>
   <footer>return · tell the tale · receive the gift</footer>
+</section>
+
+<!-- SCENE 4 · ASK THE TURTLE -->
+<section class="scene" id="chat">
+  <div class="medallion"><img src="/avatar.jpg" alt=""></div>
+  <div class="col">
+    <div class="oracle-says" id="chatsays"></div>
+    <div id="chathist"></div>
+    <div id="chathits"></div>
+    <div class="panel" id="chatpanel">
+      <textarea id="chatq" placeholder="ask the Turtle anything — where, when, what it means…"></textarea>
+      <div class="row">
+        <button class="micorb" id="chatmic" title="speak to the turtle">🎙</button>
+        <button id="chatsend">Ask</button>
+      </div>
+      <div class="row">
+        <button class="ghost" id="chatback">↺&nbsp; Back to the shell</button>
+      </div>
+    </div>
+  </div>
+  <footer>the turtle knows the city · and what it does not know, it says</footer>
 </section>
 
 <!-- THE PULL -->
@@ -936,6 +980,10 @@ $('share').addEventListener('click', async ev=>{
 });
 $('again').addEventListener('click', resetAll);
 
+/* One recorder, two boxes: the séance's #q and Ask the Turtle's #chatq. The ids are
+   swapped when the chat scene opens rather than a second recorder built, so there is
+   exactly one place that can hold a live MediaRecorder. */
+let MICBTN="mic", MICBOX="q";
 /* ---------- listening: the Turtle's own ears (local whisper on the camp brain) ---------- */
 let REC=null, REC_STREAM=null, TRANSCRIBE=null, CHUNKS=[], LISTENING=false;
 function discardRecording(){
@@ -947,7 +995,7 @@ function discardRecording(){
   }
   if(REC_STREAM) REC_STREAM.getTracks().forEach(t=>t.stop());
   REC=null; REC_STREAM=null; CHUNKS=[]; LISTENING=false;
-  $('mic').classList.remove("listening"); $('mic').textContent="🎙";
+  $(MICBTN).classList.remove("listening"); $(MICBTN).textContent="🎙";
 }
 async function micToggle(){
   if(LISTENING){ try{REC.stop();}catch(e){} return; }
@@ -968,12 +1016,12 @@ async function micToggle(){
       clearTimeout(micToggle._guard);
       stream.getTracks().forEach(t=>t.stop());
       if(REC===recorder){ REC=null; REC_STREAM=null; }
-      LISTENING=false; $('mic').classList.remove("listening");
+      LISTENING=false; $(MICBTN).classList.remove("listening");
       if(sid!==SID||generation!==SESSION_GEN) return;
       AUDIO_SECS=(Date.now()-(micToggle._t0||Date.now()))/1000; USED_MIC=true;
       const blob=new Blob(CHUNKS,{type:(recorder.mimeType||"audio/webm")});
-      if(blob.size<1500){ $('mic').textContent="🎙"; return; }
-      $('mic').textContent="…";
+      if(blob.size<1500){ $(MICBTN).textContent="🎙"; return; }
+      $(MICBTN).textContent="…";
       let heard=false, controller=null;
       try{
         controller=new AbortController(); TRANSCRIBE=controller;
@@ -982,33 +1030,135 @@ async function micToggle(){
         const d=await r.json();
         if(TRANSCRIBE===controller) TRANSCRIBE=null;
         if(sid!==SID||generation!==SESSION_GEN) return;
-        if(d.text){ $('q').value=($('q').value+" "+d.text).trim(); heard=true; }
+        if(d.text){ $(MICBOX).value=($(MICBOX).value+" "+d.text).trim(); heard=true; }
         else toast("The Turtle couldn't make out the words — write them instead.");
       }catch(e){
         if(TRANSCRIBE===controller) TRANSCRIBE=null;
         if(e.name!=="AbortError"&&sid===SID&&generation===SESSION_GEN)
           toast("The Turtle's ears are unreachable — write it instead.");
       }
-      $('mic').textContent="🎙";
+      $(MICBTN).textContent="🎙";
       /* STOP MEANS DONE. The seeker has just spoken into a shell; making them then hunt
          for an "Offer it" button is the intake form coming back in by the side door. At
          the asking the transcript goes the moment it lands. Anywhere else (the "hear me
          further" box at `proposed`) it lands in the box for them to finish. */
-      if(heard&&STAGE==="asking"&&$('q').value.trim()){
-        const text=$('q').value.trim();
-        $('q').value="";
+      /* In Ask the Turtle the mic is the same shell: stop means the question goes. */
+      if(heard&&CHAT_ON&&$(MICBOX).value.trim()){ chatSend(); return; }
+      if(heard&&STAGE==="asking"&&$(MICBOX).value.trim()){
+        const text=$(MICBOX).value.trim();
+        $(MICBOX).value="";
         $('chiprow').classList.remove("on");
         $('askpanel').classList.remove("on","pull","writing");
         answerWith({text});
       }
     };
     recorder.start(); LISTENING=true; micToggle._t0=Date.now();
-    $('mic').classList.add("listening"); $('mic').textContent="■";
+    $(MICBTN).classList.add("listening"); $(MICBTN).textContent="■";
     clearTimeout(micToggle._guard);
     micToggle._guard=setTimeout(()=>{ if(LISTENING) try{REC.stop();}catch(e){} },60000);
   }catch(e){ toast("The Turtle needs permission to listen — or write it instead."); }
 }
 $('mic').addEventListener('click', micToggle);
+$('chatmic').addEventListener('click', micToggle);
+
+/* ---------- ASK THE TURTLE ---------- */
+/* Open talk with the shell, with or without a séance behind it. It shares the séance's
+   voice, mic and escaping — nothing here is a second kiosk, it is one more scene. */
+let CHAT_ID=null, CHAT_ON=false, CHAT_GEN=0, CHAT_BUSY=false, CHAT_ABORT=null;
+/* The newest answer is the big line at the top; it only drops into the small history when
+   the next question pushes it there. Printing it in both places at once fills a phone with
+   the same paragraph twice and shoves the places off the bottom of the screen. */
+let CHAT_PENDING=null, CHAT_ANSWERS=0;
+/* Where the seeker came from. A chat opened off a reading or a sealed parchment must give
+   that screen back — the parchment is the only artifact they get, and a one-way door out
+   of it into a chat would eat it. Opened cold from the attract screen there is nothing to
+   return to, so "back to the shell" means sleep. */
+let CHAT_FROM=null;
+const CHAT_OPEN="Ask the Turtle. Where to go, when it happens, what a card means. What it does not know, it will say.";
+
+function chatReset(){
+  CHAT_GEN++; CHAT_ID=null; CHAT_ON=false;
+  if(CHAT_ABORT){ try{CHAT_ABORT.abort();}catch(e){} CHAT_ABORT=null; }
+  CHAT_BUSY=false; CHAT_PENDING=null; CHAT_ANSWERS=0; CHAT_FROM=null;
+  MICBTN="mic"; MICBOX="q";
+  $('chathist').innerHTML=""; $('chathits').innerHTML=""; $('chatsays').innerHTML="";
+  $('chatsays').dataset.n="0";
+  $('chatq').value=""; $('chatsend').disabled=false;
+  $('chatpanel').classList.remove("on");
+}
+function openChat(withSession){
+  discardRecording(); stopVoice();
+  chatReset();
+  CHAT_ON=true; MICBTN="chatmic"; MICBOX="chatq";
+  $('chatpanel').classList.add("on");
+  CHAT_FROM=withSession ? ($('quest').classList.contains("on")?"quest":"seance") : null;
+  if(!withSession) SID=null;
+  show("chat");
+  incant($('chatsays'),CHAT_OPEN,90);
+  speak(CHAT_OPEN);
+  pokeIdle();
+}
+function chatTurn(who,text){
+  const d=document.createElement("div");
+  d.className="turn "+(who==="you"?"you":"turtle");
+  d.textContent=(who==="you"?"you: ":"the Turtle: ")+text;
+  $('chathist').appendChild(d);
+  $('chathist').scrollTop=$('chathist').scrollHeight;
+}
+function chatHits(hits){
+  $('chathits').innerHTML=(hits||[]).map(h=>{
+    const meta=[h.kind,h.when,h.where].filter(Boolean).map(esc).join(" · ");
+    return `<div class="hit"><div class="htitle">${esc(h.title)}</div>`+
+      (meta?`<div class="hmeta">${meta}</div>`:"")+`</div>`;
+  }).join("");
+}
+async function chatSend(){
+  const text=$('chatq').value.trim();
+  if(!text||CHAT_BUSY) return;
+  const gen=CHAT_GEN;
+  CHAT_BUSY=true; $('chatsend').disabled=true; $('chatq').value="";
+  if(CHAT_PENDING){ chatTurn("turtle",CHAT_PENDING); CHAT_PENDING=null; }
+  chatTurn("you",text);
+  incant($('chatsays'),PONDER[Math.floor(Math.random()*PONDER.length)],120);
+  document.body.classList.add("speaking");
+  const ctl=new AbortController(); CHAT_ABORT=ctl;
+  const guard=setTimeout(()=>{ try{ctl.abort();}catch(e){} },60000);
+  try{
+    const r=await fetch("/api/chat",{method:"POST",signal:ctl.signal,
+      headers:{"Content-Type":"application/json"},
+      body:JSON.stringify({text,chat_id:CHAT_ID,session:SID||undefined})});
+    const d=await r.json();
+    if(gen!==CHAT_GEN) return;
+    if(d.chat_id) CHAT_ID=d.chat_id;
+    document.body.classList.remove("speaking");
+    if(d.say){
+      incant($('chatsays'),d.say,95);
+      chatHits(d.hits);
+      CHAT_PENDING=d.say;
+      $('chatsays').dataset.n=(++CHAT_ANSWERS);
+      speak(d.say);
+    } else toast(d.error||"The Turtle heard only wind.");
+  }catch(err){
+    if(gen===CHAT_GEN&&err&&err.name!=="AbortError")
+      toast("The Turtle's shell is not answering — try once more.");
+  }finally{
+    clearTimeout(guard);
+    if(CHAT_ABORT===ctl) CHAT_ABORT=null;
+    document.body.classList.remove("speaking");
+    if(gen===CHAT_GEN){ CHAT_BUSY=false; $('chatsend').disabled=false; }
+  }
+}
+$('askturtle').addEventListener('click', ev=>{ ev.stopPropagation(); openChat(false); });
+$('chatread').addEventListener('click', ev=>{ ev.stopPropagation(); openChat(true); });
+$('chatquest').addEventListener('click', ev=>{ ev.stopPropagation(); openChat(true); });
+$('chatsend').addEventListener('click', chatSend);
+$('chatback').addEventListener('click', ev=>{
+  ev.stopPropagation();
+  const back=CHAT_FROM;
+  if(back&&SID){ chatReset(); show(back); pokeIdle(); }
+  else resetAll();
+});
+$('chatq').addEventListener('keydown',e=>{ if(e.key==="Enter"&&!e.shiftKey){ e.preventDefault(); chatSend(); } });
 
 /* ---------- wiring ---------- */
 function sleep(ms){ return new Promise(r=>setTimeout(r,ms)); }
@@ -1029,10 +1179,15 @@ for(let i=0;i<9;i++){ const m=document.createElement("div"); m.className="mote";
 /* idle: the oracle goes back to sleep */
 function resetAll(){ stopVoice(); discardRecording();
   SESSION_GEN++; SID=null; forgetStep(); resetSeance();
+  /* a chat is state too, and it holds the mic bindings — never leave it live behind the
+     attract screen, or the next seeker walks into the last one's conversation */
+  chatReset();
   STAGE=null; $('parch').classList.remove("on"); show("attract"); loadLore(); }
 function pokeIdle(){ clearTimeout(IDLE);
   const wait=$('quest').classList.contains("on")?240000:600000;
-  IDLE=setTimeout(()=>{ if(SID) resetAll(); },wait); }
+  /* An open chat with no séance behind it has no SID, so the old guard would have left it
+     on screen forever. A chat must never be the thing that keeps the shell awake. */
+  IDLE=setTimeout(()=>{ if(SID||CHAT_ID||CHAT_ON) resetAll(); },wait); }
 ["click","touchstart","keydown"].forEach(ev=>document.addEventListener(ev,pokeIdle,{passive:true}));
 pokeIdle();
 </script>
