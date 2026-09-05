@@ -34,13 +34,14 @@ const MAX_TURNS = 12;
  * phone goes back in the pocket it is gone, exactly as chat.py intends. */
 const CHAT_TTL = 3600;
 
-/* A spoken answer is 2-5 sentences. chat.py caps at 220 tokens against a serialised GPU;
- * Workers AI is faster, so the cap here is a guard against a runaway rather than a pacing
- * control, and it is loose enough that the JSON envelope cannot be the thing that
- * truncates. A truncated answer surfaces as bad JSON and drops the seeker to a template,
- * which is the failure llm.js's header warns about — do not tighten this without
- * measuring the fallback rate. */
-const DEFAULT_CHAT_TOKENS = 320;
+/* A spoken answer is 2-5 sentences, so chat.py caps at 220 tokens against a serialised
+ * GPU. This cannot: the cloud chat THINKS (THINK_STAGES in wrangler.toml), the scratchpad
+ * is generated before the answer and spends the same budget, and a ceiling hit mid-scratchpad
+ * truncates the JSON — which surfaces as "bad JSON" and drops the seeker to a template,
+ * exactly the failure llm.js's header warns about. So this is a runaway guard and nothing
+ * else; the length of the ANSWER is held by the prompt and by clean()'s five-sentence cut.
+ * Do not tighten it without measuring the fallback rate on /api/health. */
+const DEFAULT_CHAT_TOKENS = 2048;
 /* Patience before the offline template. The séance's T_SHORT is 20s for a stage that is
  * one of several in a request; a chat turn is the whole request. */
 const DEFAULT_T_CHAT = 30;
@@ -49,12 +50,19 @@ const BULLET_RE = /^[ \t]*(?:[-*•–]|\d+[.)])\s+/gm;
 const HEADING_RE = /^[ \t]*#{1,6}\s*/gm;
 const THINK_RE = /<(think|thinking|reasoning)>[\s\S]*?<\/\1>/gi;
 
+/* ONE DIVERGENCE FROM chat.py's ADDENDUM, and it is the second rule. The python says
+ * every name must come from THE SHELL HOLDS; on staging 2026-09-05 that made the Turtle
+ * refuse the Temple of the Moon — the place it had sealed the seeker's own quest at
+ * ninety seconds earlier — because the Temple is not a camp in the dump. A quest the
+ * Turtle gave is a thing the Turtle knows. The seeker's own cards and reading are now
+ * named as a second source, and nothing else is. */
 export const ADDENDUM = `
 YOU ARE ANSWERING A QUESTION AT THE SHELL, not weaving a reading. Rules, absolute:
 - Answer in 2 to 5 sentences. Spoken aloud, so no bullets, no headings, no lists, no
   markdown, no emoji. Plain sentences.
-- Every place, time and name you say must come from THE SHELL HOLDS below. Never invent a
-  camp, an address, a time, or an event.
+- Every place, time and name you say must come from THE SHELL HOLDS below, or from the
+  seeker's own cards and reading when those are given. Never invent a camp, an address, a
+  time, or an event.
 - If the answer is not in THE SHELL HOLDS, say "the Turtle does not know that" and say what
   you do know instead. The shell has NO DJ lineups, NO set times, NO art-car schedules and
   NO who-is-playing — never guess one, not even a likely one.
@@ -79,6 +87,36 @@ const SPEAK_NOW =
 /* "what did my cards mean", "read my quest again" — with no model, the honest answer is
  * the seeker's own draw read back, not a list of whatever is on this hour. */
 const MINE_RE = /\bmy (cards?|reading|quest|draw|spread)\b|\b(this|the) (reading|quest)\b/i;
+
+/* THE SHAPE EXAMPLE IS NOT AN ANSWER. SPEAK_NOW shows the model the envelope, and qwen3
+ * hands the example straight back as the reply often enough to matter — llm.js measured
+ * the weave doing exactly this, 4 times in 8, whenever the scratchpad was off. Observed
+ * here on staging 2026-09-05: "where can I get coffee in the morning near 9 o'clock" came
+ * back as "The shell is open. Ask." with eight perfectly good coffee hits under it.
+ * weave.js solves it with unquoteExample; this is the same move, on the same problem. */
+const EXAMPLE_SENTENCES = new Set([
+  "it is a little past ten in the morning playa time",
+  "the shell is open",
+  "ask",
+]);
+
+function bare(sentence) {
+  return String(sentence || "")
+    .toLowerCase()
+    .replace(/[^a-z0-9 ]+/g, " ")
+    .replace(/\s+/g, " ")
+    .trim();
+}
+
+/** The answer with the prompt's own example taken out of it. "" when that was all of it. */
+export function unexample(say) {
+  const parts = sentences(say);
+  const kept = parts.filter((p) => !EXAMPLE_SENTENCES.has(bare(p)));
+  if (kept.length !== parts.length) {
+    console.log(`chat: dropped ${parts.length - kept.length} example sentence(s)`);
+  }
+  return kept.join(" ").trim();
+}
 
 /** Split into sentences the way chat.py does, keeping the terminator. */
 function sentences(t) {
@@ -130,7 +168,7 @@ export function seanceBlock(sess) {
   if (!sess || !sess.picks) return "";
   const lines = [
     "THE SEEKER'S CARDS AND READING TONIGHT (yours, already spoken — do not re-weave " +
-      "them, but you may lean on them):",
+      "them, but you may lean on them and you may name what is in them):",
   ];
   if (sess.name) lines.push(`name: ${sess.name}`);
   for (const realm of ["roots", "trunk", "branches"]) {
@@ -353,16 +391,17 @@ export async function ask(env, body, llm, opts = {}) {
       const one = clean(said(await llm.generate(prompt, {
         system, asJson: true, timeout, stage: "chat", maxTokens: tokens,
       })));
-      say = one.say;
+      say = unexample(one.say);
       if (!say) {
         /* Every sentence was scratchpad. One more roll, told plainly, half the clock —
          * the same second chance the Spark takes, and for the same reason: the answer is
-         * usually in there, behind a preamble the model could not help writing. */
+         * usually in there, behind a preamble the model could not help writing — or
+         * behind the prompt's own example, which is the other thing it hands back. */
         const two = clean(said(await llm.generate(
           prompt + " Answer only, in the Turtle's voice.",
           { system, asJson: true, timeout: timeout / 2, stage: "chat", maxTokens: tokens },
         )));
-        say = two.say;
+        say = unexample(two.say);
       }
       if (say) mode = "llm";
     }

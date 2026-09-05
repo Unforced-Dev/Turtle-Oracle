@@ -411,7 +411,7 @@
     <h1>The Terrible Turtle Oracle</h1>
     <div class="creed">Move Slow &amp; Bite Things</div>
   </div>
-  <div class="wake">✦ &nbsp;touch the shell to wake the oracle&nbsp; ✦</div>
+  <div class="wake">✦ &nbsp;the shell is open&nbsp; ✦</div>
   <!-- cloud: THE THREE DOORS. Pulling the cards is still the primary and still what a
        tap anywhere on this screen does; the other two are the reasons a phone gets
        taken out of a pocket that a tablet on a table never has. -->
@@ -924,7 +924,10 @@ document.addEventListener('click', ev=>{
 function readSync(){
   document.querySelectorAll(".readaloud").forEach(b=>{
     const el=$(b.dataset.src);
-    const has=Boolean(el&&(el.textContent||"").trim());
+    /* data-quiet marks a line the SCREEN says rather than one the Turtle said — "tap a
+       thing to see it whole" is an instruction, and offering to read it aloud is noise
+       at the top of every browse. */
+    const has=Boolean(el&&(el.textContent||"").trim()&&el.dataset.quiet!=="1");
     b.parentNode.style.display=has?"":"none";
     if(!has&&READ_BTN===b) readStop();
   });
@@ -1917,7 +1920,10 @@ $('sheetbox').addEventListener('click', ev=>{
 $('sheet').addEventListener('click', ev=>{ if(ev.target===$('sheet')) closeSheet(); });
 
 /* ---------- WHAT'S HAPPENING ---------- */
-const CITY_WINDOWS=[["now","Now"],["tonight","Tonight"],["tomorrow","Tomorrow"],["morning","Morning"]];
+/* Three, because four wrap onto a second row on a 390px phone and a chip row that wraps
+   reads as a menu rather than as a choice. src/guide.js knows morning, afternoon and
+   sunrise too — asking the Turtle for them in words is the door those go through. */
+const CITY_WINDOWS=[["now","Now"],["tonight","Tonight"],["tomorrow","Tomorrow"]];
 let CITY_WIN="now", CITY_KIND="", CITY_Q="", CITY_OFF=0, CITY_GEN=0,
     CITY_FROM=null, CITY_MODE="browse", CITY_FIND=null;
 const CITY_PAGE=20;
@@ -2010,6 +2016,7 @@ function openCity(from){
   CITY_FROM=from||null; CITY_MODE="browse";
   cityChips();
   show("city");
+  $('citysays').dataset.quiet="1";
   $('citysays').textContent=CITY_OPEN;
   readSync();
   cityLoad(false);
@@ -2026,6 +2033,7 @@ async function openFor(from){
   CITY_FROM=from||null; CITY_MODE="for";
   $('citychips').style.display="none"; $('cityfind').style.display="none";
   show("city");
+  delete $('citysays').dataset.quiet;   // from here on the Turtle is the one talking
   $('citysays').textContent="The Turtle looks out from your cards…";
   $('citycount').textContent="";
   const gen=++CITY_GEN;

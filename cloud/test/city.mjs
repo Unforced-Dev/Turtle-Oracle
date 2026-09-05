@@ -660,6 +660,23 @@ check(
   chat.seanceBlock(mineSess).includes("do not re-weave") && chat.seanceBlock(mineSess).includes("name: Ash"),
 );
 check("no séance, no block", chat.seanceBlock(null) === "");
+check(
+  "the seeker's own quest is a second source the Turtle may name places from",
+  chat.ADDENDUM.includes("or from the\n  seeker's own cards and reading when those are given"),
+  chat.ADDENDUM.split("\n").find((l) => l.includes("must come from")) || "",
+);
+
+/* The prompt shows the model the shape of the envelope, and qwen3 hands the example
+ * straight back often enough that llm.js measured it. */
+check(
+  "the prompt's own shape example is never the answer",
+  chat.unexample("It is a little past ten in the morning, playa time. The shell is open. Ask.") === "",
+);
+check(
+  "but a real answer that happens to end 'Ask.' keeps its words",
+  chat.unexample("Joyism pours from seven. The shell is open. Ask.") === "Joyism pours from seven.",
+  chat.unexample("Joyism pours from seven. The shell is open. Ask."),
+);
 
 /* ---- 7. the routes ---------------------------------------------------------------- */
 section("7. the routes the phone actually calls");

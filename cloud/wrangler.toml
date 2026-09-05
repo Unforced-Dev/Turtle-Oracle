@@ -116,7 +116,7 @@ SHELL_CHANCE = "0.10"
 # `ask` thinks too (added 2026-09-02): without the scratchpad the look at the table came
 # back as three six-word captions ("Titanic says… Pulse says… Crown says…"), none of them
 # in the seeker's words. The draw already runs under the veil, so the seconds are covered.
-THINK_STAGES = "weave,tale,ask"
+THINK_STAGES = "weave,tale,ask,chat"
 # Patience before dropping to the offline template. The playa numbers (45/60) were set
 # against a single serialised GPU; Workers AI answers a séance stage in 0.4-6s, so these
 # are guards against a genuinely hung model, not pacing controls. The draw runs two
@@ -127,11 +127,15 @@ THINK_STAGES = "weave,tale,ask"
 # timeout (it was 1.5 * (38 + 20) = 87s when the two stages ran one after the other).
 T_SHORT = "20"
 T_LONG = "38"
-# Ask the Turtle. `chat` is deliberately NOT in THINK_STAGES: the answer is wrapped in
-# {"say": "..."} and a scratchpad has nowhere to go inside it, which is the fix that made
-# the Spark stop narrating. CHAT_TOKENS is a runaway guard, not a pacing control — see
-# the note in src/chat.js before tightening it.
-CHAT_TOKENS = "320"
+# Ask the Turtle. It thinks — a divergence from the Spark, which cannot afford 700
+# reasoning tokens a question on one serialised GPU. Workers AI splits the scratchpad into
+# `message.reasoning` and hands back clean content (see the header of src/llm.js), so the
+# prose-narration failure the JSON envelope was built for cannot happen here, and thinking
+# is what stops qwen3 handing back the prompt's own shape example as the answer — measured
+# 4 in 8 on the weave with the scratchpad off. The envelope and the guards stay as belt.
+# CHAT_TOKENS is a runaway guard, not a pacing control; see src/chat.js before tightening
+# it, and remember a reasoning model that hits the ceiling truncates mid-JSON.
+CHAT_TOKENS = "2048"
 T_CHAT = "30"
 WHISPER_MODEL = "@cf/openai/whisper-large-v3-turbo"
 # Set TTS_MODEL = "off" to fall the kiosk back to the tablet's own browser voice.
@@ -224,14 +228,18 @@ TEMPERATURE = "0.75"
 SHELL_CHANCE = "0.10"
 # Which séance stages get a reasoning scratchpad. Measured, not guessed — see the
 # header of src/llm.js. Empty string = never think; "weave,refine,echoes,seal,tale" = always.
-THINK_STAGES = "weave,tale,ask"
+THINK_STAGES = "weave,tale,ask,chat"
 T_SHORT = "20"
 T_LONG = "38"
-# Ask the Turtle. `chat` is deliberately NOT in THINK_STAGES: the answer is wrapped in
-# {"say": "..."} and a scratchpad has nowhere to go inside it, which is the fix that made
-# the Spark stop narrating. CHAT_TOKENS is a runaway guard, not a pacing control — see
-# the note in src/chat.js before tightening it.
-CHAT_TOKENS = "320"
+# Ask the Turtle. It thinks — a divergence from the Spark, which cannot afford 700
+# reasoning tokens a question on one serialised GPU. Workers AI splits the scratchpad into
+# `message.reasoning` and hands back clean content (see the header of src/llm.js), so the
+# prose-narration failure the JSON envelope was built for cannot happen here, and thinking
+# is what stops qwen3 handing back the prompt's own shape example as the answer — measured
+# 4 in 8 on the weave with the scratchpad off. The envelope and the guards stay as belt.
+# CHAT_TOKENS is a runaway guard, not a pacing control; see src/chat.js before tightening
+# it, and remember a reasoning model that hits the ceiling truncates mid-JSON.
+CHAT_TOKENS = "2048"
 T_CHAT = "30"
 WHISPER_MODEL = "@cf/openai/whisper-large-v3-turbo"
 # Aura-2 speaking as Draco, the voice Aaron picked by ear off this staging worker on
