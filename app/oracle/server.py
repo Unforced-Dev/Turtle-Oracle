@@ -127,14 +127,21 @@ class Handler(BaseHTTPRequestHandler):
                              ("no-store" if ctype.startswith("text/html") or
                               ctype == "application/json" else "public, max-age=86400"))
             self.end_headers()
-            self.wfile.write(body)
+            if not getattr(self, "_headers_only", False):
+                self.wfile.write(body)
         except (BrokenPipeError, ConnectionResetError):
             pass
+
+    # Card art never changes under its own name — a tablet should fetch each one once a
+    # day, not once a séance. HTML and JSON are exempt (see _send): a fix has to land on
+    # the next refresh, and a reading is nobody else's to keep.
+    STATIC = "public, max-age=86400, immutable"
 
     def _serve_file(self, relpath, ctype):
         try:
             with open(os.path.join(REPO, relpath), "rb") as f:
-                return self._send(200, f.read(), ctype)
+                cache = None if ctype.startswith("text/html") else self.STATIC
+                return self._send(200, f.read(), ctype, cache=cache)
         except FileNotFoundError:
             return self._send(404, {"error": f"{relpath} missing"})
 
@@ -246,7 +253,7 @@ class Handler(BaseHTTPRequestHandler):
                 fp = os.path.join(ART, name)
                 if os.path.exists(fp):
                     with open(fp, "rb") as f:
-                        return self._send(200, f.read(), "image/png")
+                        return self._send(200, f.read(), "image/png", cache=self.STATIC)
             return self._send(404, {"error": "no such card art"})
         if path.startswith("/download/"):
             name = os.path.basename(path)
@@ -375,6 +382,16 @@ class Handler(BaseHTTPRequestHandler):
                 return self._send(500, {"error": str(e)})
             return self._send(404, {"error": "unknown séance action"})
         return self._send(404, {"error": "not found"})
+
+    def do_HEAD(self):
+        """A HEAD is a GET whose body goes nowhere. BaseHTTPRequestHandler answers 501
+        otherwise, which makes `curl -I` say the cache headers are missing when they are
+        not — and a cache check that lies is worse than no cache check."""
+        self._headers_only = True
+        try:
+            self.do_GET()
+        finally:
+            self._headers_only = False
 
     def log_message(self, *a):
         pass  # quiet

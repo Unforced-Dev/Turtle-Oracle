@@ -158,8 +158,8 @@ class OggVoice(FakeVoice):
         return b"OggS-test-audio", "audio/ogg"
 
 
-def container_checks():
-    """The wire: an engine that encodes is served as Ogg."""
+def container_and_cache_checks():
+    """The wire: an engine that encodes is served as Ogg, and card art is cached for a day."""
     original = server.VOICE_SINGLETON
     server.VOICE_SINGLETON = OggVoice()
     httpd = server.OracleServer(("127.0.0.1", 0), server.Handler)
@@ -171,6 +171,20 @@ def container_checks():
             assert response.headers.get_content_type() == "audio/ogg"
             assert response.headers["Cache-Control"] == "no-store", "a reading is not cached"
             assert response.read() == b"OggS-test-audio"
+
+        head = Request(base + "/kiosk.html", method="HEAD")
+        with urlopen(head, timeout=3) as r:
+            assert r.status == 200, "HEAD must not be a 501, or curl -I lies about the cache"
+            assert r.read() == b"", "a HEAD carries no body"
+            assert "no-store" in r.headers["Cache-Control"], "the kiosk must never be cached"
+
+        for path in ("/thumb/roots-01.jpg", "/thumb/back.jpg", "/med/roots-01.jpg", "/avatar.jpg"):
+            try:
+                with urlopen(Request(base + path, method="HEAD"), timeout=3) as r:
+                    cc = r.headers["Cache-Control"]
+                    assert "max-age=86400" in cc and "immutable" in cc, (path, cc)
+            except HTTPError as exc:
+                assert exc.code == 404, (path, exc.code)   # art not built on this box
     finally:
         httpd.shutdown()
         httpd.server_close()
@@ -182,9 +196,9 @@ def main():
     unit_checks()
     encoder_checks()
     endpoint_checks()
-    container_checks()
-    print("kokoro voice: cache, opus encoding, validation, audio contract "
-          "and graceful failure passed")
+    container_and_cache_checks()
+    print("kokoro voice: cache, opus encoding, validation, audio contract, "
+          "cache headers and graceful failure passed")
 
 
 if __name__ == "__main__":

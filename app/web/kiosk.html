@@ -372,7 +372,7 @@
 <!-- SCENE 1 · ATTRACT -->
 <section class="scene on" id="attract">
   <div style="flex:1"></div>
-  <div class="medallion"><img src="/avatar.jpg" alt="The World Turtle Oracle"></div>
+  <div class="medallion"><img src="/avatar.jpg" alt="The World Turtle Oracle" decoding="async"></div>
   <div>
     <div class="rune">terrible turtle camp presents</div>
     <h1>The Terrible Turtle Oracle</h1>
@@ -394,7 +394,7 @@
 
 <!-- SCENE 2 · SÉANCE -->
 <section class="scene" id="seance">
-  <div class="medallion"><img src="/avatar.jpg" alt=""></div>
+  <div class="medallion"><img src="/avatar.jpg" alt="" loading="lazy" decoding="async"></div>
   <div class="col">
     <div class="oracle-says" id="says"></div>
     <button class="readaloud" data-for="says">🔊&nbsp; Read aloud</button>
@@ -463,7 +463,7 @@
 
 <!-- SCENE 4 · ASK THE TURTLE -->
 <section class="scene" id="chat">
-  <div class="medallion"><img src="/avatar.jpg" alt=""></div>
+  <div class="medallion"><img src="/avatar.jpg" alt="" loading="lazy" decoding="async"></div>
   <div class="col">
     <div class="oracle-says" id="chatsays"></div>
     <button class="readaloud" data-for="chatsays">🔊&nbsp; Read aloud</button>
@@ -895,7 +895,7 @@ function renderWeather(e){
   incant($('says'),e.say,110); speak(e.say);
   $('wgrid').innerHTML=(e.weathers||[]).map(w=>`
     <div class="wtile" data-id="${w.id}">
-      <img src="${esc(w.tile)}" alt="" onerror="this.style.display='none'">
+      <img src="${esc(w.tile)}" alt="" loading="lazy" decoding="async" onerror="this.style.display='none'">
       <div class="wname">${esc(w.name)}</div>
     </div>`).join("");
   $('wgrid').classList.add("on");
@@ -964,7 +964,7 @@ function speakOr(text,fallbackMs){
 function shuffleCards(){
   $('shufflebox').innerHTML="";
   for(let i=0;i<5;i++){ const d=document.createElement("div"); d.className="sc";
-    d.innerHTML='<img src="/med/back.jpg" alt="">'; $('shufflebox').appendChild(d); }
+    d.innerHTML='<img src="/thumb/back.jpg" alt="" decoding="async">'; $('shufflebox').appendChild(d); }
 }
 /* THE ASKING. The Tree draws, the cards come up FACE UP, and then the Turtle reads them
    and asks one open question about them — before there is any reading. That is the order
@@ -984,6 +984,9 @@ async function theAsking(e,opts){
   $('askpanel').classList.remove("on","pull","writing"); hideAux();
   $('decide').style.display="none";
   $('lookline').classList.remove("on"); $('askline').classList.remove("on");
+  /* THE DEAL MUST NOT WAIT ON THE WIRE. The veil turns for 2.6 s; spend it fetching the
+     three faces (56 KB thumbs, not the 500 KB plates) so the flip lands on cached bytes. */
+  preloadCards(e);
   shuffleCards();
   $('veil').classList.add("on");
   incant($('says'),e.say,110); speak(e.say);
@@ -1006,6 +1009,13 @@ async function theAsking(e,opts){
   $('askline').classList.add("on");
   await speakOr(q, Math.min(qdur+1500,14000));
   renderAnswer(e);
+}
+function preloadCards(e){
+  SLOTS.forEach(slot=>{
+    const c=(e.cards||{})[slot]; if(!c) return;
+    const src=c.thumb||c.image; if(!src) return;
+    try{ const img=new Image(); img.decoding="async"; img.src=src; }catch(err){}
+  });
 }
 /* the look and the question, put back without a word of it re-spoken (a restore) */
 function showLook(e){
@@ -1126,8 +1136,9 @@ function dealSpread(e,opts){
       const cell=document.createElement("div");
       cell.innerHTML=`
         <div class="flip${isAxis?" axis":""}" id="flip-${slot}">
-          <div class="face back"><img src="/med/back.jpg" alt=""></div>
-          <div class="face front"><img src="${esc(c.image)}" alt="${esc(c.name)}"></div>
+          <div class="face back"><img src="/thumb/back.jpg" alt="" decoding="async"></div>
+          <div class="face front"><img src="${esc(c.thumb||c.image)}" alt="${esc(c.name)}"
+               loading="lazy" decoding="async"></div>
         </div>
         <div class="cardcap${isAxis?" axis":""}" id="cap-${slot}">
           <div class="cslot">${isAxis?"◆ The Axis Speaks":`${SLOTCAP[slot]} · ${esc(c.slot)}`}</div>
