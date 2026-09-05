@@ -4,6 +4,11 @@ assets/thumb/
 assets/tiles/
 assets/avatar.jpg
 
+# The city, built from the gitignored Burning Man dump by tools/build_city.py at deploy
+# time (prepare-assets.sh). Derived data is still their data — it stays out of git.
+assets/city.json
+assets/city.meta.json
+
 node_modules/
 .wrangler/
 package-lock.json

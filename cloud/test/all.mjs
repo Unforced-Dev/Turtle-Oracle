@@ -2,9 +2,11 @@
  *
  *   TZ=America/Los_Angeles npm test
  *
- * Both files are run even when the first one fails, because "the prompts drifted" and
- * "the state machine broke" are different problems and you want to see both at once.
- * parity.mjs needs python3 on PATH; seance.mjs needs nothing at all.
+ * Every file is run even when an earlier one fails, because "the prompts drifted", "the
+ * state machine broke" and "the city went dark" are different problems and you want to
+ * see all of them at once. parity.mjs needs python3 on PATH; seance.mjs and city.mjs
+ * need nothing at all — city.mjs runs against assets/city.json when tools/build_city.py
+ * has made one and against its own fixture when it has not.
  */
 import { spawnSync } from "node:child_process";
 import { fileURLToPath } from "node:url";
@@ -13,6 +15,7 @@ import path from "node:path";
 const HERE = path.dirname(fileURLToPath(import.meta.url));
 const SUITES = [
   ["the séance state machine", "seance.mjs"],
+  ["the city, the chat, and the routes", "city.mjs"],
   ["prompt parity with app/oracle", "parity.mjs"],
 ];
 

@@ -56,7 +56,10 @@ export function formatReceipt(payload, picks, located, quest) {
     push(wrap(quest.charge, WIDTH));
     L.push("");
     quest.moves.forEach((m, i) => {
-      push(wrap(`MOVE ${i + 1} [${m.slot}] ${m.card}`, WIDTH));
+      // cloud: the quest is ONE bite here, so the paper says so rather than numbering a
+      // list of one. A quest sealed by the Spark still comes through with three moves.
+      const head = quest.moves.length > 1 ? `MOVE ${i + 1}` : "THE ONE BITE";
+      push(wrap(`${head} [${m.slot}] ${m.card}`, WIDTH));
       push(wrap(m.task, WIDTH));
       push(wrap("@ " + m.where, WIDTH));
       push(wrap("PROOF: " + m.proof, WIDTH));

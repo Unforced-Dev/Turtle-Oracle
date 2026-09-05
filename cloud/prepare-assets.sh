@@ -34,4 +34,18 @@ if [ -d "$src/tiles" ]; then
   cp "$src"/tiles/*.jpg "$here/assets/tiles/" 2>/dev/null || true
 fi
 
+# The city — camps, art and what is on. tools/build_city.py slims the 4.3MB Burning Man
+# dump into cloud/assets/city.json (~1.4MB), which src/guide.js reads through the ASSETS
+# binding. Both the dump and the built file are gitignored: the API terms embargo public
+# display of placements, and a derived copy in git is the same redistribution wearing a
+# hat. A machine WITHOUT the dump still deploys — the Worker then knows the 52 cards and
+# says plainly that it has no city in it, and /api/health reports city:false.
+rm -f "$here/assets/city.json" "$here/assets/city.meta.json"
+if command -v python3 >/dev/null 2>&1; then
+  python3 "$repo/tools/build_city.py" --out "$here/assets" || \
+    echo "prepare-assets: build_city.py failed — deploying without a city" >&2
+else
+  echo "prepare-assets: no python3 — deploying without a city" >&2
+fi
+
 echo "prepare-assets: $(ls "$here/assets/med" | wc -l | tr -d ' ') med, $(ls "$here/assets/thumb" | wc -l | tr -d ' ') thumb"
