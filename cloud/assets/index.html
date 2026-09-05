@@ -299,6 +299,16 @@
   .qmap{font-family:ui-monospace,Menlo,Consolas,monospace;background:rgba(61,47,20,.08);
     border:1px solid #cbb98f;border-radius:6px;padding:10px;font-size:.78rem;line-height:1.35;
     white-space:pre;overflow-x:auto;margin-top:14px;color:#3d2f14}
+  /* ---- cloud: READ ALOUD. The Turtle speaks when it is asked to and not before, so
+     every utterance carries the tap that plays it and the place a failure gets said. ---- */
+  .readwrap{display:flex;align-items:center;gap:9px;justify-content:center;
+    margin:5px 0 2px;flex-wrap:wrap}
+  .readaloud{background:transparent;border:1px solid var(--edge);color:var(--gold-dim);
+    font-weight:400;font-size:.8rem;padding:6px 15px;border-radius:999px;min-height:0;
+    letter-spacing:.05em}
+  .readaloud.playing{border-color:var(--gold);color:var(--gold2)}
+  .voicenote{color:var(--ember);font-size:.73rem;font-style:italic}
+
   /* ---- cloud: THE THREE DOORS ----------------------------------------------------
      A tablet on a table at camp is walked up to for a reading. A phone in a pocket is
      opened for three different reasons — "let me just see what's happening", "let me
@@ -420,6 +430,7 @@
   <div class="medallion"><img src="/avatar.jpg" alt=""></div>
   <div class="col">
     <div class="oracle-says" id="says"></div>
+    <div class="readwrap"><button class="readaloud" data-src="says">🔊&nbsp; Read aloud</button><span class="voicenote"></span></div>
     <!-- cloud: THE DOOR — talk, or touch. Everything below branches from here. -->
     <div id="doorrow"></div>
     <!-- cloud: the talk door. One record button, a two-minute ring, and a way to type
@@ -466,11 +477,15 @@
     <div class="spread" id="spread"></div>
     <!-- cloud: the Turtle's reading of the three, under the cards it is reading -->
     <div id="lookline"></div>
+    <div class="readwrap"><button class="readaloud" data-src="lookline">🔊&nbsp; Read aloud</button><span class="voicenote"></span></div>
     <!-- cloud: the Turtle's one question, under the reading it follows from -->
     <div id="askline"></div>
+    <div class="readwrap"><button class="readaloud" data-src="askline">🔊&nbsp; Read aloud</button><span class="voicenote"></span></div>
     <div class="scroll" id="scroll">
       <h2 id="h-read">The Reading</h2><div class="prose" id="reading"></div>
+      <div class="readwrap"><button class="readaloud" data-src="reading">🔊&nbsp; Read aloud</button><span class="voicenote"></span></div>
       <h2 id="h-adv">The Quest Offered</h2><div class="prose" id="adventure"></div>
+      <div class="readwrap"><button class="readaloud" data-src="adventure">🔊&nbsp; Read aloud</button><span class="voicenote"></span></div>
       <div class="row decide" id="decide" style="display:none">
         <button id="accept">⚔&nbsp; I accept this quest</button>
         <button class="ghost" id="more">🐢&nbsp; Hear me further</button>
@@ -490,6 +505,11 @@
 <!-- SCENE 3 · THE QUEST -->
 <section class="scene" id="quest">
   <div class="parchment" id="parch"></div>
+  <!-- cloud: the parchment's own text includes the compass rose, which is a picture made
+       of slashes and reads as noise. This holds the words a seeker would want spoken —
+       the line the Turtle said as it sealed, the charge, and the one bite. -->
+  <div id="questspoken" style="display:none"></div>
+  <div class="readwrap"><button class="readaloud" data-src="questspoken">🔊&nbsp; Read aloud</button><span class="voicenote"></span></div>
   <div class="row" style="margin-top:22px">
     <!-- cloud: no thermal printer out here. The button is hidden rather than deleted so
          this stays a two-line diff from app/web/kiosk.html; /api/print still returns the
@@ -512,6 +532,7 @@
   <div class="medallion"><img src="/avatar.jpg" alt=""></div>
   <div class="col">
     <div class="oracle-says" id="chatsays"></div>
+    <div class="readwrap"><button class="readaloud" data-src="chatsays">🔊&nbsp; Read aloud</button><span class="voicenote"></span></div>
     <div id="chathist"></div>
     <div class="hits" id="chathits"></div>
     <div class="panel" id="chatpanel">
@@ -534,6 +555,7 @@
   <div class="medallion"><img src="/avatar.jpg" alt=""></div>
   <div class="col">
     <div class="oracle-says" id="citysays"></div>
+    <div class="readwrap"><button class="readaloud" data-src="citysays">🔊&nbsp; Read aloud</button><span class="voicenote"></span></div>
     <div class="chips" id="citychips"></div>
     <div class="cityfind" id="cityfind">
       <input id="cityq" type="search" autocomplete="off" autocorrect="off" spellcheck="false"
@@ -569,7 +591,17 @@
 const $=id=>document.getElementById(id);
 const SLOTS=["roots","trunk","branches"];
 const SLOTCAP={roots:"Face",trunk:"Stand",branches:"Reach"};
-let SID=null, SPOKEN=true, VOICE=null, IDLE=null, CARD_IDS="", SESSION_GEN=0;
+/* cloud: THE TURTLE DOES NOT SPEAK UNTIL IT IS ASKED TO. A tablet at camp has a person
+   standing beside it; a phone speaks into a tent at 3am, into a conversation, into a
+   pocket. Aaron, 2026-09-05, on the tablets: auto-speaking is "very disturbing". So
+   SPOKEN is off by default and every utterance carries its own Read aloud button; the
+   chip at the top corner is the old always-speak behaviour, kept, remembered, and
+   never the default. The silent pacing (speakOr, incant's SILENT_WORD_MS) is what the
+   ceremony runs on now, which is the path it already had for a muted phone. */
+const VOICE_KEY="turtle-oracle.voice";
+let SPOKEN=false;
+try{ SPOKEN=localStorage.getItem(VOICE_KEY)==="on"; }catch(err){}
+let SID=null, VOICE=null, IDLE=null, CARD_IDS="", SESSION_GEN=0;
 /* cloud: the reading is revealed once. A refinement comes back through the same stage
    with the same cards already on the table, and must not replay it. */
 let READ_SHOWN=false;
@@ -671,6 +703,11 @@ let SERVER_AUDIO=null, SERVER_AUDIO_URL=null, SPEAK_GEN=0, SPEAK_DONE=null;
      3. if it is still blocked, say so: the 🔊 chip becomes a visible offer to replay.
    Sound stays ON by default — this is a rescue, not a preference. */
 let AUDIO_EL=null, AC=null, AUDIO_BLOCKED=false, SPEAK_STARTED=false, LAST_LINE="";
+/* An asked-for read is in flight. Everything in the play path used to gate on SPOKEN
+   alone, which is now off by default — so a Read aloud tap would have been refused by
+   the machinery it just started. READING is that one tap's permission. */
+let READING=false, VOICE_FAIL=false;
+function voiceLive(){ return SPOKEN||READING; }
 /* A second of 8-bit silence, as a blob: URL — the CSP allows blob: media and not data:. */
 function silentUrl(){
   const n=2000, buf=new ArrayBuffer(44+n), v=new DataView(buf);
@@ -707,13 +744,42 @@ function primeAudio(){
 /* The voice was refused. Do not keep pretending — hand the seeker the tap that fixes it. */
 function audioBlocked(){
   if(AUDIO_BLOCKED) return;
-  AUDIO_BLOCKED=true; SPOKEN=false;
+  AUDIO_BLOCKED=true; SPOKEN=false; READING=false; VOICE_FAIL=true;
   $('snd').textContent="🔈 tap to hear the Turtle";
   $('snd').classList.add("blocked");
 }
+/* cloud: THE WHOLE UTTERANCE IN AS FEW CALLS AS THE SHELL WILL TAKE. This used to hand
+   /api/speak one SENTENCE per request — a reading is a dozen of them, and on Starlink a
+   dozen round trips is a dozen chances to stall between two half-sentences. The server's
+   own roof is 600 characters a call (src/index.js), so sentences are packed up to that
+   and no further. A single sentence longer than the roof is broken on a word boundary,
+   because the alternative is a 400 and silence. */
+const SPEAK_CAP=600;
 function speechParts(text){
-  return (text.replace(/[“”"]/g,"").match(/[^.!?…]+[.!?…]+['”]?|[^.!?…]+$/g)||[text])
+  const sentences=(String(text||"").replace(/[“”"]/g,"").match(/[^.!?…]+[.!?…]+['”]?|[^.!?…]+$/g)||[text])
     .map(s=>s.trim()).filter(Boolean);
+  const out=[];
+  let buf="";
+  const flushLong=s=>{
+    while(s.length>SPEAK_CAP){
+      let cut=s.lastIndexOf(" ",SPEAK_CAP);
+      if(cut<=0) cut=SPEAK_CAP;
+      out.push(s.slice(0,cut).trim()); s=s.slice(cut).trim();
+    }
+    return s;
+  };
+  for(let sentence of sentences){
+    if(sentence.length>SPEAK_CAP){
+      if(buf){ out.push(buf); buf=""; }
+      sentence=flushLong(sentence);
+      if(!sentence) continue;
+    }
+    if(!buf) buf=sentence;
+    else if(buf.length+1+sentence.length<=SPEAK_CAP) buf+=" "+sentence;
+    else { out.push(buf); buf=sentence; }
+  }
+  if(buf) out.push(buf);
+  return out.length?out:[String(text||"")];
 }
 function releaseAudio(){
   /* cloud: the unlocked element is kept — only its source is dropped. Nulling it out
@@ -743,7 +809,10 @@ function browserSpeak(parts,token,finish){
 }
 async function playServerLine(line,token){
   if(!("Audio" in window)) return false;
-  const ctl=new AbortController(), timeout=setTimeout(()=>ctl.abort(),15000);
+  /* 15s was the budget for one sentence. A packed 600-character line is a dozen of them
+     and takes correspondingly longer to synthesise; aborting mid-generation would drop a
+     whole reading rather than one clause. */
+  const ctl=new AbortController(), timeout=setTimeout(()=>ctl.abort(),30000);
   try{
     const r=await fetch("/api/speak",{method:"POST",signal:ctl.signal,
       headers:{"Content-Type":"application/json"},body:JSON.stringify({text:line})});
@@ -755,7 +824,7 @@ async function playServerLine(line,token){
        was never broken. Report it spoken and move to the next part. */
     if(r.status===204) return true;
     const blob=await r.blob();
-    if(token!==SPEAK_GEN||!SPOKEN) return true;
+    if(token!==SPEAK_GEN||!voiceLive()) return true;
     SERVER_AUDIO_URL=URL.createObjectURL(blob);
     /* cloud: the element unlocked by the attract tap, reused. A new Audio() here is a
        new lock on iOS, and iOS refuses it every time. */
@@ -778,10 +847,16 @@ async function playServerLine(line,token){
   }catch(err){ return false; }
   finally{ clearTimeout(timeout); }
 }
-async function speak(text,cb){
+/* `opts.fallback === false` means: the server voice or nothing. That is the Read aloud
+   path — the seeker asked for THE TURTLE, and handing them a bright system voice reading
+   the Turtle's lines instead is worse than telling them the voice is out. The always-speak
+   chip keeps the old behaviour, browser fallback and all. */
+async function speak(text,cb,opts){
+  opts=opts||{};
   stopVoice();
   LAST_LINE=text||LAST_LINE;
-  if(!SPOKEN){ if(cb)cb(); return; }
+  if(!voiceLive()){ if(cb)cb(); return; }
+  VOICE_FAIL=false;
   const token=SPEAK_GEN, parts=speechParts(text);
   document.body.classList.add("speaking");
   let done=false;
@@ -791,25 +866,93 @@ async function speak(text,cb){
   SPEAK_DONE=finish;
   let i=0;
   for(;i<parts.length;i++){
-    if(token!==SPEAK_GEN||!SPOKEN) return;
+    if(token!==SPEAK_GEN||!voiceLive()) return;
     if(!await playServerLine(parts[i],token)) break;
   }
-  if(token!==SPEAK_GEN||!SPOKEN) return;
-  if(i<parts.length) browserSpeak(parts.slice(i),token,finish);
-  else finish();
+  if(token!==SPEAK_GEN||!voiceLive()) return;
+  if(i>=parts.length) return finish();
+  VOICE_FAIL=true;
+  if(opts.fallback===false||!SPOKEN) return finish();
+  browserSpeak(parts.slice(i),token,finish);
 }
+
+/* ---------- cloud: READ ALOUD ----------------------------------------------------
+   One control, many utterances. A button carries data-src, the id of the element whose
+   text it reads; the pair is a <span class="readwrap"> so the "voice unavailable" note
+   has somewhere to go that is next to the button and not inside the Turtle's words. */
+let READ_BTN=null, READ_GEN=0;
+function readLabel(b){ return b.dataset.label||"🔊  Read aloud"; }
+function readNote(btn,msg){
+  const note=btn.parentNode&&btn.parentNode.querySelector(".voicenote");
+  if(note) note.textContent=msg||"";
+}
+function readStop(){
+  READ_GEN++; READING=false;
+  const b=READ_BTN; READ_BTN=null;
+  stopVoice();
+  if(b){ b.classList.remove("playing"); b.textContent=readLabel(b); }
+}
+async function readAloud(btn){
+  if(READ_BTN===btn) return readStop();
+  readStop();
+  /* Synchronously, inside the tap: iOS unlocks the ELEMENT on a gesture, and this may be
+     the first gesture the page has had if the seeker walked straight to a browse list. */
+  primeAudio();
+  readNote(btn,"");
+  const el=$(btn.dataset.src);
+  const text=((el&&el.textContent)||"").trim();
+  if(!text) return;
+  const gen=++READ_GEN;
+  READ_BTN=btn; READING=true;
+  btn.classList.add("playing"); btn.textContent="■  Stop";
+  await new Promise(res=>speak(text,res,{fallback:false}));
+  if(gen!==READ_GEN) return;          // superseded by another tap
+  READING=false; READ_BTN=null;
+  btn.classList.remove("playing"); btn.textContent=readLabel(btn);
+  if(VOICE_FAIL) readNote(btn,"voice unavailable");
+}
+/* Delegated: the sheet and the parchment rebuild their innerHTML, and a per-button
+   listener would be lost with them or leak with every re-render. */
+document.addEventListener('click', ev=>{
+  const btn=ev.target.closest&&ev.target.closest(".readaloud");
+  if(!btn) return;
+  ev.stopPropagation();
+  readAloud(btn);
+});
+/* A Read aloud button with nothing to read is a promise the screen cannot keep. Every
+   utterance goes through incant(), so that is where they are kept honest. */
+function readSync(){
+  document.querySelectorAll(".readaloud").forEach(b=>{
+    const el=$(b.dataset.src);
+    const has=Boolean(el&&(el.textContent||"").trim());
+    b.parentNode.style.display=has?"":"none";
+    if(!has&&READ_BTN===b) readStop();
+  });
+}
+/* cloud: the chip is now a PREFERENCE, not a mute button — "speak every line to me the
+   moment it arrives", which is what the tablets did and what a few seekers will want.
+   Off is the default and off is remembered, so a phone never surprises its owner twice. */
+function sndChip(){
+  $('snd').textContent=SPOKEN?"🔊":"🔇";
+  $('snd').title=SPOKEN?"the Turtle speaks every line — tap for silence"
+                       :"silent — tap to have every line spoken aloud";
+}
+sndChip();
 $('snd').addEventListener('click',()=>{
-  /* cloud: while the chip is the "tap to hear" affordance, the tap is a rescue — it is a
-     real user gesture, so it primes the audio and replays the line the seeker missed. */
+  /* while the chip is the "tap to hear" rescue, the tap is a real user gesture: it primes
+     the audio and replays the line the seeker missed. */
   if(AUDIO_BLOCKED){
-    AUDIO_BLOCKED=false; SPOKEN=true;
-    $('snd').classList.remove("blocked"); $('snd').textContent="🔊";
+    AUDIO_BLOCKED=false; SPOKEN=true; VOICE_FAIL=false;
+    $('snd').classList.remove("blocked"); sndChip();
     primeAudio();
     if(LAST_LINE) speak(LAST_LINE);
     return;
   }
-  SPOKEN=!SPOKEN; $('snd').textContent=SPOKEN?"🔊":"🔇";
-  if(!SPOKEN) stopVoice();
+  readStop();
+  SPOKEN=!SPOKEN;
+  try{ localStorage.setItem(VOICE_KEY,SPOKEN?"on":"off"); }catch(err){}
+  sndChip();
+  if(SPOKEN) primeAudio(); else stopVoice();
 });
 
 /* ---------- word-by-word incantation ---------- */
@@ -826,6 +969,7 @@ function incant(el,text,msPerWord=120){
   words.forEach((w,i)=>{ const s=document.createElement("span"); s.className="w";
     s.style.animationDelay=(i*msPerWord)+"ms"; s.textContent=w+" "; el.appendChild(s); });
   LAST_REVEAL_MS=words.length*msPerWord+400;
+  readSync();
   return LAST_REVEAL_MS;
 }
 
@@ -898,6 +1042,8 @@ function resetSeance(){
   $('h-read').classList.remove("on"); $('h-adv').classList.remove("on");
   decideRow(false); $('giftrow').classList.remove("on"); CARD_IDS="";
   READ_SHOWN=false; hideAux(); T_ASK=Date.now();
+  $('questspoken').textContent="";
+  readStop(); readSync();
 }
 
 function taleTold(e,restored){
@@ -1372,8 +1518,14 @@ function renderQuest(e,restored){
     <div class="vow"><b>THE VOW</b><br>${esc(q.vow)}<div class="vwhere">${esc(q.vow_where)}</div></div>
     <div class="qmap">${esc(q.map)}</div>
     ${q.chosen?`<div class="chosen">${esc(q.chosen)}</div>`:""}`;
+  /* the words worth hearing, without the compass rose */
+  $('questspoken').textContent=[e.say,q.charge]
+    .concat((q.moves||[]).map(m=>[m.task,m.where?"Where: "+m.where:"",
+      m.proof?"Bring back: "+m.proof:""].filter(Boolean).join(" ")))
+    .filter(Boolean).join(" ");
   show("quest");
   setTimeout(()=>$('parch').classList.add("on"),80);
+  readSync();
   if(!restored) speak(e.say);
   pokeIdle();  // a seal gets its own four-minute handoff window, even after a slow LLM call
 }
@@ -1776,7 +1928,7 @@ function cityReset(){
   clearTimeout(CITY_FIND); CITY_FIND=null;
   $('cityq').value=""; $('citykind').value="";
   $('citylist').innerHTML=""; $('citycount').textContent=""; $('citysays').textContent="";
-  $('citymore').style.display="none";
+  $('citymore').style.display="none"; readSync();
   $('cityfind').style.display=""; $('citychips').style.display="";
 }
 function cityChips(){
@@ -1859,6 +2011,7 @@ function openCity(from){
   cityChips();
   show("city");
   $('citysays').textContent=CITY_OPEN;
+  readSync();
   cityLoad(false);
   pokeIdle();
 }
@@ -1885,6 +2038,7 @@ async function openFor(from){
     $('citysays').textContent=bite
       ? "Your bite is "+bite.name+". Here is what the city put near it."
       : "Here is what the city is doing around your cards.";
+    readSync();
     const rows=[];
     if(d.pinned){
       rows.push(`<div class="slabel">${esc(d.pinned.card)} stands here</div>`);
@@ -1927,6 +2081,7 @@ function chatReset(){
   chatQuiet();
   $('chathist').innerHTML=""; $('chathits').innerHTML=""; $('chatsays').innerHTML="";
   $('chatq').value=""; $('chatpanel').classList.remove("on");
+  readSync();
 }
 function chatTurn(who,text){
   const d=document.createElement("div");
@@ -2051,7 +2206,9 @@ $('dcity').addEventListener('click', ev=>{ ev.stopPropagation(); primeAudio(); o
 if(!KIOSK) $('returned').style.display="none";
 $('taledone').addEventListener('click', ev=>{ ev.stopPropagation(); resetAll(); });
 $('offer').addEventListener('click', offer);
-if(!restoreStep()) loadLore();
+/* cloud: a restore writes the reading, the look and the question straight into the DOM
+   rather than through incant(), so the Read aloud buttons have to be told about it. */
+const RESTORED=restoreStep(); readSync(); if(!RESTORED) loadLore();
 $('q').addEventListener('keydown',e=>{ if(e.key==="Enter"&&!e.shiftKey){ e.preventDefault(); offer(); } });
 window.addEventListener("pagehide",()=>{ discardRecording(); stopVoice(); });
 
