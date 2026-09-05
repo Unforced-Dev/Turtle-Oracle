@@ -9,6 +9,7 @@ import json
 import os
 import re
 import threading
+import urllib.parse
 from http.server import BaseHTTPRequestHandler, ThreadingHTTPServer
 
 from .deck import load_deck, REPO, card_payload
@@ -137,8 +138,44 @@ class Handler(BaseHTTPRequestHandler):
         except FileNotFoundError:
             return self._send(404, {"error": f"{relpath} missing"})
 
+    def _query(self):
+        """The query string as flat strings. Every value is length-capped here, once, so no
+        route downstream can be handed a megabyte of ``q=`` from a curious phone."""
+        parts = self.path.split("?", 1)
+        raw = urllib.parse.parse_qs(parts[1] if len(parts) > 1 else "", keep_blank_values=True)
+        return {k: (v[0] or "")[:200] for k, v in raw.items()}
+
+    def _city(self, path):
+        """SEE WHAT'S HAPPENING. Read-only views over the in-memory city index: a window of
+        events, one ranked search, one thing whole, and the city filtered by a live séance.
+        Nothing here touches the model, so nothing here can block on one."""
+        qs = self._query()
+        if path == "/api/city/happening":
+            return self._send(200, guide.happening(
+                window=qs.get("window") or "now", kind=qs.get("kind") or "",
+                q=qs.get("q") or "", limit=qs.get("limit") or guide.DEFAULT_PAGE,
+                offset=qs.get("offset") or 0))
+        if path == "/api/city/search":
+            return self._send(200, guide.search(qs.get("q") or ""))
+        if path == "/api/city/item":
+            uid, name = qs.get("uid") or "", qs.get("name") or ""
+            if not uid and not name:
+                return self._send(400, {"error": "no uid"})
+            found = guide.item(uid=uid, name=name)
+            if found is None:
+                return self._send(404, {"error": "the shell has never heard of that"})
+            return self._send(200, found)
+        if path == "/api/city/for-seance":
+            return self._send(200, guide.for_seance((qs.get("session") or "").strip()))
+        return self._send(404, {"error": "not found"})
+
     def do_GET(self):
         path = self.path.split("?", 1)[0]
+        if path.startswith("/api/city/"):
+            try:
+                return self._city(path)
+            except Exception as e:
+                return self._send(500, {"error": str(e)})
         if path in ("/", "/index.html", "/site.html"):
             return self._serve_file("app/web/site.html", "text/html; charset=utf-8")
         if path in ("/oracle", "/oracle.html", "/app"):
