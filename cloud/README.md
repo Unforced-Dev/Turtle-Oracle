@@ -56,16 +56,90 @@ cloud/
   src/llm.js           Workers AI — app/oracle/llm.py
   src/ears.js          /api/transcribe — app/oracle/ears.py; its own file so a test
                        can import it without the Workers runtime
+  src/guide.js         the city: what is on, where camps and art stand — app/oracle/guide.py
+  src/chat.js          Ask the Turtle — app/oracle/chat.py
   src/deck.js  select.js  geo.js  lore.js  printer.js  util.js
-  test/all.mjs         both suites, both run even when the first fails
+  test/all.mjs         all three suites, every one run even when an earlier one fails
   test/seance.mjs      walks both doors of the séance against a fake model
+  test/city.mjs        the city, the chat and the routes, on a pinned clock
   test/parity.mjs      builds every prompt on both sides and diffs them
+../tools/build_city.py  the Burning Man dump -> assets/city.json, at deploy time
 ```
 
 Static assets (the kiosk, 52 cards at two sizes, the medallion) are served by the
 `[assets]` binding; the Worker script only ever sees `/api/*`. Card art is **not**
 duplicated into the repo — `prepare-assets.sh` copies it out of `cards/web/` at build
 time and `assets/{med,thumb,tiles,avatar.jpg}` are gitignored.
+
+## Three doors
+
+A tablet on a table at camp is walked up to for a reading. A phone is taken out of a
+pocket for three different reasons, and the attract screen answers all three:
+
+| door | what it is | routes |
+|---|---|---|
+| **Pull the cards** | the séance, unchanged | `POST /api/session/*` |
+| **Ask the Turtle** | open talk, grounded in the city and the cards | `POST /api/chat`, `/api/chat/open` |
+| **What's happening** | browse the city by window, kind and name | `GET /api/city/happening`, `search`, `item` |
+
+and from a reading or a sealed quest, two more: **What's out there for this**
+(`GET /api/city/for?session=`) and **Talk with the Turtle about this**.
+
+### The city file
+
+`tools/build_city.py` slims the 4.3MB Burning Man dump (`data/brc_2026_snapshot.json`,
+gitignored) into `assets/city.json` — 1.38MB, 3410 events with 6563 occurrences, 1184
+camps, 345 art. Both files stay out of git: the API terms embargo public display of
+placements, and a derived copy is the same redistribution wearing a hat.
+`prepare-assets.sh` builds it as part of the deploy, and a machine **without** the dump
+still deploys — the Worker then knows the 52 cards, says plainly that it has no city in
+it, and `/api/health` reports `city: false`.
+
+`/city.json` is **404 on the public path**. It is an asset so `env.ASSETS.fetch` can read
+it, and that call does not re-enter the Worker, so the door is on the street and not on
+the kitchen. `/api/health` reads the 200-byte `city.meta.json` instead, so an uptime check
+on a cold isolate never pays for the parse.
+
+`src/guide.js` holds the city in two lazy per-isolate promises, and the split is the
+point: the parse plus the occurrence timeline is ~32ms and is what browsing needs; the
+token index over every name and description is ~100ms and is what only search and the
+model's retrieval need. Browsing must not pay for an index it does not use. Nothing
+re-parses per request — if you find `JSON.parse` on the request path, that is the bug.
+
+### Rate limits
+
+Every route that costs money or bandwidth has its own budget, and none of them spend from
+the séance's: a seeker mid-reading who also wants to know where the coffee is must not pay
+for it out of their reading.
+
+| binding | route | limit |
+|---|---|---|
+| `RL` | the séance | 30/min |
+| `RL_SPEAK` | `/api/speak` | 120/min |
+| `RL_EARS` | `/api/transcribe` | 12/min |
+| `RL_CHAT` | `/api/chat`, `/api/chat/open` | 20/min |
+| `RL_CITY` | `/api/city/*` | 120/min |
+
+## The voice
+
+**Nothing auto-speaks.** Aaron, 2026-09-05, on the tablets: auto-speaking is very
+disturbing. A tablet at camp has a person standing beside it; a phone speaks into a tent
+at 3am. So every utterance — the séance's lines, the look, the question, the reading, the
+quest offered, the sealed quest, every chat answer — carries its own **Read aloud** button;
+tapping it again stops. The chip in the corner is the old always-speak behaviour, kept,
+remembered in `localStorage` under `turtle-oracle.voice`, and off by default.
+
+A Read aloud tap gets the server voice or nothing: no browser `speechSynthesis` behind it,
+because the seeker asked for the Turtle and a bright system voice reading its lines is
+worse than being told the voice is out — which is what *voice unavailable* beside the
+button says. The always-speak chip keeps its fallback.
+
+The whole utterance goes to `/api/speak` in as few calls as the server's 600-character
+roof allows, not one call per sentence. A reading used to be a dozen round trips; on
+Starlink that is a dozen chances to stall between two half-sentences.
+
+The silent pacing is unchanged — `speakOr` and `incant`'s `SILENT_WORD_MS` were already
+the path a muted phone took, and they are now the path the ceremony runs on.
 
 ## The séance
 
