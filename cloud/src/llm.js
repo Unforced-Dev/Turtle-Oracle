@@ -114,14 +114,20 @@ export class WorkersAILLM {
 
   /**
    * @param {string} prompt
-   * @param {{system?: string, asJson?: boolean, timeout?: number, stage?: string}} opts
+   * @param {{system?: string, asJson?: boolean, timeout?: number, stage?: string,
+   *          maxTokens?: number}} opts
    *   stage names the séance step ("weave", "echoes", "refine", "seal", "tale") and
    *   decides only one thing: whether this call gets a scratchpad.
+   *   maxTokens overrides the ceiling for ONE call. The séance never passes it — every
+   *   stage of it wants the full 4096, for the reason in note 3 above. Ask the Turtle
+   *   does: a chat answer is 2-5 spoken sentences and an unbounded one is a model that
+   *   has started writing an essay into a speaker.
    * @returns {Promise<string|null>}
    */
   async generate(prompt, opts = {}) {
     if (!this.ai) return null;
-    const { system, asJson = false, timeout = 38, stage = "" } = opts;
+    const { system, asJson = false, timeout = 38, stage = "", maxTokens } = opts;
+    const cap = parseInt(maxTokens, 10) > 0 ? parseInt(maxTokens, 10) : this.maxTokens;
     const mayThink = this.thinkStages.has(stage);
 
     const models = [this.model];
@@ -146,7 +152,7 @@ export class WorkersAILLM {
       const inputs = {
         messages,
         temperature: this.temperature,
-        max_tokens: this.maxTokens,
+        max_tokens: cap,
       };
       if (asJson) {
         /* Every JSON-shaped prompt in this app already says "Return JSON only",
