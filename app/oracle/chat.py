@@ -18,7 +18,10 @@ from . import guide
 from .llm import THINK_RE
 from .weave import SYSTEM
 
-T_CHAT = float(os.environ.get("ORACLE_T_CHAT", "45"))
+T_CHAT = float(os.environ.get("ORACLE_T_CHAT", "30"))
+# A spoken answer is 2-5 sentences; this stops a model that starts reasoning out loud from
+# running the clock out. Measured on the Spark 2026-09-05: unbounded, one answer took 45 s.
+MAX_TOKENS = int(os.environ.get("ORACLE_CHAT_TOKENS", "220"))
 MAX_TURNS = 12          # seeker+Turtle pairs kept per chat
 MAX_CHATS = 200         # two tablets and a handful of phones; the oldest chat falls off
 MAX_TEXT = 600          # a question, not an essay — anything longer is a stuck mic
@@ -47,6 +50,26 @@ YOU ARE ANSWERING A QUESTION AT THE SHELL, not weaving a reading. Rules, absolut
 """
 
 
+# qwen3 with thinking OFF still reasons out loud when the prompt reads like a checklist:
+# "Hmm, the seeker is asking about…", "Let me check the Shell Holds…", "We must answer in
+# 2-5 sentences…". Seen 4 of 5 answers on the Spark, 2026-09-05. These are the openers;
+# a sentence that starts this way is scratchpad, not speech.
+NARRATION_RE = re.compile(
+    r"^\s*(hmm+|okay|ok|alright|well|so|first|now|wait|the seeker|the user|we (must|are|need|should|have)"
+    r"|let me|let's|i need to|i should|i will|i'll|looking at|checking|based on|according to the shell"
+    r"|the shell holds|the question is|they are asking|they're asking|the answer (must|should|needs))\b",
+    re.I)
+
+
+def _unnarrate(parts):
+    """Drop leading scratchpad sentences; return (spoken_parts, was_narrating)."""
+    narr = False
+    while parts and NARRATION_RE.match(parts[0]):
+        parts = parts[1:]
+        narr = True
+    return parts, narr
+
+
 def _clean(text):
     """A spoken answer: no scratchpad, no markdown, no more than five sentences."""
     t = THINK_RE.sub("", text or "").strip()
@@ -59,9 +82,17 @@ def _clean(text):
     t = re.sub(r"\n{2,}", "\n", t).strip()
     parts = re.findall(r"[^.!?…]+[.!?…]+['\"”]?|[^.!?…]+$", t.replace("\n", " "))
     parts = [p.strip() for p in parts if p.strip()]
+    parts, _clean.narrated = _unnarrate(parts)
     if len(parts) > 5:
         parts = parts[:5]
     return " ".join(parts).strip()
+
+
+_clean.narrated = False
+
+SPEAK_NOW = ("Speak now as the Turtle, straight to the seeker, first spoken sentence first. "
+             "No preamble, no notes to yourself, no describing what you are checking or which "
+             "rule applies. Only the words the seeker hears.")
 
 
 def _seance_block(sid):
@@ -110,6 +141,8 @@ def _prompt(history, text):
     for role, said in history[-(MAX_TURNS * 2):]:
         lines.append(("Seeker: " if role == "seeker" else "Turtle: ") + said)
     lines.append("Seeker: " + text)
+    lines.append("")
+    lines.append(SPEAK_NOW)
     lines.append("Turtle:")
     return "\n".join(lines)
 
@@ -185,9 +218,15 @@ def ask(body, llm, now=None):
     say, mode = None, "fallback"
     try:
         if llm is not None and llm.available():
-            raw = llm.generate(_prompt(chat["history"], text),
-                               system=_system(ctx, sid, now), timeout=T_CHAT)
+            prompt = _prompt(chat["history"], text)
+            system = _system(ctx, sid, now)
+            raw = llm.generate(prompt, system=system, timeout=T_CHAT, max_tokens=MAX_TOKENS)
             say = _clean(raw)
+            if not say and raw:
+                # every sentence was scratchpad: one more roll, told plainly, half the clock
+                raw = llm.generate(prompt + " Answer only, in the Turtle's voice.",
+                                   system=system, timeout=T_CHAT / 2, max_tokens=MAX_TOKENS)
+                say = _clean(raw)
             if say:
                 mode = "llm"
     except Exception:

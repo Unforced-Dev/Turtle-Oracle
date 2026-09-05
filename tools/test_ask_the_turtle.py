@@ -43,7 +43,7 @@ class FakeLLM:
     def available(self):
         return True
 
-    def generate(self, prompt, system=None, as_json=False, timeout=None):
+    def generate(self, prompt, system=None, as_json=False, timeout=None, **kw):
         self.prompts.append(prompt)
         self.systems.append(system or "")
         return self.reply
@@ -276,6 +276,21 @@ def main():
     finally:
         httpd.shutdown()
         httpd.server_close()
+
+    # --- the narration guard: scratchpad sentences are not speech ---------------------
+    from oracle import chat as _chat
+    said = _chat._clean("Hmm, the seeker is asking about coffee. Let me check the Shell Holds. "
+                        "GaiaDome pours coffee until eight tonight at Esplanade and 3:00. Go slow.")
+    check("narration guard drops the scratchpad openers", said.startswith("GaiaDome"), said)
+    check("narration guard keeps the spoken tail", "Go slow." in said, said)
+    check("narration guard flags that it narrated", _chat._clean.narrated is True)
+    said = _chat._clean("Okay, the seeker asked about the Taproot. We must answer in 2-5 sentences.")
+    check("all-scratchpad answer cleans to nothing so the caller re-rolls", said == "", repr(said))
+    said = _chat._clean("The Taproot is the dark you came out of. It is your deepest water.")
+    check("a real answer passes the guard untouched", said.startswith("The Taproot"), said)
+    check("a real answer is not flagged", _chat._clean.narrated is False)
+    check("prompt ends by telling the model to speak, not to plan",
+          _chat._prompt([], "hi").rstrip().endswith("Turtle:") and "Speak now as the Turtle" in _chat._prompt([], "hi"))
 
     print("\nALL PASS" if not FAILS else f"\n{len(FAILS)} FAILED: " + "; ".join(FAILS))
     return 1 if FAILS else 0
