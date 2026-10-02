@@ -50,7 +50,7 @@ class LLM:
             self._probed_at = now
         return self._available
 
-    def generate(self, prompt, system=None, timeout=90, as_json=False):
+    def generate(self, prompt, system=None, timeout=90, as_json=False, max_tokens=None):
         body = {
             "model": self.model,
             "prompt": prompt,
@@ -60,6 +60,8 @@ class LLM:
         }
         if self.model.startswith(NO_THINK):
             body["think"] = False
+        if max_tokens:
+            body["options"]["num_predict"] = int(max_tokens)
         if system:
             body["system"] = system
         if as_json:
@@ -172,7 +174,7 @@ class CloudLLM:
             self._probed_at = now
         return self._available
 
-    def generate(self, prompt, system=None, timeout=90, as_json=False):
+    def generate(self, prompt, system=None, timeout=90, as_json=False, max_tokens=None):
         if not self.key:
             return None
         messages = ([{"role": "system", "content": system}] if system else []) \
