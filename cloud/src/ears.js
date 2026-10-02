@@ -6,6 +6,7 @@
  * Object class, which needs `cloudflare:workers`), so a test could not otherwise reach
  * this at all. cloud/test/seance.mjs drives it against a fake AI binding.
  */
+import { exists as chatExists } from "./chat.js";
 import { loadSession } from "./session.js";
 import { json } from "./util.js";
 
@@ -60,19 +61,31 @@ export function toBase64(bytes) {
 }
 
 /** POST /api/transcribe — the séance id in `?session=` or the `x-seance-session` header,
- *  the raw MediaRecorder blob as the body. */
+ *  OR a live chat in `x-turtle-chat`; the raw MediaRecorder blob as the body.
+ *
+ *  ASK THE TURTLE OPENS THE EARS TOO. A chat is the other thing a seeker speaks into, and
+ *  it has no séance behind it when it is opened cold off the attract screen. The gate is
+ *  exactly as strong for it as for a séance — a state object that this Worker minted has
+ *  to exist first, and the route still spends from RL_EARS — so this widens who may
+ *  speak, not how much anyone may spend. */
 export async function transcribe(req, env, url) {
-  /* The séance is checked BEFORE the body is read: an unknown caller should never get
-   * as far as making this isolate hold 4MB of their audio. */
+  /* The caller is checked BEFORE the body is read: an unknown one should never get as
+   * far as making this isolate hold 4MB of their audio. */
   const sid = String(
     (url && url.searchParams && url.searchParams.get("session")) ||
       req.headers.get("x-seance-session") ||
       "",
   ).trim();
-  if (!sid) return json({ error: NO_SEANCE });
-  const sess = await loadSession(env.SESSION_DO, sid);
-  if (!sess) return json({ error: NO_SEANCE });
-  if (!EARS_OPEN.has(sess.stage)) return json({ error: NOT_LISTENING, stage: sess.stage });
+  const cid = String(req.headers.get("x-turtle-chat") || "").trim();
+  if (sid) {
+    const sess = await loadSession(env.SESSION_DO, sid);
+    if (!sess) return json({ error: NO_SEANCE });
+    if (!EARS_OPEN.has(sess.stage)) return json({ error: NOT_LISTENING, stage: sess.stage });
+  } else if (cid) {
+    if (!(await chatExists(env, cid))) return json({ error: NO_SEANCE });
+  } else {
+    return json({ error: NO_SEANCE });
+  }
 
   const buf = await req.arrayBuffer();
   if (!buf.byteLength) return json({ error: "no audio" }, 400);

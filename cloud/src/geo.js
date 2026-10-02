@@ -31,6 +31,21 @@ export function locate(card) {
   };
 }
 
+/** The real BRC record a card's placement was drawn FROM, as {uid, kind, name} — or null.
+ *
+ * data/playa_2026.json was built by matching each card's live_hook against the Burning Man
+ * API, and nineteen of the thirty-nine hooks kept the matched record's uid in `source`.
+ * That uid is the only safe way to walk from a card to the city dump: matching by name
+ * would happily land "The Lantern" on a different camp with a similar one. The other
+ * twenty hooks return null, which is honest — the reading still has its bearing.
+ */
+export function hookPlace(card) {
+  const h = (card && card.live_hook && HOOKS[card.live_hook]) || null;
+  const src = h && h.source;
+  if (!src || !src.uid) return null;
+  return { uid: src.uid, kind: src.kind || "", name: src.name || "" };
+}
+
 export function locateSpread(picks) {
   const out = {};
   for (const [realm, card] of Object.entries(picks)) out[realm] = locate(card);

@@ -14,11 +14,14 @@
 import { DECK, CARDS, cardPayload } from "./deck.js";
 import { DEFAULT_WHISPER, transcribe } from "./ears.js";
 import { locate } from "./geo.js";
+import * as guide from "./guide.js";
+import * as chat from "./chat.js";
 import { WorkersAILLM, DEFAULT_MODEL } from "./llm.js";
 import * as lore from "./lore.js";
 import { formatReceipt } from "./printer.js";
 import * as session from "./session.js";
 import { json } from "./util.js";
+import { TRYOUT_SPEAKERS, voiceChoice, voiceText } from "./voice.js";
 
 /* wrangler needs the Durable Object class exported from the entry module. The séance
  * state lives here now rather than in KV — sessiondo.js says why. */
@@ -61,9 +64,11 @@ const CSP = [
 const REALM_ORDER = { shell: 0, roots: 1, trunk: 2, branches: 3 };
 
 /* T_SHORT/T_LONG are patience before dropping to the offline template. One request can
- * chain two stages — the draw runs weave then echoes — and each stage may also spend half
- * as long again on the fallback model, so the worst case is 1.5 * (38 + 20) = 87s against
- * a ~100s edge timeout. Raising either number buys a 524 instead of a reading. */
+ * run two stages — the draw runs weave and echoes side by side — and each stage may also
+ * spend half as long again on the fallback model; the weave may roll twice, the second
+ * roll only while half its budget is unspent and with half the timeout. Worst case is
+ * max(1.5 * 38, 1.5 * 20) = 57s, or 19 + 1.5 * 19 = 48s on the two-roll path, against a
+ * ~100s edge timeout. Raising either number buys a 524 instead of a reading. */
 function makeCtx(env) {
   return {
     // the Tale-Book and the tiers counter; the séance itself is in ctx.sessions
@@ -99,6 +104,13 @@ async function overLimit(binding, request) {
 function limiterFor(env, path) {
   if (path === "/api/speak") return env.RL_SPEAK;
   if (path === "/api/transcribe") return env.RL_EARS;
+  /* Ask the Turtle bills one model call per question and shares nothing with the
+   * ceremony — a seeker mid-séance who also wants to know where the coffee is must not
+   * spend their reading's budget on it, and a chat loop must not spend a séance's. */
+  if (path === "/api/chat" || path === "/api/chat/open") return env.RL_CHAT;
+  /* The browse view. No model, but it is the only route that can be tapped forty times
+   * a minute by a thumb on a chip row, and each tap walks a 6.5k-row timeline. */
+  if (path.startsWith("/api/city/")) return env.RL_CITY;
   return env.RL;
 }
 
@@ -146,21 +158,27 @@ async function readJsonBody(req) {
 /* ---- voice: app/oracle/voice.py, kokoro -> Workers AI TTS ------------------------- */
 async function speak(req, env) {
   const body = await readJsonBody(req);
-  const text = String(body.text || "")
+  const line = String(body.text || "")
     .split(/\s+/)
     .filter(Boolean)
     .join(" ");
-  if (!text) return json({ error: "no text" }, 400);
-  if (text.length > 600) return json({ error: "speech line is too long" }, 400);
-  const model = (env.TTS_MODEL || DEFAULT_TTS).trim();
+  if (!line) return json({ error: "no text" }, 400);
+  if (line.length > 600) return json({ error: "speech line is too long" }, 400);
+  /* The kiosk posts one SENTENCE per request, so the Turtle's "Mm." arrives here alone
+   * and comes back as a groan. Strip the throat-clearing before spending the call; if
+   * that is all the line was, answer 204 and let the kiosk move to the next part. The
+   * screen still shows every word — this is the voice, not the text. */
+  const text = voiceText(line);
+  if (!text) return new Response(null, { status: 204 });
+  const { model, speaker } = voiceChoice(env, body, {
+    model: DEFAULT_TTS,
+    speaker: DEFAULT_TTS_SPEAKER,
+  });
   if (!model || model === "off") {
     return json({ error: "the Turtle's deeper voice is unavailable" }, 503);
   }
   try {
-    const out = await env.AI.run(model, {
-      text,
-      speaker: env.TTS_SPEAKER || DEFAULT_TTS_SPEAKER,
-    });
+    const out = await env.AI.run(model, { text, speaker });
     const stream = out instanceof ReadableStream ? out : out && out.audio ? out.audio : null;
     if (!stream) return json({ error: "the Turtle's deeper voice is unavailable" }, 503);
     return new Response(stream, {
@@ -264,6 +282,54 @@ async function print(req, env) {
   });
 }
 
+/* ---- the city: what is happening, and what one thing is ---------------------------
+ *
+ * Three GETs and one POST, all of them thin: src/guide.js holds the city and every
+ * decision about time, and this only reads the query string and hands the answer on.
+ * The bodies are small on purpose — a page is at most 60 rows — because the file behind
+ * them is 1.4MB and nothing about "what is on tonight" wants all of it on a phone.
+ */
+function intParam(url, name) {
+  const v = parseInt(url.searchParams.get(name) || "", 10);
+  return Number.isFinite(v) ? v : 0;
+}
+
+async function cityRoute(path, url, env) {
+  if (path === "/api/city/happening") {
+    return json(
+      await guide.happening(env, {
+        window: url.searchParams.get("window") || "now",
+        kind: url.searchParams.get("kind") || "",
+        q: url.searchParams.get("q") || "",
+        limit: intParam(url, "limit"),
+        offset: intParam(url, "offset"),
+      }),
+    );
+  }
+  if (path === "/api/city/search") {
+    return json(
+      await guide.search(env, url.searchParams.get("q") || "", { limit: intParam(url, "limit") }),
+    );
+  }
+  if (path === "/api/city/item") {
+    const found = await guide.item(env, url.searchParams.get("uid") || "");
+    /* A uid that is not in the dump is a 404, not an empty sheet: the phone shows a
+     * toast rather than an empty parchment with a Close button on it. */
+    return found ? json(found) : json({ error: "the shell holds no such thing" }, 404);
+  }
+  if (path === "/api/city/for") {
+    /* FROM THE CARDS TO THE CITY. Reads the séance, never writes it. */
+    const sid = String(url.searchParams.get("session") || "").trim();
+    /* The id names a Durable Object, so it is checked against the shape session.js
+     * makes them (12 hex) before it gets to do that. */
+    if (!/^[0-9a-f]{12}$/.test(sid)) return json({ error: "no such séance" }, 404);
+    const sess = await session.loadSession(env.SESSION_DO, sid);
+    if (!sess) return json({ error: "no such séance" }, 404);
+    return json(await guide.forSeance(env, sess));
+  }
+  return null;
+}
+
 /* ---- router ---------------------------------------------------------------------- */
 export default {
   async fetch(request, env, ctx) {
@@ -271,10 +337,30 @@ export default {
     const path = url.pathname;
     const exec = (p) => (ctx && ctx.waitUntil ? ctx.waitUntil(p) : p);
 
+    /* The city file is an ASSET so the Worker can fetch it through the ASSETS binding,
+     * and `run_worker_first` means every request for it reaches us first. It stays
+     * private: 1.4MB a hit is bandwidth nobody asked for, and the Burning Man dump is
+     * ours to answer FROM, not ours to redistribute. src/guide.js still reads it —
+     * env.ASSETS.fetch goes straight to the asset store and never re-enters this
+     * script, so this 404 is a door on the street and not on the kitchen. */
+    if (path === "/city.json") return json({ error: "not found" }, 404);
+
     if (request.method === "GET") {
       // the cloud turtle IS the kiosk: there is no marketing page to sit at /
       if (path === "/kiosk" || path === "/kiosk.html" || path === "/oracle" || path === "/app") {
         return Response.redirect(new URL("/", url).toString(), 302);
+      }
+      if (path.startsWith("/api/city/")) {
+        if (await overLimit(limiterFor(env, path), request)) {
+          return json({ error: RATE_LIMITED }, 429);
+        }
+        try {
+          const res = await cityRoute(path, url, env);
+          if (res) return res;
+        } catch (err) {
+          console.error(`${path} failed:`, (err && err.stack) || String(err));
+          return json({ error: "the Turtle cannot see the city just now" }, 503);
+        }
       }
       if (path === "/api/deck") {
         return json({
@@ -289,6 +375,7 @@ export default {
       if (path === "/api/health") {
         const tiers = (await env.SESSIONS.get("tiers", "json")) || { llm: 0, fallback: 0 };
         const total = tiers.llm + tiers.fallback;
+        const cityMeta = await guide.cityMeta(env);
         return json({
           llm_reachable: Boolean(env.AI),
           backend: "workers-ai",
@@ -299,11 +386,21 @@ export default {
             backend: (env.TTS_MODEL || DEFAULT_TTS) === "off" ? "browser" : "workers-ai",
             model: env.TTS_MODEL || DEFAULT_TTS,
             speaker: env.TTS_SPEAKER || DEFAULT_TTS_SPEAKER,
+            // staging only: /api/speak will take a speaker and a model off the body
+            tryouts: String(env.VOICE_TRYOUTS || "") === "1" ? TRYOUT_SPEAKERS : null,
           },
           readings: tiers,
           // the number to look at: if this is climbing, the Turtle has gone dumb
           fallback_pct: total ? Math.round((1000.0 * tiers.fallback) / total) / 10 : null,
           sessions: "durable-object",
+          /* The city, read from the 200-byte city.meta.json rather than the 1.4MB file:
+           * an uptime check hitting a cold isolate every minute must not be the thing
+           * that pays for the parse. `city_loaded` is whether THIS isolate has done it. */
+          city: Boolean(cityMeta),
+          city_counts: (cityMeta && cityMeta.counts) || null,
+          city_fetched_at: (cityMeta && cityMeta.fetched_at) || null,
+          city_built_at: (cityMeta && cityMeta.built_at) || null,
+          city_loaded: guide.loaded(),
           printer: "none — cloud turtle",
         });
       }
@@ -314,6 +411,23 @@ export default {
       if (path === "/api/transcribe") return await transcribe(request, env, url);
       if (path === "/api/speak") return await speak(request, env);
       if (path === "/api/print") return await print(request, env);
+      if (path === "/api/chat/open") {
+        /* An empty chat, so the mic on the Ask screen has something to be gated on
+         * before the seeker has typed a word. See src/chat.js open(). */
+        return json(await chat.open(env));
+      }
+      if (path === "/api/chat") {
+        try {
+          const out = await chat.ask(env, await readJsonBody(request), new WorkersAILLM(env));
+          /* Deliberately NOT noteTiers(): fallback_pct is the SÉANCE's health signal, and
+           * folding chatter into it would hide a dumb weave behind a thousand answered
+           * questions. app/oracle/server.py says the same in the same place. */
+          return out ? json(out) : json({ error: "no question" }, 400);
+        } catch (err) {
+          console.error("/api/chat failed:", (err && err.stack) || String(err));
+          return json({ error: LOST_THREAD }, 200);
+        }
+      }
       if (path.startsWith("/api/session/")) {
         const action = path.split("/").pop();
         try {
